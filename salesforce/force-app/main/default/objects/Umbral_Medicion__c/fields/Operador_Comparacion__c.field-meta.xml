@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Operador_Comparacion__c</fullName>
+    <label>Operador de comparacion</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>MAYOR_QUE</fullName>
+                <default>false</default>
+                <label>MAYOR_QUE</label>
+            </value>
+            <value>
+                <fullName>MENOR_QUE</fullName>
+                <default>false</default>
+                <label>MENOR_QUE</label>
+            </value>
+            <value>
+                <fullName>MAYOR_O_IGUAL</fullName>
+                <default>false</default>
+                <label>MAYOR_O_IGUAL</label>
+            </value>
+            <value>
+                <fullName>MENOR_O_IGUAL</fullName>
+                <default>false</default>
+                <label>MENOR_O_IGUAL</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

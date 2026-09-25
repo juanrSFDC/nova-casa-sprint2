@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Severidad_Actual__c</fullName>
+    <label>Severidad actual</label>
+    <summarizedField>Estado_Medicion__c.Severidad_Nivel__c</summarizedField>
+    <summaryForeignKey>Estado_Medicion__c.Activo__c</summaryForeignKey>
+    <summaryOperation>max</summaryOperation>
+    <trackHistory>false</trackHistory>
+    <type>Summary</type>
+</CustomField>

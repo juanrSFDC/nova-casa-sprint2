@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Lectura_Ganadora__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <label>Lectura ganadora</label>
+    <referenceTo>Lectura_Sensor__c</referenceTo>
+    <relationshipLabel>Estados fijados</relationshipLabel>
+    <relationshipName>Estados_Fijados</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

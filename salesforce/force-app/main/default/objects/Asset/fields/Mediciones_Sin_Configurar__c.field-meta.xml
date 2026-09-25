@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Mediciones_Sin_Configurar__c</fullName>
+    <description>Cuenta las mediciones del equipo sin umbral configurado. Existe porque Severidad actual toma el máximo y un Normal taparía una medición sin umbral (US-204).</description>
+    <inlineHelpText>Mediciones de este equipo que no se pueden clasificar porque no tienen umbral configurado.</inlineHelpText>
+    <label>Mediciones sin configurar</label>
+    <summaryFilterItems>
+        <field>Estado_Medicion__c.Severidad__c</field>
+        <operation>equals</operation>
+        <value>Sin_Configurar</value>
+    </summaryFilterItems>
+    <summaryForeignKey>Estado_Medicion__c.Activo__c</summaryForeignKey>
+    <summaryOperation>count</summaryOperation>
+    <trackHistory>false</trackHistory>
+    <type>Summary</type>
+</CustomField>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Severidad_Etiqueta__c</fullName>
+    <externalId>false</externalId>
+    <formula>CASE(TEXT(Severidad_Actual__c), &quot;3&quot;, &quot;Critico&quot;, &quot;2&quot;, &quot;Advertencia&quot;, &quot;1&quot;, &quot;Normal&quot;, &quot;Sin datos&quot;)</formula>
+    <label>Severidad</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

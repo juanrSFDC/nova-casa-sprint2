@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Rango_Coherente</fullName>
+    <active>true</active>
+    <description>Un umbral incoherente ciega el sistema en silencio: nada volveria a clasificarse como critico y nadie se enteraria. Con operadores de mayor, el valor critico tiene que superar al de advertencia; con los de menor, quedarse por debajo.</description>
+    <errorConditionFormula>AND(
+  NOT(ISBLANK(Valor_Advertencia__c)),
+  NOT(ISBLANK(Valor_Critico__c)),
+  OR(
+    AND(
+      OR(ISPICKVAL(Operador_Comparacion__c, &quot;MAYOR_QUE&quot;), ISPICKVAL(Operador_Comparacion__c, &quot;MAYOR_O_IGUAL&quot;)),
+      Valor_Critico__c &lt;= Valor_Advertencia__c
+    ),
+    AND(
+      OR(ISPICKVAL(Operador_Comparacion__c, &quot;MENOR_QUE&quot;), ISPICKVAL(Operador_Comparacion__c, &quot;MENOR_O_IGUAL&quot;)),
+      Valor_Critico__c &gt;= Valor_Advertencia__c
+    )
+  )
+)</errorConditionFormula>
+    <errorDisplayField>Valor_Critico__c</errorDisplayField>
+    <errorMessage>El rango es incoherente. Con un operador de mayor, el valor critico debe ser superior al de advertencia; con uno de menor, inferior. Un umbral al reves dejaria de clasificar nada como critico sin avisar.</errorMessage>
+</ValidationRule>

@@ -1,0 +1,8 @@
+.DS_Store
+
+# Cachés locales de la CLI de Salesforce: se regeneran solas
+salesforce/.sf/
+salesforce/.sfdx/
+salesforce/.localdevserver/
+
+node_modules/
