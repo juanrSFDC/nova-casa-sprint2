@@ -29,6 +29,11 @@
                 <default>false</default>
                 <label>CELSIUS</label>
             </value>
+            <value>
+                <fullName>SECONDS</fullName>
+                <default>false</default>
+                <label>SECONDS</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

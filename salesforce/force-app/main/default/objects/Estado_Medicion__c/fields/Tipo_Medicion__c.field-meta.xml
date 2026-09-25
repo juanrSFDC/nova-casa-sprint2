@@ -29,6 +29,11 @@
                 <default>false</default>
                 <label>TEMPERATURE</label>
             </value>
+            <value>
+                <fullName>CONNECTIVITY</fullName>
+                <default>false</default>
+                <label>CONNECTIVITY</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

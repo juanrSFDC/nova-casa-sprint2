@@ -29,6 +29,11 @@
                 <default>false</default>
                 <label>TEMPERATURE_SENSOR</label>
             </value>
+            <value>
+                <fullName>SECURITY_CAMERA</fullName>
+                <default>false</default>
+                <label>SECURITY_CAMERA</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

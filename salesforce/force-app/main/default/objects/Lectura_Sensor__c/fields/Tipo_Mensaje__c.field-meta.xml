@@ -15,9 +15,9 @@
                 <label>MEASUREMENT</label>
             </value>
             <value>
-                <fullName>COMMUNICATION_STATUS</fullName>
+                <fullName>CONNECTIVITY</fullName>
                 <default>false</default>
-                <label>COMMUNICATION_STATUS</label>
+                <label>CONNECTIVITY</label>
             </value>
         </valueSetDefinition>
     </valueSet>
