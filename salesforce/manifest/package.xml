@@ -9,7 +9,12 @@
         <members>Umbral_Medicion__c</members>
         <members>Registro_Procesamiento__c</members>
         <members>Senal_Sensor__e</members>
+        <members>Control_Ingesta__c</members>
         <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Nova_Casa_Ingesta</members>
+        <name>PermissionSet</name>
     </types>
     <types>
         <members>Admin</members>

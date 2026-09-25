@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Cursor__c</fullName>
+    <description>nextCursor de la última respuesta procesada con éxito. Guarda la configuración de la corrida: si se cambia escenario, semilla, lote o edificios, hay que vaciarlo para empezar una corrida nueva. Caduca a los 30 días.</description>
+    <label>Cursor</label>
+    <length>4096</length>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

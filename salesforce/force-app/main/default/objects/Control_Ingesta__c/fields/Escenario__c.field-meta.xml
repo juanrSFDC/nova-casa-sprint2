@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Escenario__c</fullName>
+    <description>Escenario del simulador para una corrida nueva: MIXED, QA_200, BOUNDARIES, CRITICAL_BURST, LATE_MESSAGES, DUPLICATES, CONFLICT, INVALID_DATA, CAMERA_OUTAGE.</description>
+    <externalId>false</externalId>
+    <label>Escenario</label>
+    <length>40</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

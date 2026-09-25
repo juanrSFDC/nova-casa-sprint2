@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Cursor_Iniciado_En__c</fullName>
+    <description>startedAt de la corrida del cursor. Sirve para saber cuándo caduca (30 días).</description>
+    <label>Corrida iniciada en</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

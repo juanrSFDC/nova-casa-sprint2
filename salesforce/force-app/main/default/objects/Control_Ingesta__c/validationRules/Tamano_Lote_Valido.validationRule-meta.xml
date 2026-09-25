@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Tamano_Lote_Valido</fullName>
+    <active>true</active>
+    <errorConditionFormula>NOT(ISBLANK(Tamano_Lote__c)) &amp;&amp; (Tamano_Lote__c &lt; 1 || Tamano_Lote__c &gt; 200)</errorConditionFormula>
+    <errorDisplayField>Tamano_Lote__c</errorDisplayField>
+    <errorMessage>El simulador admite lotes de 1 a 200 señales.</errorMessage>
+</ValidationRule>
