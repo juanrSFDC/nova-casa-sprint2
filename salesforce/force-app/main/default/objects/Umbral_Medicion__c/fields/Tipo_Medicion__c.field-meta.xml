@@ -29,6 +29,11 @@
                 <default>false</default>
                 <label>TEMPERATURE</label>
             </value>
+            <value>
+                <fullName>CAMERA_CONNECTIVITY</fullName>
+                <default>false</default>
+                <label>CAMERA_CONNECTIVITY</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

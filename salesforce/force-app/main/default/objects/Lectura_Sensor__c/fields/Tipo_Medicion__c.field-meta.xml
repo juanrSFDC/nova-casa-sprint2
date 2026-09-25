@@ -30,9 +30,9 @@
                 <label>TEMPERATURE</label>
             </value>
             <value>
-                <fullName>CONNECTIVITY</fullName>
+                <fullName>CAMERA_CONNECTIVITY</fullName>
                 <default>false</default>
-                <label>CONNECTIVITY</label>
+                <label>CAMERA_CONNECTIVITY</label>
             </value>
         </valueSetDefinition>
     </valueSet>

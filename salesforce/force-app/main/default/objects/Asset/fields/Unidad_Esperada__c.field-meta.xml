@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Unidad_Esperada__c</fullName>
+    <description>unit del catálogo del simulador. Una señal con otra unidad se rechaza con UNIDAD_INCOMPATIBLE, aunque la medición no tenga umbral configurado.</description>
+    <label>Unidad esperada</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>KWH_PER_15_MIN</fullName>
+                <default>false</default>
+                <label>KWH_PER_15_MIN</label>
+            </value>
+            <value>
+                <fullName>BAR</fullName>
+                <default>false</default>
+                <label>BAR</label>
+            </value>
+            <value>
+                <fullName>LITER_PER_15_MIN</fullName>
+                <default>false</default>
+                <label>LITER_PER_15_MIN</label>
+            </value>
+            <value>
+                <fullName>CELSIUS</fullName>
+                <default>false</default>
+                <label>CELSIUS</label>
+            </value>
+            <value>
+                <fullName>SECONDS</fullName>
+                <default>false</default>
+                <label>SECONDS</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

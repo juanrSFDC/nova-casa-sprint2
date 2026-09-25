@@ -44,6 +44,16 @@
                 <default>false</default>
                 <label>COLISION_CLAVE</label>
             </value>
+            <value>
+                <fullName>VALOR_INVALIDO</fullName>
+                <default>false</default>
+                <label>VALOR_INVALIDO</label>
+            </value>
+            <value>
+                <fullName>MEDICION_INCOMPATIBLE</fullName>
+                <default>false</default>
+                <label>MEDICION_INCOMPATIBLE</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

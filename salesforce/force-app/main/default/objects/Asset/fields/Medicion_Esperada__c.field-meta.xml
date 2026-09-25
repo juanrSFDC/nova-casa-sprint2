@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Medicion_Esperada__c</fullName>
+    <description>measurement del catálogo del simulador. Una señal de otra medición para este activo se rechaza con MEDICION_INCOMPATIBLE (US-202).</description>
+    <label>Medición esperada</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>ENERGY_CONSUMPTION</fullName>
+                <default>false</default>
+                <label>ENERGY_CONSUMPTION</label>
+            </value>
+            <value>
+                <fullName>WATER_PRESSURE</fullName>
+                <default>false</default>
+                <label>WATER_PRESSURE</label>
+            </value>
+            <value>
+                <fullName>WATER_CONSUMPTION</fullName>
+                <default>false</default>
+                <label>WATER_CONSUMPTION</label>
+            </value>
+            <value>
+                <fullName>TEMPERATURE</fullName>
+                <default>false</default>
+                <label>TEMPERATURE</label>
+            </value>
+            <value>
+                <fullName>CAMERA_CONNECTIVITY</fullName>
+                <default>false</default>
+                <label>CAMERA_CONNECTIVITY</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -34,6 +34,11 @@
                 <default>false</default>
                 <label>SECURITY_CAMERA</label>
             </value>
+            <value>
+                <fullName>TECHNICAL_ROOM</fullName>
+                <default>false</default>
+                <label>TECHNICAL_ROOM</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>
