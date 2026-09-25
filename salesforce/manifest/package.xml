@@ -17,6 +17,14 @@
         <name>ApexClass</name>
     </types>
     <types>
+        <members>Simulador_Nova_Casa_Token</members>
+        <name>ExternalCredential</name>
+    </types>
+    <types>
+        <members>Simulador_Nova_Casa</members>
+        <name>NamedCredential</name>
+    </types>
+    <types>
         <members>Nova_Casa_Ingesta</members>
         <name>PermissionSet</name>
     </types>
