@@ -17,13 +17,13 @@ public with sharing class SimuladorSesionSolicitud {
     /** Escenario del simulador, por ejemplo MIXED o INVALID_DATA. */
     public String escenario { get; set; }
 
-    /** Semilla para reproducir la corrida. Nula = aleatoria. */
+    /** Semilla para reproducir la corrida. Nula = el simulador elige una y la devuelve en la sesión. */
     public Long semilla { get; set; }
 
     /** Tamaño de lote, de 1 a 200. */
     public Integer tamanoLote { get; set; }
 
-    /** Edificios a incluir; lista vacía = todos. */
+    /** Edificios a incluir: al menos uno. El simulador rechaza la lista vacía con 400. */
     public List<String> edificios { get; set; }
 
     /**

@@ -337,4 +337,21 @@ private class SimuladorClienteTest {
         }
         Test.stopTest();
     }
+
+    @isTest
+    static void shouldThrowSinLlamar_WhenSinEdificios() {
+        SimuladorHttpMock mock = new SimuladorHttpMock(201, SESION_201);
+        Test.setMock(HttpCalloutMock.class, mock);
+        SimuladorSesionSolicitud solicitud = new SimuladorSesionSolicitud('MIXED', 1, 2, new List<String>());
+
+        Test.startTest();
+        try {
+            SimuladorCliente.crearSesion(NC, solicitud);
+            Assert.fail('Se esperaba SimuladorClienteException sin edificios: el simulador responde 400');
+        } catch (SimuladorCliente.SimuladorClienteException e) {
+            Assert.isFalse(e.reintentable, 'Sin edificios es un error de configuración, no reintentable');
+            Assert.isNull(mock.metodoCapturado, 'No debe llamar al simulador si faltan los edificios');
+        }
+        Test.stopTest();
+    }
 }

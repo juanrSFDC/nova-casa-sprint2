@@ -28,7 +28,7 @@ public with sharing class SimuladorCliente {
 
     private static final String ERROR_NC_INVALIDA = 'El nombre de la Named Credential es inválido.';
     private static final String ERROR_SOLICITUD_NULA = 'La solicitud de sesión no puede ser nula.';
-    private static final String ERROR_SOLICITUD_INCOMPLETA = 'La solicitud de sesión necesita escenario y tamaño de lote.';
+    private static final String ERROR_SOLICITUD_INCOMPLETA = 'La solicitud de sesión necesita escenario, tamaño de lote y al menos un edificio.';
     private static final String ERROR_CURSOR_VACIO = 'El cursor no puede estar vacío.';
     private static final String ERROR_COMUNICACION = 'No se pudo comunicar con el simulador.';
     private static final String ERROR_HTTP = 'El simulador respondió con un código HTTP inesperado.';
@@ -50,7 +50,8 @@ public with sharing class SimuladorCliente {
         if (solicitud == null) {
             throw fallo(ERROR_SOLICITUD_NULA, null, false);
         }
-        if (String.isBlank(solicitud.escenario) || solicitud.tamanoLote == null) {
+        if (String.isBlank(solicitud.escenario) || solicitud.tamanoLote == null
+                || solicitud.edificios == null || solicitud.edificios.isEmpty()) {
             throw fallo(ERROR_SOLICITUD_INCOMPLETA, null, false);
         }
 
@@ -58,7 +59,7 @@ public with sharing class SimuladorCliente {
             'scenario' => solicitud.escenario,
             'seed' => solicitud.semilla,
             'batchSize' => solicitud.tamanoLote,
-            'buildings' => (solicitud.edificios == null) ? new List<String>() : solicitud.edificios
+            'buildings' => solicitud.edificios
         };
 
         HttpRequest peticion = new HttpRequest();
