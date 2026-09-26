@@ -32,10 +32,11 @@ private class RegistroProcesamientoServiceTest {
 
             Assert.isNotNull(traza.Id, 'La traza se inserta en modo usuario');
             Registro_Procesamiento__c guardada = [
-                SELECT Resultado__c, Escrito_Por__c, Reintentable__c, Referencia__c, Detalle__c
+                SELECT Resultado__c, Escrito_Por__c, Reintentable__c, Referencia__c, Detalle__c, Procesado_En__c
                 FROM Registro_Procesamiento__c
                 WHERE Id = :traza.Id
             ];
+            Assert.areEqual(AHORA, guardada.Procesado_En__c, 'La traza guarda cuándo se procesó (US-209)');
             Assert.areEqual('Fallo_Tecnico', guardada.Resultado__c, 'La traza es un fallo técnico');
             Assert.areEqual('Ingesta', guardada.Escrito_Por__c, 'La escribe la ingesta');
             Assert.isTrue(guardada.Reintentable__c, 'La bandera reintentable del cliente se respeta');
@@ -65,6 +66,15 @@ private class RegistroProcesamientoServiceTest {
         Assert.isTrue(guardada.Detalle__c.contains('Error inesperado'), 'El detalle es genérico');
         Assert.isFalse(guardada.Detalle__c.contains('secreto'), 'Nunca filtra el mensaje interno');
         Assert.isFalse(guardada.Detalle__c.contains('abc123'), 'Nunca filtra el cursor');
+    }
+
+    @isTest
+    static void detalleSaneado_configuracion_llevaLaCausa() {
+        String causa = 'La configuración no tiene edificios; el simulador respondería 400.';
+
+        String detalle = RegistroProcesamientoService.detalleSaneado(new ControlIngestaService.ConfiguracionException(causa));
+
+        Assert.areEqual(causa, detalle, 'Un error de configuración explica su causa, que es un texto fijo sin secretos');
     }
 
     @isTest

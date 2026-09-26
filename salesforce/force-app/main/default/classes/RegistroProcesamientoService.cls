@@ -36,7 +36,8 @@ public with sharing class RegistroProcesamientoService {
             Escrito_Por__c = ESCRITO_POR_INGESTA,
             Reintentable__c = esReintentable(excepcion),
             Referencia__c = PREFIJO_REFERENCIA + '|' + fuente + '|' + ahora.formatGmt(FORMATO_ISO),
-            Detalle__c = detalleSaneado(excepcion)
+            Detalle__c = detalleSaneado(excepcion),
+            Procesado_En__c = ahora
         );
         Database.insert(traza, AccessLevel.USER_MODE);
         return traza;
@@ -55,12 +56,14 @@ public with sharing class RegistroProcesamientoService {
     }
 
     /**
-     * Detalle saneado para Detalle__c: el mensaje de SimuladorClienteException ya viene saneado; para
+     * Detalle saneado para Detalle__c: el mensaje de SimuladorClienteException y el de
+     * ControlIngestaService.ConfiguracionException ya son textos fijos sin datos sensibles; para
      * cualquier otra excepción, un texto genérico con el tipo, nunca el stack trace, el cursor ni el token.
      */
     @TestVisible
     private static String detalleSaneado(Exception excepcion) {
-        if (excepcion instanceof SimuladorCliente.SimuladorClienteException) {
+        if (excepcion instanceof SimuladorCliente.SimuladorClienteException
+                || excepcion instanceof ControlIngestaService.ConfiguracionException) {
             String mensaje = excepcion.getMessage();
             if (mensaje == null) {
                 return DETALLE_GENERICO + '.';
