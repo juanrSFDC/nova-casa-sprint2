@@ -6,15 +6,19 @@
  *   añadirá aquí sus desenlaces con Escrito_Por__c = Suscriptor.
  * Contrato: docs/entrega-discovery-sprint2.md §3.4 (la traza la escribe solo Rozo) y §6.
  *
- * Diseñado para crecer: hoy solo registra el fallo técnico de la ingesta; el saneado de Detalle__c
- * y las constantes de picklist quedan listos para los métodos del suscriptor.
+ * Diseñado para crecer: hoy registra el fallo técnico de la ingesta (201.4) y los rechazos
+ * SIN_IDENTIDAD de la traducción (201.3); el saneado de Detalle__c y las constantes de picklist
+ * quedan listos para los métodos del suscriptor.
  *
  * @example
  * RegistroProcesamientoService.registrarFalloIngesta('nova-casa-simulator', excepcion, Datetime.now());
+ * RegistroProcesamientoService.registrarRechazosSinIdentidad(traduccion.rechazos, Datetime.now());
  */
 public with sharing class RegistroProcesamientoService {
 
     private static final String RESULTADO_FALLO_TECNICO = 'Fallo_Tecnico';
+    private static final String RESULTADO_RECHAZADA = 'Rechazada';
+    private static final String MOTIVO_SIN_IDENTIDAD = 'SIN_IDENTIDAD';
     private static final String ESCRITO_POR_INGESTA = 'Ingesta';
     private static final String PREFIJO_REFERENCIA = 'INGESTA';
     private static final String FORMATO_ISO = 'yyyy-MM-dd\'T\'HH:mm:ss.SSS\'Z\'';
@@ -41,6 +45,38 @@ public with sharing class RegistroProcesamientoService {
         );
         Database.insert(traza, AccessLevel.USER_MODE);
         return traza;
+    }
+
+    /**
+     * Registra los rechazos SIN_IDENTIDAD de la traducción (201.3) en UNA sola inserción: Rechazada
+     * escrita por Ingesta, no reintentable (sin identidad no se puede deduplicar). La referencia es el
+     * SHA-256 del JSON crudo (siempre tiene valor, aunque no haya clave). Una lista vacía no escribe nada.
+     *
+     * @param rechazos Los mensajes sin identidad (SenalSensorService.traducir)
+     * @param recibidoEn El momento de la recepción, el mismo para todo el lote
+     * @return Las trazas insertadas (vacío si no había rechazos)
+     * @example
+     * RegistroProcesamientoService.registrarRechazosSinIdentidad(traduccion.rechazos, Datetime.now());
+     */
+    public static List<Registro_Procesamiento__c> registrarRechazosSinIdentidad(
+            List<SenalSensorService.Rechazo> rechazos, Datetime recibidoEn) {
+        List<Registro_Procesamiento__c> trazas = new List<Registro_Procesamiento__c>();
+        if (rechazos == null || rechazos.isEmpty()) {
+            return trazas;
+        }
+        for (SenalSensorService.Rechazo rechazo : rechazos) {
+            trazas.add(new Registro_Procesamiento__c(
+                Resultado__c = RESULTADO_RECHAZADA,
+                Motivo__c = MOTIVO_SIN_IDENTIDAD,
+                Escrito_Por__c = ESCRITO_POR_INGESTA,
+                Reintentable__c = false,
+                Recibido_En__c = recibidoEn,
+                Referencia__c = rechazo.referencia,
+                Detalle__c = truncar(rechazo.detalle, MAX_DETALLE)
+            ));
+        }
+        Database.insert(trazas, AccessLevel.USER_MODE);
+        return trazas;
     }
 
     /**
@@ -71,5 +107,15 @@ public with sharing class RegistroProcesamientoService {
             return mensaje.length() <= MAX_DETALLE ? mensaje : mensaje.substring(0, MAX_DETALLE);
         }
         return DETALLE_GENERICO + ' (' + excepcion.getTypeName() + ').';
+    }
+
+    /**
+     * Recorta un texto a n caracteres como máximo (nulo se conserva nulo).
+     */
+    private static String truncar(String texto, Integer n) {
+        if (texto == null) {
+            return null;
+        }
+        return texto.length() <= n ? texto : texto.substring(0, n);
     }
 }

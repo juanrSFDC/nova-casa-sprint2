@@ -84,4 +84,99 @@ private class RegistroProcesamientoServiceTest {
         Assert.isTrue(detalle.contains('PruebaException'), 'Incluye el tipo de la excepción');
         Assert.isFalse(detalle.contains('no debe verse'), 'No incluye el mensaje interno');
     }
+
+    // ─── registrarRechazosSinIdentidad (201.3) ──────────────────────────────
+
+    @isTest
+    static void registrarRechazosSinIdentidad_noHaceDml_cuandoListaVacia() {
+        Test.startTest();
+        Integer dml = Limits.getDmlStatements();
+        List<Registro_Procesamiento__c> vacia = RegistroProcesamientoService.registrarRechazosSinIdentidad(
+            new List<SenalSensorService.Rechazo>(), AHORA);
+        List<Registro_Procesamiento__c> nula = RegistroProcesamientoService.registrarRechazosSinIdentidad(null, AHORA);
+        Assert.areEqual(dml, Limits.getDmlStatements(), 'Sin rechazos no se escribe nada');
+        Test.stopTest();
+
+        Assert.isTrue(vacia.isEmpty(), 'Una lista vacía devuelve vacío');
+        Assert.isTrue(nula.isEmpty(), 'Una lista nula devuelve vacío');
+    }
+
+    @isTest
+    static void registrarRechazosSinIdentidad_insertaUnaVez_cuandoVariosRechazos() {
+        List<SenalSensorService.Rechazo> rechazos = new List<SenalSensorService.Rechazo>{
+            rechazo(0, 'a1'), rechazo(1, 'b2'), rechazo(2, 'c3')
+        };
+
+        Test.startTest();
+        Integer dml = Limits.getDmlStatements();
+        RegistroProcesamientoService.registrarRechazosSinIdentidad(rechazos, AHORA);
+        Assert.areEqual(dml + 1, Limits.getDmlStatements(), 'Todo el lote se inserta en UNA sola sentencia DML');
+        Test.stopTest();
+
+        Assert.areEqual(3, [SELECT COUNT() FROM Registro_Procesamiento__c WHERE Motivo__c = 'SIN_IDENTIDAD'],
+            'Se insertan tantas trazas como rechazos');
+    }
+
+    @isTest
+    static void registrarRechazosSinIdentidad_poblaCampos_cuandoRechazo() {
+        Test.startTest();
+        RegistroProcesamientoService.registrarRechazosSinIdentidad(
+            new List<SenalSensorService.Rechazo>{ rechazo(7, 'huella-sha256') }, AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c guardada = [
+            SELECT Resultado__c, Motivo__c, Escrito_Por__c, Reintentable__c,
+                   Recibido_En__c, Referencia__c, Detalle__c, Procesado_En__c
+            FROM Registro_Procesamiento__c LIMIT 1
+        ];
+        Assert.areEqual('Rechazada', guardada.Resultado__c, 'El resultado es Rechazada');
+        Assert.areEqual('SIN_IDENTIDAD', guardada.Motivo__c, 'El motivo es SIN_IDENTIDAD');
+        Assert.areEqual('Ingesta', guardada.Escrito_Por__c, 'La escribe la ingesta');
+        Assert.isFalse(guardada.Reintentable__c, 'Sin identidad no se puede deduplicar: no reintentable');
+        Assert.areEqual(AHORA, guardada.Recibido_En__c, 'Guarda cuándo se recibió');
+        Assert.areEqual('huella-sha256', guardada.Referencia__c, 'La referencia es la huella del rechazo');
+        Assert.areEqual('detalle 7', guardada.Detalle__c, 'Guarda el detalle del rechazo');
+        Assert.isNull(guardada.Procesado_En__c, 'Un rechazo en la ingesta no lo procesa el suscriptor');
+    }
+
+    @isTest
+    static void registrarRechazosSinIdentidad_comoIngesta_insertaEnModoUsuario() {
+        User usuario;
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            usuario = TestDataFactory.crearUsuarioIngesta();
+        }
+
+        System.runAs(usuario) {
+            Test.startTest();
+            List<Registro_Procesamiento__c> trazas = RegistroProcesamientoService.registrarRechazosSinIdentidad(
+                new List<SenalSensorService.Rechazo>{ rechazo(0, 'huella') }, AHORA);
+            Test.stopTest();
+
+            Assert.isNotNull(trazas[0].Id, 'El usuario de ingesta escribe la traza (FLS de Referencia__c incluido)');
+        }
+    }
+
+    @isTest
+    static void registrarRechazosSinIdentidad_truncaDetalle_a4000() {
+        SenalSensorService.Rechazo largo = new SenalSensorService.Rechazo();
+        largo.posicion = 0;
+        largo.referencia = 'huella';
+        largo.detalle = 'x'.rightPad(4100, 'x');
+
+        Test.startTest();
+        RegistroProcesamientoService.registrarRechazosSinIdentidad(new List<SenalSensorService.Rechazo>{ largo }, AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c guardada = [SELECT Detalle__c FROM Registro_Procesamiento__c LIMIT 1];
+        Assert.areEqual(4000, guardada.Detalle__c.length(), 'El detalle se recorta al máximo del campo (4000)');
+    }
+
+    /** Un rechazo de prueba con posición, referencia y un detalle reconocible. */
+    private static SenalSensorService.Rechazo rechazo(Integer posicion, String referencia) {
+        SenalSensorService.Rechazo r = new SenalSensorService.Rechazo();
+        r.posicion = posicion;
+        r.referencia = referencia;
+        r.detalle = 'detalle ' + posicion;
+        return r;
+    }
 }
