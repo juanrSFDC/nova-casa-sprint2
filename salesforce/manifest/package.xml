@@ -13,7 +13,33 @@
         <name>CustomObject</name>
     </types>
     <types>
-        <members>*</members>
+        <members>ClasificacionResultado</members>
+        <members>ClasificacionResultadoTest</members>
+        <members>ClasificacionService</members>
+        <members>ClasificacionServiceTest</members>
+        <members>ClasificacionSolicitud</members>
+        <members>ClasificacionSolicitudTest</members>
+        <members>ClasificadorSeveridad</members>
+        <members>ClasificadorSeveridadTest</members>
+        <members>ControlIngestaSelector</members>
+        <members>ControlIngestaSelectorTest</members>
+        <members>ControlIngestaService</members>
+        <members>ControlIngestaServiceTest</members>
+        <members>IntervencionResultado</members>
+        <members>IntervencionResultadoTest</members>
+        <members>IntervencionService</members>
+        <members>IntervencionServiceTest</members>
+        <members>RegistroProcesamientoService</members>
+        <members>RegistroProcesamientoServiceTest</members>
+        <members>SimuladorCliente</members>
+        <members>SimuladorClienteTest</members>
+        <members>SimuladorLote</members>
+        <members>SimuladorLoteTest</members>
+        <members>SimuladorSesion</members>
+        <members>SimuladorSesionSolicitud</members>
+        <members>SimuladorSesionSolicitudTest</members>
+        <members>SimuladorSesionTest</members>
+        <members>TestDataFactory</members>
         <name>ApexClass</name>
     </types>
     <types>
