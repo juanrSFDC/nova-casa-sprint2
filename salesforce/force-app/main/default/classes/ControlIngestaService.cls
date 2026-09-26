@@ -238,6 +238,9 @@ public with sharing class ControlIngestaService {
         if (excepcion instanceof ConfiguracionException) {
             return 'Configuración inválida · no se reintenta';
         }
+        if (excepcion instanceof IngestaService.FalloReintentableException) {
+            return 'Fallo al publicar en el bus · se reintenta';
+        }
         return 'Fallo inesperado · no se reintenta';
     }
 

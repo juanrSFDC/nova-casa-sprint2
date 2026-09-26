@@ -119,7 +119,7 @@ private class IngestaServiceTest {
     }
 
     private static Control_Ingesta__c config() {
-        return [SELECT Id, Fuente__c, Cursor__c, Cursor_Iniciado_En__c, Habilitada__c FROM Control_Ingesta__c LIMIT 1];
+        return [SELECT Id, Fuente__c, Cursor__c, Cursor_Iniciado_En__c, Habilitada__c, Ultimo_Resultado__c FROM Control_Ingesta__c LIMIT 1];
     }
 
     /** Fija un cursor para que la corrida NO abra sesión (cursor con valor y sin fecha es válido). */
@@ -246,9 +246,27 @@ private class IngestaServiceTest {
 
         Assert.isTrue(r.fallo, 'Si el bus rechaza todo el lote, la corrida falla');
         Assert.areEqual('cursor-previo', config().Cursor__c, 'El cursor no avanza cuando la publicación falla del todo');
+        Assert.areEqual('Fallo al publicar en el bus · se reintenta', config().Ultimo_Resultado__c,
+            'El resumen dice lo mismo que la traza: se reintenta');
         Registro_Procesamiento__c traza = [
             SELECT Reintentable__c, Resultado__c FROM Registro_Procesamiento__c WHERE Resultado__c = 'Fallo_Tecnico' LIMIT 1];
         Assert.isTrue(traza.Reintentable__c, 'La publicación total fallida se marca reintentable');
+    }
+
+    @isTest
+    static void publicacionTotalFallida_noRegistraRechazosDeLaPaginaQueSeRepite() {
+        conCursorPrevio('cursor-previo');
+        IngestaService.publicador = new PublicadorTotalFallido();
+        SecuenciaMock mock = new SecuenciaMock()
+            .add(200, lote(mensajeValido('msg_1') + ',' + MENSAJE_SIN_IDENTIDAD, 'cursor-p1', false));
+        Test.setMock(HttpCalloutMock.class, mock);
+
+        Test.startTest();
+        IngestaService.ejecutar(FUENTE);
+        Test.stopTest();
+
+        Assert.areEqual(0, [SELECT COUNT() FROM Registro_Procesamiento__c WHERE Motivo__c = 'SIN_IDENTIDAD'],
+            'La página no confirmada se repetirá: sus rechazos se registran entonces, no dos veces');
     }
 
     @isTest

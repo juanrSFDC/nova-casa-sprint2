@@ -116,9 +116,6 @@ public with sharing class IngestaService {
             for (Integer pagina = 0; pagina < MAX_PAGINAS; pagina++) {
                 SimuladorLote lote = SimuladorCliente.pedirLote(config.Named_Credential__c, corrida.config.Cursor__c);
                 SenalSensorService.Traduccion traduccion = SenalSensorService.traducir(lote, ahora);
-                if (traduccion.rechazos != null && !traduccion.rechazos.isEmpty()) {
-                    rechazosAcum.addAll(traduccion.rechazos);
-                }
 
                 ResultadoPublicacion publicacion = publicador.publicar(traduccion.eventos);
                 resultado.publicadas += publicacion.publicados;
@@ -133,6 +130,11 @@ public with sharing class IngestaService {
                 // y el lote SÍ avanza (repetirlo republicaría los que sí entraron).
                 if (!publicacion.eventosFallidos.isEmpty()) {
                     sueltosAcum.addAll(publicacion.eventosFallidos);
+                }
+                // Los rechazos se acumulan solo con la página confirmada: si la publicación total
+                // falla, la página se repite y sus rechazos se registrarían dos veces.
+                if (traduccion.rechazos != null && !traduccion.rechazos.isEmpty()) {
+                    rechazosAcum.addAll(traduccion.rechazos);
                 }
 
                 ControlIngestaService.anotarLote(corrida, lote);
