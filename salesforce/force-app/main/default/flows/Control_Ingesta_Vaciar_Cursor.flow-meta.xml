@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Vaciar_cursor_y_fecha</name>
+        <label>Vaciar cursor y fecha</label>
+        <locationX>176</locationX>
+        <locationY>288</locationY>
+        <assignmentItems>
+            <assignToReference>$Record.Cursor__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <elementReference>sinCursor</elementReference>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>$Record.Cursor_Iniciado_En__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <elementReference>sinFecha</elementReference>
+            </value>
+        </assignmentItems>
+    </assignments>
+    <description>Si cambia la configuración de la corrida (escenario, semilla, tamaño de lote, edificios o la Named Credential), el cursor guardado deja de ser válido: la próxima ejecución debe abrir una sesión nueva. Este Flow before-save vacía Cursor__c y Cursor_Iniciado_En__c en esos casos. Se incluye Named_Credential__c porque apuntar a otro endpoint invalida el cursor igual que cambiar el escenario.</description>
+    <environments>Default</environments>
+    <interviewLabel>Control Ingesta · Vaciar Cursor {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Control Ingesta · Vaciar Cursor</label>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Vaciar_cursor_y_fecha</targetReference>
+        </connector>
+        <filterFormula>OR(ISCHANGED({!$Record.Escenario__c}), ISCHANGED({!$Record.Semilla__c}), ISCHANGED({!$Record.Tamano_Lote__c}), ISCHANGED({!$Record.Edificios__c}), ISCHANGED({!$Record.Named_Credential__c}))</filterFormula>
+        <object>Control_Ingesta__c</object>
+        <recordTriggerType>Update</recordTriggerType>
+        <triggerType>RecordBeforeSave</triggerType>
+    </start>
+    <status>Active</status>
+    <variables>
+        <name>sinCursor</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>sinFecha</name>
+        <dataType>DateTime</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

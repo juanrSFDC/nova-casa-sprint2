@@ -17,6 +17,10 @@
         <name>ApexClass</name>
     </types>
     <types>
+        <members>Control_Ingesta_Vaciar_Cursor</members>
+        <name>Flow</name>
+    </types>
+    <types>
         <members>Simulador_Nova_Casa_Token</members>
         <name>ExternalCredential</name>
     </types>
