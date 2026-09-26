@@ -36,6 +36,8 @@ public with sharing class SenalSensorService {
     private static final Integer LARGO_EPISODIO = 80;
     private static final Integer LARGO_VERSION = 10;   // Version_Contrato__c
     private static final Integer LARGO_CARGA = 32768;  // Carga_Cruda__c
+    private static final Decimal MAX_VALOR = 1000000000000.0;   // Valor__c (16,4): 12 cifras enteras
+    private static final Decimal MAX_SEGUNDOS = 1000000000.0;   // Segundos_Sin_Senal__c (9,0)
     private static final String TIPO_MEASUREMENT = 'MEASUREMENT';
     private static final String TIPO_CONNECTIVITY = 'CONNECTIVITY';
 
@@ -66,6 +68,8 @@ public with sharing class SenalSensorService {
         public Integer posicion { get; set; }
         /** SHA-256 hex del JSON crudo del mensaje. */
         public String referencia { get; set; }
+        /** deliveryId del mensaje, si viene: permite buscar la traza por entrega. */
+        public String idEntrega { get; set; }
         /** Detalle saneado: qué faltó, sin payload crudo. */
         public String detalle { get; set; }
     }
@@ -192,8 +196,10 @@ public with sharing class SenalSensorService {
     }
 
     /**
-     * Mapea el bloque measurement. Valor__c solo si en el JSON es un número (un texto queda vacío:
-     * el suscriptor lo rechaza con VALOR_NO_NUMERICO).
+     * Mapea el bloque measurement. Valor__c solo si en el JSON es un número que cabe en el campo
+     * (16,4). Un texto o un número fuera de rango queda vacío y lo rechaza el suscriptor: si se
+     * publicara, el evento fallaría y, como el cursor no avanza ante un fallo, el lote se repetiría
+     * para siempre.
      */
     private static void mapearMedicion(Senal_Sensor__e senal, Map<String, Object> medicion) {
         if (medicion == null) {
@@ -201,10 +207,7 @@ public with sharing class SenalSensorService {
         }
         senal.Tipo_Medicion__c = truncar(stringDe(medicion, 'type'), LARGO_TIPO_MEDICION);
         senal.Unidad__c = truncar(stringDe(medicion, 'unit'), LARGO_UNIDAD);
-        Object valor = medicion.get('value');
-        if (esNumero(valor)) {
-            senal.Valor__c = aDecimal(valor);
-        }
+        senal.Valor__c = numeroEnRango(medicion.get('value'), MAX_VALOR);
     }
 
     /**
@@ -215,9 +218,9 @@ public with sharing class SenalSensorService {
             return;
         }
         senal.Estado_Comunicacion__c = truncar(stringDe(comunicacion, 'status'), LARGO_ESTADO);
-        Object gap = comunicacion.get('gapSeconds');
-        if (esNumero(gap)) {
-            senal.Segundos_Sin_Senal__c = aDecimal(gap).longValue();
+        Decimal gap = numeroEnRango(comunicacion.get('gapSeconds'), MAX_SEGUNDOS);
+        if (gap != null) {
+            senal.Segundos_Sin_Senal__c = gap.longValue();
         }
         senal.Ultima_Vez_Visto__c = aFecha(stringDe(comunicacion, 'lastSeenAt'));
         senal.Episodio__c = truncar(stringDe(comunicacion, 'episodeId'), LARGO_EPISODIO);
@@ -251,6 +254,7 @@ public with sharing class SenalSensorService {
         Rechazo rechazo = new Rechazo();
         rechazo.posicion = posicion;
         rechazo.referencia = sha256Hex(cargaCruda);
+        rechazo.idEntrega = truncar(entrega, LARGO_ENTREGA);
         rechazo.detalle = detalle;
         return rechazo;
     }
@@ -274,6 +278,17 @@ public with sharing class SenalSensorService {
     private static Boolean esNumero(Object valor) {
         return valor instanceof Integer || valor instanceof Long
             || valor instanceof Decimal || valor instanceof Double;
+    }
+
+    /**
+     * El número JSON como Decimal si es número y su valor absoluto es menor que el máximo; si no, null.
+     */
+    private static Decimal numeroEnRango(Object valor, Decimal maximo) {
+        if (!esNumero(valor)) {
+            return null;
+        }
+        Decimal numero = aDecimal(valor);
+        return numero.abs() < maximo ? numero : null;
     }
 
     /**

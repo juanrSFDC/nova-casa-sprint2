@@ -104,6 +104,26 @@ private class SenalSensorServiceTest {
     }
 
     @isTest
+    static void traducir_dejaValorVacio_cuandoNumeroNoCabeEnElCampo() {
+        String medicion =
+            '{"messageId":"msg_big","source":"nova-casa-simulator","messageType":"MEASUREMENT",'
+            + '"measurement":{"type":"ENERGY_CONSUMPTION","value":1000000000000,"unit":"KWH_PER_15_MIN"}}';
+        String conectividad =
+            '{"messageId":"msg_gap","source":"nova-casa-simulator","messageType":"CONNECTIVITY",'
+            + '"communication":{"status":"LOST","gapSeconds":1000000000}}';
+        SimuladorLote lote = loteDeJson(new List<String>{ medicion, conectividad }, '1.0');
+
+        Test.startTest();
+        SenalSensorService.Traduccion t = SenalSensorService.traducir(lote, AHORA);
+        Test.stopTest();
+
+        Assert.areEqual(2, t.eventos.size(), 'Un número fuera de rango igual se traduce: lo rechaza el suscriptor');
+        Assert.isNull(t.eventos[0].Valor__c, 'Un valor de 13 cifras enteras no cabe en Valor__c (16,4): queda vacío');
+        Assert.isNull(t.eventos[1].Segundos_Sin_Senal__c, 'Un gap de 10 cifras no cabe en (9,0): queda vacío');
+        Assert.areEqual('LOST', t.eventos[1].Estado_Comunicacion__c, 'El resto del bloque sí se mapea');
+    }
+
+    @isTest
     static void traducir_convierteEnteroYDecimal_cuandoValorNumerico() {
         String entero =
             '{"messageId":"msg_int","source":"nova-casa-simulator","messageType":"MEASUREMENT",'
@@ -184,6 +204,7 @@ private class SenalSensorServiceTest {
         Assert.areEqual(1, t.rechazos.size(), 'Sin messageId va a rechazos');
         Assert.isTrue(t.rechazos[0].detalle.contains('falta messageId'), 'El detalle dice qué faltó');
         Assert.isTrue(t.rechazos[0].detalle.contains('dlv_y'), 'El detalle conserva el deliveryId para trazar');
+        Assert.areEqual('dlv_y', t.rechazos[0].idEntrega, 'El rechazo lleva el deliveryId para la traza');
     }
 
     @isTest

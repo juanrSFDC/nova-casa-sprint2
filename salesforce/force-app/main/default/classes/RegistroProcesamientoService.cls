@@ -71,6 +71,8 @@ public with sharing class RegistroProcesamientoService {
                 Escrito_Por__c = ESCRITO_POR_INGESTA,
                 Reintentable__c = false,
                 Recibido_En__c = recibidoEn,
+                Procesado_En__c = recibidoEn,
+                Id_Entrega__c = rechazo.idEntrega,
                 Referencia__c = rechazo.referencia,
                 Detalle__c = truncar(rechazo.detalle, MAX_DETALLE)
             ));

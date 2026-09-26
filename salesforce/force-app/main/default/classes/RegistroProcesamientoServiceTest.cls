@@ -126,9 +126,10 @@ private class RegistroProcesamientoServiceTest {
 
         Registro_Procesamiento__c guardada = [
             SELECT Resultado__c, Motivo__c, Escrito_Por__c, Reintentable__c,
-                   Recibido_En__c, Referencia__c, Detalle__c, Procesado_En__c
+                   Recibido_En__c, Referencia__c, Detalle__c, Procesado_En__c, Id_Entrega__c
             FROM Registro_Procesamiento__c LIMIT 1
         ];
+        Assert.areEqual('dlv_7', guardada.Id_Entrega__c, 'Guarda el deliveryId para buscar la traza por entrega');
         Assert.areEqual('Rechazada', guardada.Resultado__c, 'El resultado es Rechazada');
         Assert.areEqual('SIN_IDENTIDAD', guardada.Motivo__c, 'El motivo es SIN_IDENTIDAD');
         Assert.areEqual('Ingesta', guardada.Escrito_Por__c, 'La escribe la ingesta');
@@ -136,7 +137,7 @@ private class RegistroProcesamientoServiceTest {
         Assert.areEqual(AHORA, guardada.Recibido_En__c, 'Guarda cuándo se recibió');
         Assert.areEqual('huella-sha256', guardada.Referencia__c, 'La referencia es la huella del rechazo');
         Assert.areEqual('detalle 7', guardada.Detalle__c, 'Guarda el detalle del rechazo');
-        Assert.isNull(guardada.Procesado_En__c, 'Un rechazo en la ingesta no lo procesa el suscriptor');
+        Assert.areEqual(AHORA, guardada.Procesado_En__c, 'Como la traza de fallos, guarda cuándo se decidió el desenlace');
     }
 
     @isTest
@@ -176,6 +177,7 @@ private class RegistroProcesamientoServiceTest {
         SenalSensorService.Rechazo r = new SenalSensorService.Rechazo();
         r.posicion = posicion;
         r.referencia = referencia;
+        r.idEntrega = 'dlv_' + posicion;
         r.detalle = 'detalle ' + posicion;
         return r;
     }
