@@ -172,6 +172,96 @@ private class RegistroProcesamientoServiceTest {
         Assert.areEqual(4000, guardada.Detalle__c.length(), 'El detalle se recorta al máximo del campo (4000)');
     }
 
+    // ─── registrarEventosNoPublicados (201.5) ───────────────────────────────
+
+    @isTest
+    static void registrarEventosNoPublicados_noHaceDml_cuandoListaVacia() {
+        Test.startTest();
+        Integer dml = Limits.getDmlStatements();
+        List<Registro_Procesamiento__c> vacia = RegistroProcesamientoService.registrarEventosNoPublicados(
+            new List<Senal_Sensor__e>(), AHORA);
+        List<Registro_Procesamiento__c> nula = RegistroProcesamientoService.registrarEventosNoPublicados(null, AHORA);
+        Assert.areEqual(dml, Limits.getDmlStatements(), 'Sin eventos fallidos no se escribe nada');
+        Test.stopTest();
+
+        Assert.isTrue(vacia.isEmpty(), 'Una lista vacía devuelve vacío');
+        Assert.isTrue(nula.isEmpty(), 'Una lista nula devuelve vacío');
+    }
+
+    @isTest
+    static void registrarEventosNoPublicados_insertaUnaVez_cuandoVariosEventos() {
+        List<Senal_Sensor__e> eventos = new List<Senal_Sensor__e>{
+            evento('nova-casa-simulator|msg_1', 'dlv_1'),
+            evento('nova-casa-simulator|msg_2', 'dlv_2')
+        };
+
+        Test.startTest();
+        Integer dml = Limits.getDmlStatements();
+        RegistroProcesamientoService.registrarEventosNoPublicados(eventos, AHORA);
+        Assert.areEqual(dml + 1, Limits.getDmlStatements(), 'Todo el bloque se inserta en UNA sola sentencia DML');
+        Test.stopTest();
+
+        Assert.areEqual(2, [SELECT COUNT() FROM Registro_Procesamiento__c WHERE Resultado__c = 'Fallo_Tecnico'],
+            'Se inserta una traza por evento no publicado');
+    }
+
+    @isTest
+    static void registrarEventosNoPublicados_poblaCampos_cuandoEvento() {
+        Test.startTest();
+        RegistroProcesamientoService.registrarEventosNoPublicados(
+            new List<Senal_Sensor__e>{ evento('nova-casa-simulator|msg_9', 'dlv_9') }, AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c guardada = [
+            SELECT Resultado__c, Escrito_Por__c, Reintentable__c, Clave_Mensaje__c,
+                   Referencia__c, Id_Entrega__c, Detalle__c, Procesado_En__c
+            FROM Registro_Procesamiento__c LIMIT 1
+        ];
+        Assert.areEqual('Fallo_Tecnico', guardada.Resultado__c, 'Un evento rechazado por el bus es un fallo técnico');
+        Assert.areEqual('Ingesta', guardada.Escrito_Por__c, 'La escribe la ingesta');
+        Assert.isFalse(guardada.Reintentable__c, 'El dato que el bus rechaza no es reintentable');
+        Assert.areEqual('nova-casa-simulator|msg_9', guardada.Clave_Mensaje__c, 'Guarda la clave del mensaje');
+        Assert.areEqual('nova-casa-simulator|msg_9', guardada.Referencia__c, 'La referencia es la misma clave, para reconocerlo');
+        Assert.areEqual('dlv_9', guardada.Id_Entrega__c, 'Guarda el deliveryId');
+        Assert.areEqual(AHORA, guardada.Procesado_En__c, 'Guarda cuándo se decidió el desenlace');
+    }
+
+    @isTest
+    static void registrarEventosNoPublicados_comoIngesta_insertaEnModoUsuario() {
+        User usuario;
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            usuario = TestDataFactory.crearUsuarioIngesta();
+        }
+
+        System.runAs(usuario) {
+            Test.startTest();
+            List<Registro_Procesamiento__c> trazas = RegistroProcesamientoService.registrarEventosNoPublicados(
+                new List<Senal_Sensor__e>{ evento('nova-casa-simulator|msg_u', 'dlv_u') }, AHORA);
+            Test.stopTest();
+
+            Assert.isNotNull(trazas[0].Id, 'El usuario de ingesta escribe la traza del evento no publicado');
+        }
+    }
+
+    // ─── Reconocimiento de FalloReintentableException (201.5) ────────────────
+
+    @isTest
+    static void reintentable_reconoceFalloReintentableDeLaIngesta() {
+        Registro_Procesamiento__c traza = RegistroProcesamientoService.registrarFalloIngesta(
+            FUENTE, new IngestaService.FalloReintentableException('El bus rechazó todo el lote; se reintenta.'), AHORA);
+
+        Registro_Procesamiento__c guardada = [
+            SELECT Reintentable__c, Detalle__c FROM Registro_Procesamiento__c WHERE Id = :traza.Id];
+        Assert.isTrue(guardada.Reintentable__c, 'La ingesta marca su fallo reintentable como reintentable');
+        Assert.areEqual('El bus rechazó todo el lote; se reintenta.', guardada.Detalle__c,
+            'Confía en el mensaje de la ingesta (texto fijo, sin secretos)');
+    }
+
+    /** Un evento de prueba con su clave y su entrega. */
+    private static Senal_Sensor__e evento(String clave, String idEntrega) {
+        return new Senal_Sensor__e(Clave_Mensaje__c = clave, Id_Entrega__c = idEntrega);
+    }
+
     /** Un rechazo de prueba con posición, referencia y un detalle reconocible. */
     private static SenalSensorService.Rechazo rechazo(Integer posicion, String referencia) {
         SenalSensorService.Rechazo r = new SenalSensorService.Rechazo();

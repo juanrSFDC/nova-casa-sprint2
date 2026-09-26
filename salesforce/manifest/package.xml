@@ -25,6 +25,15 @@
         <members>ControlIngestaSelectorTest</members>
         <members>ControlIngestaService</members>
         <members>ControlIngestaServiceTest</members>
+        <members>IngestaFinalizer</members>
+        <members>IngestaManualAction</members>
+        <members>IngestaManualActionTest</members>
+        <members>IngestaQueueable</members>
+        <members>IngestaQueueableTest</members>
+        <members>IngestaSchedulable</members>
+        <members>IngestaSchedulableTest</members>
+        <members>IngestaService</members>
+        <members>IngestaServiceTest</members>
         <members>IntervencionResultado</members>
         <members>IntervencionResultadoTest</members>
         <members>IntervencionService</members>
@@ -46,7 +55,16 @@
     </types>
     <types>
         <members>Control_Ingesta_Vaciar_Cursor</members>
+        <members>Ingerir_Ahora</members>
         <name>Flow</name>
+    </types>
+    <types>
+        <members>Control_Ingesta__c.Ingerir_Ahora</members>
+        <name>QuickAction</name>
+    </types>
+    <types>
+        <members>Control_Ingesta__c-Control de ingesta Layout</members>
+        <name>Layout</name>
     </types>
     <types>
         <members>Simulador_Nova_Casa_Token</members>

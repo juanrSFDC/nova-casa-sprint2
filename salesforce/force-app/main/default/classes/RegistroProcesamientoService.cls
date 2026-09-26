@@ -23,6 +23,7 @@ public with sharing class RegistroProcesamientoService {
     private static final String PREFIJO_REFERENCIA = 'INGESTA';
     private static final String FORMATO_ISO = 'yyyy-MM-dd\'T\'HH:mm:ss.SSS\'Z\'';
     private static final String DETALLE_GENERICO = 'Error inesperado durante la ingesta';
+    private static final String DETALLE_NO_PUBLICADO = 'El bus rechazó el evento; no se publicó (dato no reintentable).';
     private static final Integer MAX_DETALLE = 4000;
 
     /**
@@ -82,13 +83,48 @@ public with sharing class RegistroProcesamientoService {
     }
 
     /**
-     * true solo si es un fallo del cliente marcado como reintentable; cualquier otra excepción
-     * (incluida la de configuración) no es reintentable.
+     * Registra, en UNA sola inserción, los eventos que el bus rechazó al publicar (fallo parcial de
+     * la 201.5): Fallo_Tecnico escrito por Ingesta, NO reintentable (son datos que el bus no acepta),
+     * con la clave del mensaje como referencia para reconocerlo. Una lista vacía no escribe nada.
+     *
+     * @param eventosFallidos Los Senal_Sensor__e que EventBus.publish rechazó
+     * @param ahora El momento de la decisión
+     * @return Las trazas insertadas (vacío si no había eventos)
+     */
+    public static List<Registro_Procesamiento__c> registrarEventosNoPublicados(
+            List<Senal_Sensor__e> eventosFallidos, Datetime ahora) {
+        List<Registro_Procesamiento__c> trazas = new List<Registro_Procesamiento__c>();
+        if (eventosFallidos == null || eventosFallidos.isEmpty()) {
+            return trazas;
+        }
+        for (Senal_Sensor__e evento : eventosFallidos) {
+            trazas.add(new Registro_Procesamiento__c(
+                Resultado__c = RESULTADO_FALLO_TECNICO,
+                Escrito_Por__c = ESCRITO_POR_INGESTA,
+                Reintentable__c = false,
+                Clave_Mensaje__c = evento.Clave_Mensaje__c,
+                Referencia__c = evento.Clave_Mensaje__c,
+                Id_Entrega__c = evento.Id_Entrega__c,
+                Detalle__c = DETALLE_NO_PUBLICADO,
+                Procesado_En__c = ahora
+            ));
+        }
+        Database.insert(trazas, AccessLevel.USER_MODE);
+        return trazas;
+    }
+
+    /**
+     * true solo si es un fallo del cliente marcado como reintentable o un fallo reintentable de la
+     * ingesta (publicación total fallida / abort por límite); cualquier otra excepción (incluida la
+     * de configuración) no es reintentable.
      */
     private static Boolean esReintentable(Exception excepcion) {
         if (excepcion instanceof SimuladorCliente.SimuladorClienteException) {
             Boolean bandera = ((SimuladorCliente.SimuladorClienteException) excepcion).reintentable;
             return bandera == true;
+        }
+        if (excepcion instanceof IngestaService.FalloReintentableException) {
+            return true;
         }
         return false;
     }
@@ -101,7 +137,8 @@ public with sharing class RegistroProcesamientoService {
     @TestVisible
     private static String detalleSaneado(Exception excepcion) {
         if (excepcion instanceof SimuladorCliente.SimuladorClienteException
-                || excepcion instanceof ControlIngestaService.ConfiguracionException) {
+                || excepcion instanceof ControlIngestaService.ConfiguracionException
+                || excepcion instanceof IngestaService.FalloReintentableException) {
             String mensaje = excepcion.getMessage();
             if (mensaje == null) {
                 return DETALLE_GENERICO + '.';
