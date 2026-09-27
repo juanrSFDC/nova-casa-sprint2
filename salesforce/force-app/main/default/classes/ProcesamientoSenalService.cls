@@ -1,12 +1,16 @@
 /**
  * Orquesta el procesamiento de un lote de Senal_Sensor__e (US-202, US-203, US-209).
  *
- * Responsable: Juan Rozo · tarea 202.1.
+ * Responsable: Juan Rozo · tareas 202.1 (esqueleto), 202.2 (validar) y 202.3 (deduplicar y guardar).
  * La llama: SenalSensorTriggerHandler, con Trigger.new del suscriptor.
  * Contrato: docs/entrega-discovery-sprint2.md §3.1 (pasos a–e y camino rojo) y §3.4 (orden del lote).
  *
- * ESQUELETO 202.1: los pasos del pipeline (a–h) están VACÍOS; cada tarea posterior los llena.
- * Lo ÚNICO con comportamiento real es el CAMINO DE FALLO: si el pipeline lanza una excepción
+ * Estado de los pasos: validar (202.2), deduplicar (202.3), guardar lecturas (202.3) y la traza de
+ * rechazos, duplicados y conflictos YA funcionan. Siguen vacíos: clasificar (204.1, Juan Flórez),
+ * reducir colisiones y marcar atrasadas (203.1), estado actual (203.2), intervenciones (205, Juan
+ * Flórez) y la traza de procesadas y atrasadas (209.1).
+ *
+ * CAMINO DE FALLO: si el pipeline lanza una excepción
  * inesperada, cada evento del lote se registra como Fallo_Tecnico (Escrito_Por__c = Suscriptor,
  * Reintentable__c = true) en UNA sola inserción y NO se relanza: relanzar o pedir
  * EventBus.RetryableException desharía la transacción y borraría la propia traza (§3.1).
@@ -113,7 +117,7 @@ public with sharing class ProcesamientoSenalService {
             insertarLecturas(ctx);                   // 202.3
             upsertEstado(ctx);                       // 203.2
             intervenir(ctx);                         // 205 (Flórez)
-            trazarDesenlaces(ctx);                   // 209.1 (en 202.2 solo los rechazos)
+            trazarDesenlaces(ctx);                   // 202.2/202.3 hoy; 209.1 completa procesadas y atrasadas
             if (falloInyectadoTrasProcesar != null) {
                 throw falloInyectadoTrasProcesar;
             }
