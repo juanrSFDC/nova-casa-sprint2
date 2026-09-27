@@ -10,7 +10,9 @@
  * inesperada, cada evento del lote se registra como Fallo_Tecnico (Escrito_Por__c = Suscriptor,
  * Reintentable__c = true) en UNA sola inserción y NO se relanza: relanzar o pedir
  * EventBus.RetryableException desharía la transacción y borraría la propia traza (§3.1).
- * Sin SOQL ni DML por evento; el servicio no asume el tamaño del lote.
+ * Antes de la traza se vuelve al punto de retorno del lote: si un paso ya había escrito (lecturas,
+ * estados, casos), esas escrituras se deshacen y el lote no queda a medias.
+ * Sin SOQL ni DML por evento (solo el punto de retorno, uno por lote); no asume el tamaño del lote.
  *
  * @example
  * ProcesamientoSenalService.procesar(Trigger.new);
@@ -34,6 +36,7 @@ public with sharing class ProcesamientoSenalService {
         if (eventos == null || eventos.isEmpty()) {
             return;
         }
+        Savepoint antesDelLote = Database.setSavepoint();
         try {
             if (falloInyectado != null) {
                 throw falloInyectado;
@@ -47,7 +50,9 @@ public with sharing class ProcesamientoSenalService {
             intervenir(eventos);                         // 205 (Flórez)
             trazarDesenlaces(eventos);                   // 209.1
         } catch (Exception e) {
-            // §3.1: NO se reintenta solo. Se deja constancia reintentable para que una persona relance.
+            // §3.1: NO se reintenta solo. Se deshace lo escrito del lote y se deja constancia
+            // reintentable para que una persona relance.
+            Database.rollback(antesDelLote);
             RegistroProcesamientoService.registrarFalloSuscriptor(eventos, e, Datetime.now());
         }
     }

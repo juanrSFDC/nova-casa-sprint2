@@ -25,6 +25,7 @@ public with sharing class RegistroProcesamientoService {
     private static final String PREFIJO_REFERENCIA = 'INGESTA';
     private static final String FORMATO_ISO = 'yyyy-MM-dd\'T\'HH:mm:ss.SSS\'Z\'';
     private static final String DETALLE_GENERICO = 'Error inesperado durante la ingesta';
+    private static final String DETALLE_GENERICO_SUSCRIPTOR = 'Error inesperado durante el procesamiento';
     private static final String DETALLE_NO_PUBLICADO = 'El bus rechazó el evento; no se publicó (dato no reintentable).';
     private static final Integer MAX_DETALLE = 4000;
 
@@ -135,7 +136,7 @@ public with sharing class RegistroProcesamientoService {
         if (eventos == null || eventos.isEmpty()) {
             return trazas;
         }
-        String detalle = detalleSaneado(excepcion);
+        String detalle = DETALLE_GENERICO_SUSCRIPTOR + ' (' + excepcion.getTypeName() + ').';
         for (Senal_Sensor__e evento : eventos) {
             trazas.add(new Registro_Procesamiento__c(
                 Resultado__c = RESULTADO_FALLO_TECNICO,

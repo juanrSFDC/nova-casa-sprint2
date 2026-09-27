@@ -60,7 +60,8 @@ private class ProcesamientoSenalServiceTest {
         Integer dml = Limits.getDmlStatements();
         ProcesamientoSenalService.procesar(lote);
         Assert.areEqual(soql, Limits.getQueries(), 'El esqueleto no consulta (SOQL) por evento');
-        Assert.areEqual(dml, Limits.getDmlStatements(), 'El esqueleto no escribe (DML) por evento');
+        Assert.areEqual(dml + 1, Limits.getDmlStatements(),
+            'Solo el punto de retorno del lote (uno para 251 eventos): ninguna escritura por evento');
         Test.stopTest();
     }
 

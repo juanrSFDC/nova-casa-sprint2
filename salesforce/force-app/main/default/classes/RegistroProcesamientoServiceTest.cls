@@ -287,6 +287,7 @@ private class RegistroProcesamientoServiceTest {
         Assert.areEqual(AHORA, guardada.Procesado_En__c, 'Procesado_En__c es el momento del fallo');
         Assert.areEqual('prueba|msg_1', guardada.Referencia__c, 'Con clave, la referencia es la clave');
         Assert.isTrue(guardada.Detalle__c.contains('Error inesperado'), 'El detalle es genérico');
+        Assert.isTrue(guardada.Detalle__c.contains('procesamiento'), 'El detalle dice que falló el procesamiento, no la ingesta');
         Assert.isFalse(guardada.Detalle__c.contains('secreto'), 'Nunca filtra el mensaje interno');
         Assert.isFalse(guardada.Detalle__c.contains('abc123'), 'Nunca filtra datos internos');
     }
