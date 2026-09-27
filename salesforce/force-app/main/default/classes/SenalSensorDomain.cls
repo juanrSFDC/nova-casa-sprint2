@@ -1,0 +1,172 @@
+/**
+ * Reglas de negocio del suscriptor de señales: valida el lote y normaliza las señales (US-202).
+ *
+ * Responsable: Juan Rozo · tarea 202.2 (paso a del procesamiento).
+ * Lo usa: ProcesamientoSenalService, con el lote y el mapa de activos ya resuelto.
+ * Contrato: docs/entrega-discovery-sprint2.md §3.1 (paso a), §3.4 (orden del lote) y §6.
+ *
+ * SIN SOQL NI DML: opera solo sobre las listas en memoria (los activos llegan ya consultados). Enruta
+ * por Tipo_Mensaje__c, valida el contrato según el tipo y separa válidas (normalizadas, en el orden del
+ * lote) de rechazos (evento + motivo de picklist + detalle saneado). El primer motivo que aplique gana.
+ *
+ * @example
+ * SenalSensorDomain.ResultadoValidacion r = SenalSensorDomain.validar(eventos, activosPorId);
+ */
+public with sharing class SenalSensorDomain {
+
+    private static final String TIPO_MEASUREMENT = 'MEASUREMENT';
+    private static final String TIPO_CONNECTIVITY = 'CONNECTIVITY';
+    private static final String MEDICION_CONNECTIVITY = 'CAMERA_CONNECTIVITY';
+    private static final String UNIDAD_CONNECTIVITY = 'SECONDS';
+    private static final Set<String> ESTADOS_COMUNICACION = new Set<String>{ 'HEALTHY', 'LOST' };
+
+    private static final String MOTIVO_SIN_IDENTIDAD = 'SIN_IDENTIDAD';
+    private static final String MOTIVO_TIPO_DESCONOCIDO = 'TIPO_MENSAJE_DESCONOCIDO';
+    private static final String MOTIVO_ACTIVO_DESCONOCIDO = 'ACTIVO_DESCONOCIDO';
+    private static final String MOTIVO_MEDICION_INCOMPATIBLE = 'MEDICION_INCOMPATIBLE';
+    private static final String MOTIVO_UNIDAD_INCOMPATIBLE = 'UNIDAD_INCOMPATIBLE';
+    private static final String MOTIVO_VALOR_NO_NUMERICO = 'VALOR_NO_NUMERICO';
+    private static final String MOTIVO_FECHA_INVALIDA = 'FECHA_INVALIDA';
+
+    /**
+     * Resultado de validar un lote: las señales válidas (normalizadas, en el orden del lote) y los rechazos.
+     */
+    public class ResultadoValidacion {
+        public List<SenalValidada> validas = new List<SenalValidada>();
+        public List<Rechazo> rechazos = new List<Rechazo>();
+    }
+
+    /**
+     * Un rechazo de negocio del suscriptor: el evento que no pasó, el motivo (valor de la picklist
+     * Motivo__c) y un detalle saneado que explica qué no cuadró (nunca la carga cruda).
+     */
+    public class Rechazo {
+        public Senal_Sensor__e evento;
+        public String motivo;
+        public String detalle;
+
+        public Rechazo(Senal_Sensor__e evento, String motivo, String detalle) {
+            this.evento = evento;
+            this.motivo = motivo;
+            this.detalle = detalle;
+        }
+    }
+
+    /**
+     * Valida y normaliza el lote. Cada evento sale como una SenalValidada o como un Rechazo, nunca ambos;
+     * las válidas conservan el orden de llegada. El primer motivo que aplique gana (guardas en orden).
+     * Una fecha futura NO se rechaza (el simulador corre adelantado).
+     *
+     * @param eventos El lote a validar (Trigger.new del suscriptor)
+     * @param activosPorId Los activos del lote por Id_Externo__c (AssetSelector.porIdExterno)
+     * @return Las válidas y los rechazos del lote
+     */
+    public static ResultadoValidacion validar(List<Senal_Sensor__e> eventos, Map<String, Asset> activosPorId) {
+        ResultadoValidacion resultado = new ResultadoValidacion();
+        if (eventos == null || eventos.isEmpty()) {
+            return resultado;
+        }
+        Map<String, Asset> activos = activosPorId == null ? new Map<String, Asset>() : activosPorId;
+
+        for (Senal_Sensor__e evento : eventos) {
+            // 1. Sin identidad: guarda defensiva; la ingesta siempre publica con clave, así que en datos
+            //    reales no ocurre, pero sin clave la señal no es trazable ni deduplicable.
+            if (String.isBlank(evento.Clave_Mensaje__c)) {
+                resultado.rechazos.add(new Rechazo(evento, MOTIVO_SIN_IDENTIDAD,
+                    'La señal no trae Clave_Mensaje__c.'));
+                continue;
+            }
+            // 2. Tipo de mensaje desconocido.
+            String tipo = evento.Tipo_Mensaje__c;
+            if (tipo != TIPO_MEASUREMENT && tipo != TIPO_CONNECTIVITY) {
+                resultado.rechazos.add(new Rechazo(evento, MOTIVO_TIPO_DESCONOCIDO,
+                    'Tipo de mensaje no reconocido: ' + tipoTexto(tipo) + '.'));
+                continue;
+            }
+            // 3. Activo desconocido (sin identificador o no está en la org).
+            Asset activo = String.isBlank(evento.Activo_Externo__c) ? null : activos.get(evento.Activo_Externo__c);
+            if (activo == null) {
+                resultado.rechazos.add(new Rechazo(evento, MOTIVO_ACTIVO_DESCONOCIDO,
+                    String.isBlank(evento.Activo_Externo__c)
+                        ? 'La señal no trae Activo_Externo__c.'
+                        : 'Activo desconocido: ' + evento.Activo_Externo__c + '.'));
+                continue;
+            }
+            // 4. y 5. Validación del contrato según el tipo.
+            Rechazo rechazo = (tipo == TIPO_MEASUREMENT)
+                ? validarMeasurement(evento, activo)
+                : validarConnectivity(evento, activo);
+            if (rechazo != null) {
+                resultado.rechazos.add(rechazo);
+                continue;
+            }
+            resultado.validas.add(normalizar(evento, activo, tipo));
+        }
+        return resultado;
+    }
+
+    /** Reglas de una medición: la medición y la unidad deben coincidir con lo que el activo espera. */
+    private static Rechazo validarMeasurement(Senal_Sensor__e evento, Asset activo) {
+        if (evento.Tipo_Medicion__c != activo.Medicion_Esperada__c) {
+            return new Rechazo(evento, MOTIVO_MEDICION_INCOMPATIBLE,
+                'Medición ' + tipoTexto(evento.Tipo_Medicion__c) + ' incompatible; el activo espera '
+                    + tipoTexto(activo.Medicion_Esperada__c) + '.');
+        }
+        if (evento.Unidad__c != activo.Unidad_Esperada__c) {
+            return new Rechazo(evento, MOTIVO_UNIDAD_INCOMPATIBLE,
+                'Unidad ' + tipoTexto(evento.Unidad__c) + ' incompatible; el activo espera '
+                    + tipoTexto(activo.Unidad_Esperada__c) + '.');
+        }
+        if (evento.Valor__c == null) {
+            return new Rechazo(evento, MOTIVO_VALOR_NO_NUMERICO, 'La señal no trae Valor__c numérico.');
+        }
+        if (evento.Ocurrido_En__c == null) {
+            return new Rechazo(evento, MOTIVO_FECHA_INVALIDA, 'La señal no trae Ocurrido_En__c.');
+        }
+        return null;
+    }
+
+    /** Reglas de conectividad: el activo debe ser de conectividad; segundos y fecha son obligatorios. */
+    private static Rechazo validarConnectivity(Senal_Sensor__e evento, Asset activo) {
+        if (activo.Medicion_Esperada__c != MEDICION_CONNECTIVITY) {
+            return new Rechazo(evento, MOTIVO_MEDICION_INCOMPATIBLE,
+                'El activo no es de conectividad; espera ' + tipoTexto(activo.Medicion_Esperada__c) + '.');
+        }
+        if (evento.Segundos_Sin_Senal__c == null) {
+            return new Rechazo(evento, MOTIVO_VALOR_NO_NUMERICO, 'La señal no trae Segundos_Sin_Senal__c.');
+        }
+        if (evento.Ocurrido_En__c == null) {
+            return new Rechazo(evento, MOTIVO_FECHA_INVALIDA, 'La señal no trae Ocurrido_En__c.');
+        }
+        return null;
+    }
+
+    /** Construye la señal válida ya normalizada según el tipo (MEASUREMENT o CONNECTIVITY). */
+    private static SenalValidada normalizar(Senal_Sensor__e evento, Asset activo, String tipo) {
+        SenalValidada senal = new SenalValidada();
+        senal.evento = evento;
+        senal.activo = activo;
+        senal.tipoActivo = activo.Tipo_Activo__c;
+        senal.ocurridoEn = evento.Ocurrido_En__c;
+        if (tipo == TIPO_MEASUREMENT) {
+            senal.tipoMedicion = evento.Tipo_Medicion__c;
+            senal.valor = evento.Valor__c;
+            senal.unidad = evento.Unidad__c;
+        } else {
+            senal.tipoMedicion = MEDICION_CONNECTIVITY;
+            senal.valor = evento.Segundos_Sin_Senal__c;
+            senal.unidad = UNIDAD_CONNECTIVITY;
+            senal.estadoComunicacion = ESTADOS_COMUNICACION.contains(evento.Estado_Comunicacion__c)
+                ? evento.Estado_Comunicacion__c : null;
+            senal.ultimaVezVisto = evento.Ultima_Vez_Visto__c;
+            senal.episodio = evento.Episodio__c;
+        }
+        senal.claveEstado = activo.Id_Externo__c + '|' + senal.tipoMedicion;
+        return senal;
+    }
+
+    /** Texto legible de un valor que puede venir en blanco, para el detalle del rechazo. */
+    private static String tipoTexto(String valor) {
+        return String.isBlank(valor) ? '(vacío)' : valor;
+    }
+}

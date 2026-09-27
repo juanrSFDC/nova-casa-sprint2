@@ -27,8 +27,33 @@ public with sharing class ProcesamientoSenalService {
     private static Exception falloInyectado;
 
     /**
-     * Procesa el lote en el orden fijo de §3.4. En 202.1 los pasos son vacíos; solo funciona el
-     * camino de fallo (try/catch → traza). Un lote nulo o vacío no hace nada.
+     * Segundo punto de inyección de fallo, SOLO para pruebas (null en producción): se lanza al FINAL
+     * del pipeline, después de escribir los rechazos, para verificar que un fallo posterior deshace esas
+     * escrituras (rollback al punto de retorno) y deja el Fallo_Tecnico del lote. §3.1.
+     */
+    @TestVisible
+    private static Exception falloInyectadoTrasProcesar;
+
+    /**
+     * Contexto del lote que viaja entre los pasos del pipeline (§3.1): el lote de entrada, las señales
+     * válidas ya normalizadas, los rechazos de negocio y la hora del lote (una sola, para toda la traza).
+     * Cada paso lo lee y lo enriquece; hoy lo llenan validarYResolverActivos y trazarDesenlaces.
+     */
+    private class ContextoLote {
+        List<Senal_Sensor__e> eventos;
+        List<SenalValidada> validas = new List<SenalValidada>();
+        List<SenalSensorDomain.Rechazo> rechazos = new List<SenalSensorDomain.Rechazo>();
+        Datetime ahora = Datetime.now();
+
+        ContextoLote(List<Senal_Sensor__e> eventos) {
+            this.eventos = eventos;
+        }
+    }
+
+    /**
+     * Procesa el lote en el orden fijo de §3.4. En 202.2 funcionan el paso a (validación y resolución
+     * de activos) y la parte de rechazos de la traza; los demás pasos siguen vacíos. El camino de fallo
+     * (try/catch → Fallo_Tecnico reintentable) sigue igual. Un lote nulo o vacío no hace nada.
      *
      * @param eventos Los Senal_Sensor__e a procesar (Trigger.new)
      */
@@ -41,14 +66,18 @@ public with sharing class ProcesamientoSenalService {
             if (falloInyectado != null) {
                 throw falloInyectado;
             }
-            validarYResolverActivos(eventos);           // 202.2
-            clasificar(eventos);                         // 204.1 (Flórez)
-            detectarDuplicadosYConflictos(eventos);      // 202.3
-            reducirColisionesYMarcarAtrasadas(eventos);  // 203.1
-            insertarLecturas(eventos);                   // 202.3
-            upsertEstado(eventos);                       // 203.2
-            intervenir(eventos);                         // 205 (Flórez)
-            trazarDesenlaces(eventos);                   // 209.1
+            ContextoLote ctx = new ContextoLote(eventos);
+            validarYResolverActivos(ctx);           // 202.2
+            clasificar(ctx);                         // 204.1 (Flórez)
+            detectarDuplicadosYConflictos(ctx);      // 202.3
+            reducirColisionesYMarcarAtrasadas(ctx);  // 203.1
+            insertarLecturas(ctx);                   // 202.3
+            upsertEstado(ctx);                       // 203.2
+            intervenir(ctx);                         // 205 (Flórez)
+            trazarDesenlaces(ctx);                   // 209.1 (en 202.2 solo los rechazos)
+            if (falloInyectadoTrasProcesar != null) {
+                throw falloInyectadoTrasProcesar;
+            }
         } catch (Exception e) {
             // §3.1: NO se reintenta solo. Se deshace lo escrito del lote y se deja constancia
             // reintentable para que una persona relance.
@@ -58,60 +87,71 @@ public with sharing class ProcesamientoSenalService {
     }
 
     /**
-     * Paso a (202.2): enruta por Tipo_Mensaje__c, valida el contrato según el tipo y resuelve los
-     * activos por Activo_Externo__c → Asset.Id_Externo__c en bloque. Los rechazos van a la traza y
-     * las demás señales siguen. VACÍO en 202.1: lo llena la tarea 202.2.
+     * Paso a (202.2): resuelve los activos por Activo_Externo__c → Asset.Id_Externo__c en UNA sola
+     * consulta, enruta por Tipo_Mensaje__c y valida el contrato según el tipo. Deja en el contexto las
+     * señales válidas (normalizadas) y los rechazos; las señales malas no tumban al resto del lote.
      */
-    private static void validarYResolverActivos(List<Senal_Sensor__e> eventos) {
+    private static void validarYResolverActivos(ContextoLote ctx) {
+        Set<String> idsExternos = new Set<String>();
+        for (Senal_Sensor__e evento : ctx.eventos) {
+            if (String.isNotBlank(evento.Activo_Externo__c)) {
+                idsExternos.add(evento.Activo_Externo__c);
+            }
+        }
+        Map<String, Asset> activosPorId = new AssetSelector().porIdExterno(idsExternos);
+        SenalSensorDomain.ResultadoValidacion resultado = SenalSensorDomain.validar(ctx.eventos, activosPorId);
+        ctx.validas = resultado.validas;
+        ctx.rechazos = resultado.rechazos;
     }
 
     /**
      * Paso c (204.1): clasifica el valor contra los umbrales con ClasificacionService (Flórez) y
      * sella severidad y umbral aplicado. VACÍO en 202.1: se conecta cuando la Puerta 1 esté lista.
      */
-    private static void clasificar(List<Senal_Sensor__e> eventos) {
+    private static void clasificar(ContextoLote ctx) {
     }
 
     /**
      * Paso b (202.3): detecta duplicados (clave repetida, mismo contenido) y conflictos (misma clave,
      * distinto contenido) comparando clave y huella contra lo persistido. VACÍO en 202.1: lo llena 202.3.
      */
-    private static void detectarDuplicadosYConflictos(List<Senal_Sensor__e> eventos) {
+    private static void detectarDuplicadosYConflictos(ContextoLote ctx) {
     }
 
     /**
      * Paso d (203.1): reduce colisiones dentro del lote (una ganadora por Clave_Estado__c) y marca
      * las atrasadas comparando Ocurrido_En__c con el estado actual. VACÍO en 202.1: lo llena 203.1.
      */
-    private static void reducirColisionesYMarcarAtrasadas(List<Senal_Sensor__e> eventos) {
+    private static void reducirColisionesYMarcarAtrasadas(ContextoLote ctx) {
     }
 
     /**
      * Persistencia (202.3): inserta en bloque las lecturas válidas en Lectura_Sensor__c y sella los
      * tiempos; la idempotencia la cubre el índice único. VACÍO en 202.1: lo llena la tarea 202.3.
      */
-    private static void insertarLecturas(List<Senal_Sensor__e> eventos) {
+    private static void insertarLecturas(ContextoLote ctx) {
     }
 
     /**
      * Paso e (203.2): upsert de Estado_Medicion__c por Clave_Estado__c, actualizando solo si la señal
      * es más reciente y enlazando la lectura ganadora. VACÍO en 202.1: lo llena la tarea 203.2.
      */
-    private static void upsertEstado(List<Senal_Sensor__e> eventos) {
+    private static void upsertEstado(ContextoLote ctx) {
     }
 
     /**
      * Intervenciones (205): crea o reutiliza el Case de las críticas vigentes y no atrasadas con
      * IntervencionService (Flórez). VACÍO en 202.1: se conecta cuando la Puerta 2 esté lista.
      */
-    private static void intervenir(List<Senal_Sensor__e> eventos) {
+    private static void intervenir(ContextoLote ctx) {
     }
 
     /**
-     * Trazas (209.1): registra los desenlaces de negocio (Procesada/Rechazada/Duplicada/Conflicto/
-     * Atrasada) vía RegistroProcesamientoService. VACÍO en 202.1: lo llena la tarea 209.1. (El fallo
-     * técnico ya lo cubre el catch de procesar.)
+     * Trazas (209.1): registra los desenlaces de negocio vía RegistroProcesamientoService. En 202.2 solo
+     * escribe los RECHAZOS del paso a (una inserción por lote); los demás desenlaces (Procesada/Duplicada/
+     * Conflicto/Atrasada) los llena 209.1. El fallo técnico lo cubre el catch de procesar.
      */
-    private static void trazarDesenlaces(List<Senal_Sensor__e> eventos) {
+    private static void trazarDesenlaces(ContextoLote ctx) {
+        RegistroProcesamientoService.registrarRechazos(ctx.rechazos, ctx.ahora);
     }
 }

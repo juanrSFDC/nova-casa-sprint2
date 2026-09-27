@@ -117,6 +117,46 @@ public with sharing class RegistroProcesamientoService {
     }
 
     /**
+     * Rechazos de negocio del suscriptor (US-202 · §3.1, paso a): registra en UNA sola inserción una
+     * traza Rechazada por cada señal que no pasó la validación. Escrito_Por__c = Suscriptor,
+     * Reintentable__c = false (el dato es incorrecto, reintentarlo daría el mismo rechazo). Motivo__c es
+     * el valor de picklist que decidió el Domain; Tipo_Mensaje__c solo se guarda si es un valor válido de
+     * la picklist restringida (en TIPO_MENSAJE_DESCONOCIDO no lo es → null, para no tumbar el insert). El
+     * detalle ya viene saneado del Domain (qué no cuadró, nunca la carga cruda). Lista vacía o nula: nada.
+     *
+     * @param rechazos Los rechazos del lote (SenalSensorDomain.validar)
+     * @param ahora El momento del procesamiento (parámetro para poder probarlo con hora fija)
+     * @return Las trazas insertadas (vacío si no había rechazos)
+     * @example
+     * RegistroProcesamientoService.registrarRechazos(resultado.rechazos, Datetime.now());
+     */
+    public static List<Registro_Procesamiento__c> registrarRechazos(
+            List<SenalSensorDomain.Rechazo> rechazos, Datetime ahora) {
+        List<Registro_Procesamiento__c> trazas = new List<Registro_Procesamiento__c>();
+        if (rechazos == null || rechazos.isEmpty()) {
+            return trazas;
+        }
+        for (SenalSensorDomain.Rechazo rechazo : rechazos) {
+            Senal_Sensor__e evento = rechazo.evento;
+            trazas.add(new Registro_Procesamiento__c(
+                Resultado__c = RESULTADO_RECHAZADA,
+                Motivo__c = rechazo.motivo,
+                Escrito_Por__c = ESCRITO_POR_SUSCRIPTOR,
+                Reintentable__c = false,
+                Clave_Mensaje__c = evento.Clave_Mensaje__c,
+                Id_Entrega__c = evento.Id_Entrega__c,
+                Tipo_Mensaje__c = TIPOS_MENSAJE_VALIDOS.contains(evento.Tipo_Mensaje__c) ? evento.Tipo_Mensaje__c : null,
+                Recibido_En__c = evento.Recibido_En__c,
+                Procesado_En__c = ahora,
+                Referencia__c = referenciaDe(evento),
+                Detalle__c = truncar(rechazo.detalle, MAX_DETALLE)
+            ));
+        }
+        Database.insert(trazas, AccessLevel.USER_MODE);
+        return trazas;
+    }
+
+    /**
      * Traza del suscriptor (US-202, US-209 · §3.1): registra en UNA sola inserción un Fallo_Tecnico
      * por cada evento del lote cuando el pipeline del suscriptor lanza una excepción inesperada.
      * Escrito_Por__c = Suscriptor, Reintentable__c = true (el mensaje sigue en el bus; una persona

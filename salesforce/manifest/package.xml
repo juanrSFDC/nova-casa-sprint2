@@ -13,6 +13,8 @@
         <name>CustomObject</name>
     </types>
     <types>
+        <members>AssetSelector</members>
+        <members>AssetSelectorTest</members>
         <members>ClasificacionResultado</members>
         <members>ClasificacionResultadoTest</members>
         <members>ClasificacionService</members>
@@ -42,9 +44,13 @@
         <members>ProcesamientoSenalServiceTest</members>
         <members>RegistroProcesamientoService</members>
         <members>RegistroProcesamientoServiceTest</members>
+        <members>SenalSensorDomain</members>
+        <members>SenalSensorDomainTest</members>
         <members>SenalSensorService</members>
         <members>SenalSensorServiceTest</members>
         <members>SenalSensorTriggerHandler</members>
+        <members>SenalValidada</members>
+        <members>SenalValidadaTest</members>
         <members>SimuladorCliente</members>
         <members>SimuladorClienteTest</members>
         <members>SimuladorLote</members>

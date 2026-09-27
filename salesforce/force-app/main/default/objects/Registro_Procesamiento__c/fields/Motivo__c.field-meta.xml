@@ -54,6 +54,11 @@
                 <default>false</default>
                 <label>MEDICION_INCOMPATIBLE</label>
             </value>
+            <value>
+                <fullName>TIPO_MENSAJE_DESCONOCIDO</fullName>
+                <default>false</default>
+                <label>TIPO_MENSAJE_DESCONOCIDO</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

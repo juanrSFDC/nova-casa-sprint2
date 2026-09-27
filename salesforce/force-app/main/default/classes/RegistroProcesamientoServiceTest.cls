@@ -372,9 +372,149 @@ private class RegistroProcesamientoServiceTest {
         }
     }
 
+    // ─── registrarRechazos (202.2) ──────────────────────────────────────────
+
+    @isTest
+    static void registrarRechazos_noHaceDml_cuandoListaVacia() {
+        Test.startTest();
+        Integer dml = Limits.getDmlStatements();
+        List<Registro_Procesamiento__c> vacia = RegistroProcesamientoService.registrarRechazos(
+            new List<SenalSensorDomain.Rechazo>(), AHORA);
+        List<Registro_Procesamiento__c> nula = RegistroProcesamientoService.registrarRechazos(null, AHORA);
+        Assert.areEqual(dml, Limits.getDmlStatements(), 'Sin rechazos no se escribe nada');
+        Test.stopTest();
+
+        Assert.isTrue(vacia.isEmpty(), 'Una lista vacía devuelve vacío');
+        Assert.isTrue(nula.isEmpty(), 'Una lista nula devuelve vacío');
+    }
+
+    @isTest
+    static void registrarRechazos_insertaUnaVez_cuandoVariosRechazos() {
+        List<SenalSensorDomain.Rechazo> rechazos = new List<SenalSensorDomain.Rechazo>{
+            rechazoMedicion('a1', 'ACTIVO_DESCONOCIDO', 'Activo desconocido: X.'),
+            rechazoMedicion('b2', 'UNIDAD_INCOMPATIBLE', 'Unidad FAHRENHEIT incompatible; el activo espera CELSIUS.'),
+            rechazoMedicion('c3', 'VALOR_NO_NUMERICO', 'La señal no trae Valor__c numérico.')
+        };
+
+        Test.startTest();
+        Integer dml = Limits.getDmlStatements();
+        RegistroProcesamientoService.registrarRechazos(rechazos, AHORA);
+        Assert.areEqual(dml + 1, Limits.getDmlStatements(), 'Todo el lote se inserta en UNA sola sentencia DML');
+        Test.stopTest();
+
+        Assert.areEqual(3, [SELECT COUNT() FROM Registro_Procesamiento__c WHERE Escrito_Por__c = 'Suscriptor'],
+            'Se insertan tantas trazas como rechazos');
+    }
+
+    @isTest
+    static void registrarRechazos_poblaCampos_cuandoRechazo() {
+        Datetime recibido = Datetime.newInstanceGmt(2026, 9, 26, 11, 30, 0);
+        Senal_Sensor__e ev = new Senal_Sensor__e(
+            Clave_Mensaje__c = 'prueba|msg_1', Id_Entrega__c = 'dlv_1',
+            Tipo_Mensaje__c = 'MEASUREMENT', Recibido_En__c = recibido
+        );
+        SenalSensorDomain.Rechazo rechazo = new SenalSensorDomain.Rechazo(
+            ev, 'UNIDAD_INCOMPATIBLE', 'Unidad FAHRENHEIT incompatible; el activo espera CELSIUS.');
+
+        Test.startTest();
+        RegistroProcesamientoService.registrarRechazos(new List<SenalSensorDomain.Rechazo>{ rechazo }, AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c guardada = [
+            SELECT Resultado__c, Motivo__c, Escrito_Por__c, Reintentable__c, Clave_Mensaje__c,
+                   Id_Entrega__c, Tipo_Mensaje__c, Recibido_En__c, Procesado_En__c, Referencia__c, Detalle__c
+            FROM Registro_Procesamiento__c LIMIT 1
+        ];
+        Assert.areEqual('Rechazada', guardada.Resultado__c, 'El resultado es Rechazada');
+        Assert.areEqual('UNIDAD_INCOMPATIBLE', guardada.Motivo__c, 'Guarda el motivo del Domain');
+        Assert.areEqual('Suscriptor', guardada.Escrito_Por__c, 'La escribe el suscriptor');
+        Assert.isFalse(guardada.Reintentable__c, 'Un dato incorrecto no es reintentable');
+        Assert.areEqual('prueba|msg_1', guardada.Clave_Mensaje__c, 'Copia la clave del evento');
+        Assert.areEqual('dlv_1', guardada.Id_Entrega__c, 'Copia el deliveryId del evento');
+        Assert.areEqual('MEASUREMENT', guardada.Tipo_Mensaje__c, 'Copia el tipo válido del evento');
+        Assert.areEqual(recibido, guardada.Recibido_En__c, 'Recibido_En__c es el del evento');
+        Assert.areEqual(AHORA, guardada.Procesado_En__c, 'Procesado_En__c es el momento del procesamiento');
+        Assert.areEqual('prueba|msg_1', guardada.Referencia__c, 'Con clave, la referencia es la clave');
+        Assert.areEqual('Unidad FAHRENHEIT incompatible; el activo espera CELSIUS.', guardada.Detalle__c,
+            'Guarda el detalle saneado del Domain');
+    }
+
+    @isTest
+    static void registrarRechazos_tipoFueraDePicklist_dejaNull() {
+        Senal_Sensor__e ev = new Senal_Sensor__e(
+            Clave_Mensaje__c = 'prueba|msg_1', Id_Entrega__c = 'dlv_1', Tipo_Mensaje__c = 'BASURA'
+        );
+        SenalSensorDomain.Rechazo rechazo = new SenalSensorDomain.Rechazo(
+            ev, 'TIPO_MENSAJE_DESCONOCIDO', 'Tipo de mensaje no reconocido: BASURA.');
+
+        Test.startTest();
+        RegistroProcesamientoService.registrarRechazos(new List<SenalSensorDomain.Rechazo>{ rechazo }, AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c guardada = [SELECT Motivo__c, Tipo_Mensaje__c FROM Registro_Procesamiento__c LIMIT 1];
+        Assert.areEqual('TIPO_MENSAJE_DESCONOCIDO', guardada.Motivo__c, 'El motivo TIPO_MENSAJE_DESCONOCIDO se guarda');
+        Assert.isNull(guardada.Tipo_Mensaje__c, 'Un tipo fuera de la picklist restringida se guarda como null');
+    }
+
+    @isTest
+    static void registrarRechazos_sinClave_usaSha256() {
+        String carga = '{"raw":"sin identidad"}';
+        Senal_Sensor__e ev = new Senal_Sensor__e(Carga_Cruda__c = carga, Id_Entrega__c = 'dlv_x');
+        String esperado = EncodingUtil.convertToHex(Crypto.generateDigest('SHA-256', Blob.valueOf(carga)));
+        SenalSensorDomain.Rechazo rechazo = new SenalSensorDomain.Rechazo(ev, 'SIN_IDENTIDAD', 'Sin clave.');
+
+        Test.startTest();
+        RegistroProcesamientoService.registrarRechazos(new List<SenalSensorDomain.Rechazo>{ rechazo }, AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c guardada = [SELECT Referencia__c FROM Registro_Procesamiento__c LIMIT 1];
+        Assert.areEqual(esperado, guardada.Referencia__c, 'Sin clave, la referencia es el SHA-256 de la carga cruda');
+    }
+
+    @isTest
+    static void registrarRechazos_truncaDetalle_a4000() {
+        Senal_Sensor__e ev = new Senal_Sensor__e(Clave_Mensaje__c = 'prueba|largo', Id_Entrega__c = 'dlv_l');
+        SenalSensorDomain.Rechazo rechazo = new SenalSensorDomain.Rechazo(ev, 'ACTIVO_DESCONOCIDO', 'x'.rightPad(4100, 'x'));
+
+        Test.startTest();
+        RegistroProcesamientoService.registrarRechazos(new List<SenalSensorDomain.Rechazo>{ rechazo }, AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c guardada = [SELECT Detalle__c FROM Registro_Procesamiento__c LIMIT 1];
+        Assert.areEqual(4000, guardada.Detalle__c.length(), 'El detalle se recorta al máximo del campo (4000)');
+    }
+
+    @isTest
+    static void registrarRechazos_comoIngesta_insertaEnModoUsuario() {
+        User usuario;
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            usuario = TestDataFactory.crearUsuarioIngesta();
+        }
+
+        System.runAs(usuario) {
+            Senal_Sensor__e ev = new Senal_Sensor__e(Clave_Mensaje__c = 'prueba|msg_u', Id_Entrega__c = 'dlv_u');
+            SenalSensorDomain.Rechazo rechazo = new SenalSensorDomain.Rechazo(ev, 'ACTIVO_DESCONOCIDO', 'Activo desconocido.');
+
+            Test.startTest();
+            List<Registro_Procesamiento__c> trazas = RegistroProcesamientoService.registrarRechazos(
+                new List<SenalSensorDomain.Rechazo>{ rechazo }, AHORA);
+            Test.stopTest();
+
+            Assert.isNotNull(trazas[0].Id, 'Con solo Nova_Casa_Ingesta se escribe la traza del rechazo en modo usuario');
+            Assert.areEqual('Suscriptor', trazas[0].Escrito_Por__c, 'La escribe el suscriptor');
+        }
+    }
+
     /** Un evento de prueba con su clave y su entrega. */
     private static Senal_Sensor__e evento(String clave, String idEntrega) {
         return new Senal_Sensor__e(Clave_Mensaje__c = clave, Id_Entrega__c = idEntrega);
+    }
+
+    /** Un rechazo del Domain sobre una medición con la clave, el motivo y el detalle dados. */
+    private static SenalSensorDomain.Rechazo rechazoMedicion(String clave, String motivo, String detalle) {
+        return new SenalSensorDomain.Rechazo(
+            new Senal_Sensor__e(Clave_Mensaje__c = clave, Id_Entrega__c = 'dlv_' + clave, Tipo_Mensaje__c = 'MEASUREMENT'),
+            motivo, detalle);
     }
 
     /** Un rechazo de prueba con posición, referencia y un detalle reconocible. */

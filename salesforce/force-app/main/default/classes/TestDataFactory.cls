@@ -60,6 +60,51 @@ public with sharing class TestDataFactory {
     }
 
     /**
+     * Un Asset con Id_Externo__c único y una medición/unidad coherentes por defecto (sensor de
+     * temperatura), sobre los que aplicar overrides. Se crea como administrador (el usuario de ingesta
+     * no puede crear activos; los lee vía viewAllRecords), en @TestSetup o fuera de runAs(ingesta).
+     *
+     * @param overrides Campos a sobrescribir (por SObjectField), o null
+     * @param doInsert Si insertar el registro
+     * @return El activo creado
+     */
+    public static Asset createAsset(Map<SObjectField, Object> overrides, Boolean doInsert) {
+        return createAssets(1, overrides, doInsert)[0];
+    }
+
+    /**
+     * Varios Asset con Id_Externo__c único (se le añade el índice) y medición/unidad coherentes.
+     *
+     * @param cuantos Cuántos crear
+     * @param overrides Campos a sobrescribir en cada uno, o null
+     * @param doInsert Si insertar los registros
+     * @return Los activos creados
+     */
+    public static List<Asset> createAssets(Integer cuantos, Map<SObjectField, Object> overrides, Boolean doInsert) {
+        List<Asset> registros = new List<Asset>();
+        for (Integer i = 0; i < cuantos; i++) {
+            Asset registro = new Asset(
+                Name = 'Activo de prueba ' + i,
+                Id_Externo__c = 'AST-TEST-' + i,
+                Tipo_Activo__c = 'TEMPERATURE_SENSOR',
+                Edificio_Externo__c = 'BLD-BOG-001',
+                Medicion_Esperada__c = 'TEMPERATURE',
+                Unidad_Esperada__c = 'CELSIUS'
+            );
+            if (overrides != null) {
+                for (SObjectField campo : overrides.keySet()) {
+                    registro.put(campo, overrides.get(campo));
+                }
+            }
+            registros.add(registro);
+        }
+        if (doInsert) {
+            insert registros;
+        }
+        return registros;
+    }
+
+    /**
      * Un usuario de pruebas con el perfil de acceso mínimo y SOLO el Permission Set Nova_Casa_Ingesta,
      * para probar que con esos permisos se lee la config, se guarda el cursor y se crea la traza.
      * Falla ruidoso si el perfil o el permission set no existen en la org.
