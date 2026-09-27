@@ -505,6 +505,131 @@ private class RegistroProcesamientoServiceTest {
         }
     }
 
+    // ─── registrarDesenlaces (202.3) ────────────────────────────────────────
+
+    @isTest
+    static void registrarDesenlaces_noHaceDml_cuandoTodoVacio() {
+        Test.startTest();
+        Integer dml = Limits.getDmlStatements();
+        List<Registro_Procesamiento__c> nada = RegistroProcesamientoService.registrarDesenlaces(
+            new List<SenalSensorDomain.Rechazo>(), new List<RegistroProcesamientoService.DesenlaceDedup>(), AHORA);
+        List<Registro_Procesamiento__c> nulos = RegistroProcesamientoService.registrarDesenlaces(null, null, AHORA);
+        Assert.areEqual(dml, Limits.getDmlStatements(), 'Sin rechazos ni desenlaces no se escribe nada');
+        Test.stopTest();
+
+        Assert.isTrue(nada.isEmpty(), 'Listas vacías devuelven vacío');
+        Assert.isTrue(nulos.isEmpty(), 'Listas nulas devuelven vacío');
+    }
+
+    @isTest
+    static void registrarDesenlaces_rechazosYDedup_unaSolaInsercion() {
+        List<SenalSensorDomain.Rechazo> rechazos = new List<SenalSensorDomain.Rechazo>{
+            rechazoMedicion('r1', 'ACTIVO_DESCONOCIDO', 'Activo desconocido: X.')
+        };
+        List<RegistroProcesamientoService.DesenlaceDedup> dedup = new List<RegistroProcesamientoService.DesenlaceDedup>{
+            new RegistroProcesamientoService.DesenlaceDedup(
+                new Senal_Sensor__e(Clave_Mensaje__c = 'd1', Id_Entrega__c = 'dlv_d1', Tipo_Mensaje__c = 'MEASUREMENT'),
+                false, null)
+        };
+
+        Test.startTest();
+        Integer dml = Limits.getDmlStatements();
+        RegistroProcesamientoService.registrarDesenlaces(rechazos, dedup, AHORA);
+        Assert.areEqual(dml + 1, Limits.getDmlStatements(), 'Rechazos y desenlaces se insertan en UNA sola sentencia DML');
+        Test.stopTest();
+
+        Assert.areEqual(1, [SELECT COUNT() FROM Registro_Procesamiento__c WHERE Resultado__c = 'Rechazada'], 'Una traza de rechazo');
+        Assert.areEqual(1, [SELECT COUNT() FROM Registro_Procesamiento__c WHERE Resultado__c = 'Duplicada'], 'Una traza de duplicado');
+    }
+
+    @isTest
+    static void registrarDesenlaces_duplicado_poblaCampos() {
+        Lectura_Sensor__c original = lecturaGuardada('prueba|dup', 'huella-dup');
+        Senal_Sensor__e ev = new Senal_Sensor__e(
+            Clave_Mensaje__c = 'prueba|dup', Id_Entrega__c = 'dlv_dup2', Tipo_Mensaje__c = 'MEASUREMENT',
+            Recibido_En__c = AHORA);
+        List<RegistroProcesamientoService.DesenlaceDedup> dedup = new List<RegistroProcesamientoService.DesenlaceDedup>{
+            new RegistroProcesamientoService.DesenlaceDedup(ev, false, original.Id)
+        };
+
+        Test.startTest();
+        RegistroProcesamientoService.registrarDesenlaces(null, dedup, AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c t = [
+            SELECT Resultado__c, Motivo__c, Escrito_Por__c, Reintentable__c, Clave_Mensaje__c,
+                   Id_Entrega__c, Tipo_Mensaje__c, Recibido_En__c, Procesado_En__c, Referencia__c, Lectura__c
+            FROM Registro_Procesamiento__c WHERE Resultado__c = 'Duplicada' LIMIT 1
+        ];
+        Assert.areEqual('Duplicada', t.Resultado__c, 'El resultado es Duplicada');
+        Assert.isNull(t.Motivo__c, 'Un duplicado no lleva motivo (no es una colisión)');
+        Assert.areEqual('Suscriptor', t.Escrito_Por__c, 'La escribe el suscriptor');
+        Assert.isFalse(t.Reintentable__c, 'Un duplicado no es reintentable');
+        Assert.areEqual('prueba|dup', t.Clave_Mensaje__c, 'Copia la clave');
+        Assert.areEqual('MEASUREMENT', t.Tipo_Mensaje__c, 'Copia el tipo válido');
+        Assert.areEqual('prueba|dup', t.Referencia__c, 'La referencia es la clave');
+        Assert.areEqual(original.Id, t.Lectura__c, 'Apunta a la lectura original ya guardada');
+        Assert.areEqual(AHORA, t.Procesado_En__c, 'Guarda cuándo se decidió el desenlace');
+    }
+
+    @isTest
+    static void registrarDesenlaces_conflicto_llevaColisionClave() {
+        Lectura_Sensor__c original = lecturaGuardada('prueba|conf', 'huella-conf');
+        Senal_Sensor__e ev = new Senal_Sensor__e(
+            Clave_Mensaje__c = 'prueba|conf', Id_Entrega__c = 'dlv_conf2', Tipo_Mensaje__c = 'MEASUREMENT');
+        List<RegistroProcesamientoService.DesenlaceDedup> dedup = new List<RegistroProcesamientoService.DesenlaceDedup>{
+            new RegistroProcesamientoService.DesenlaceDedup(ev, true, original.Id)
+        };
+
+        Test.startTest();
+        RegistroProcesamientoService.registrarDesenlaces(null, dedup, AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c t = [
+            SELECT Resultado__c, Motivo__c, Lectura__c FROM Registro_Procesamiento__c WHERE Resultado__c = 'Conflicto' LIMIT 1
+        ];
+        Assert.areEqual('Conflicto', t.Resultado__c, 'El resultado es Conflicto');
+        Assert.areEqual('COLISION_CLAVE', t.Motivo__c, 'El conflicto lleva Motivo COLISION_CLAVE');
+        Assert.areEqual(original.Id, t.Lectura__c, 'Apunta a la lectura original con la que colisionó');
+    }
+
+    @isTest
+    static void registrarDesenlaces_rechazo_esByteIdenticoAregistrarRechazos() {
+        // Guarda de no-deriva: la traza de rechazo de registrarDesenlaces debe ser idéntica a la de
+        // registrarRechazos (que NO se toca), campo a campo.
+        SenalSensorDomain.Rechazo rechazo = rechazoMedicion('prueba|iguales', 'UNIDAD_INCOMPATIBLE',
+            'Unidad FAHRENHEIT incompatible; el activo espera CELSIUS.');
+
+        Test.startTest();
+        List<Registro_Procesamiento__c> viejo = RegistroProcesamientoService.registrarRechazos(
+            new List<SenalSensorDomain.Rechazo>{ rechazo }, AHORA);
+        List<Registro_Procesamiento__c> nuevo = RegistroProcesamientoService.registrarDesenlaces(
+            new List<SenalSensorDomain.Rechazo>{ rechazo }, null, AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c a = viejo[0];
+        Registro_Procesamiento__c b = nuevo[0];
+        Assert.areEqual(a.Resultado__c, b.Resultado__c, 'Mismo Resultado');
+        Assert.areEqual(a.Motivo__c, b.Motivo__c, 'Mismo Motivo');
+        Assert.areEqual(a.Escrito_Por__c, b.Escrito_Por__c, 'Mismo Escrito_Por');
+        Assert.areEqual(a.Reintentable__c, b.Reintentable__c, 'Misma bandera reintentable');
+        Assert.areEqual(a.Clave_Mensaje__c, b.Clave_Mensaje__c, 'Misma clave');
+        Assert.areEqual(a.Id_Entrega__c, b.Id_Entrega__c, 'Mismo id de entrega');
+        Assert.areEqual(a.Tipo_Mensaje__c, b.Tipo_Mensaje__c, 'Mismo tipo');
+        Assert.areEqual(a.Referencia__c, b.Referencia__c, 'Misma referencia');
+        Assert.areEqual(a.Detalle__c, b.Detalle__c, 'Mismo detalle');
+    }
+
+    /** Una lectura ya guardada con la clave y huella dadas, sobre un activo de prueba (para el Lectura__c). */
+    private static Lectura_Sensor__c lecturaGuardada(String clave, String huella) {
+        Asset activo = TestDataFactory.createAsset(null, true);
+        return TestDataFactory.createLecturaSensor(new Map<SObjectField, Object>{
+            Lectura_Sensor__c.Activo__c => activo.Id,
+            Lectura_Sensor__c.Clave_Mensaje__c => clave,
+            Lectura_Sensor__c.Huella_Contenido__c => huella
+        }, true);
+    }
+
     /** Un evento de prueba con su clave y su entrega. */
     private static Senal_Sensor__e evento(String clave, String idEntrega) {
         return new Senal_Sensor__e(Clave_Mensaje__c = clave, Id_Entrega__c = idEntrega);

@@ -40,6 +40,8 @@
         <members>IntervencionResultadoTest</members>
         <members>IntervencionService</members>
         <members>IntervencionServiceTest</members>
+        <members>LecturaSensorSelector</members>
+        <members>LecturaSensorSelectorTest</members>
         <members>ProcesamientoSenalService</members>
         <members>ProcesamientoSenalServiceTest</members>
         <members>RegistroProcesamientoService</members>

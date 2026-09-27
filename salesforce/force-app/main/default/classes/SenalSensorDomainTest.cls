@@ -208,6 +208,52 @@ private class SenalSensorDomainTest {
         Assert.areEqual(1, r.validas.size(), 'Una fecha futura no se rechaza (el simulador corre adelantado)');
     }
 
+    // ─── Huella de contenido (202.3) ────────────────────────────────────────
+
+    @isTest
+    static void normaliza_poblaHuellaDeContenido() {
+        SenalSensorDomain.ResultadoValidacion r = SenalSensorDomain.validar(
+            new List<Senal_Sensor__e>{ eventoMedicion() }, activos());
+
+        Assert.areEqual(64, r.validas[0].huella.length(), 'La huella normalizada es un SHA-256 en hex (64 caracteres)');
+    }
+
+    @isTest
+    static void huellaDe_esDeterministica() {
+        Senal_Sensor__e ev = eventoMedicion();
+        Assert.areEqual(SenalSensorDomain.huellaDe(ev), SenalSensorDomain.huellaDe(ev),
+            'El mismo evento da siempre la misma huella');
+    }
+
+    @isTest
+    static void huellaDe_cambiaConElValor() {
+        Senal_Sensor__e uno = eventoMedicion();
+        Senal_Sensor__e otro = eventoMedicion();
+        otro.Valor__c = 99.9;
+        Assert.areNotEqual(SenalSensorDomain.huellaDe(uno), SenalSensorDomain.huellaDe(otro),
+            'Un valor distinto cambia la huella (sería un conflicto de clave)');
+    }
+
+    @isTest
+    static void huellaDe_ignoraElIdEntrega() {
+        Senal_Sensor__e uno = eventoMedicion();
+        uno.Id_Entrega__c = 'dlv_A';
+        Senal_Sensor__e otro = eventoMedicion();
+        otro.Id_Entrega__c = 'dlv_B';
+        Assert.areEqual(SenalSensorDomain.huellaDe(uno), SenalSensorDomain.huellaDe(otro),
+            'El Id_Entrega no es contenido: un reenvío con otra entrega da la misma huella (duplicado)');
+    }
+
+    @isTest
+    static void huellaDe_ignoraLaEscalaDelValor() {
+        Senal_Sensor__e uno = eventoMedicion();
+        uno.Valor__c = 21.5;
+        Senal_Sensor__e otro = eventoMedicion();
+        otro.Valor__c = 21.5000;
+        Assert.areEqual(SenalSensorDomain.huellaDe(uno), SenalSensorDomain.huellaDe(otro),
+            'La escala del valor se canoniza: 21.5 y 21.5000 son el mismo contenido');
+    }
+
     // ─── Precedencia y lote ─────────────────────────────────────────────────
 
     @isTest

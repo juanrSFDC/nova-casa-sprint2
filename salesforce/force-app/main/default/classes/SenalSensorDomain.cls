@@ -19,6 +19,7 @@ public with sharing class SenalSensorDomain {
     private static final String MEDICION_CONNECTIVITY = 'CAMERA_CONNECTIVITY';
     private static final String UNIDAD_CONNECTIVITY = 'SECONDS';
     private static final Set<String> ESTADOS_COMUNICACION = new Set<String>{ 'HEALTHY', 'LOST' };
+    private static final String FORMATO_ISO = 'yyyy-MM-dd\'T\'HH:mm:ss.SSS\'Z\'';
 
     private static final String MOTIVO_SIN_IDENTIDAD = 'SIN_IDENTIDAD';
     private static final String MOTIVO_TIPO_DESCONOCIDO = 'TIPO_MENSAJE_DESCONOCIDO';
@@ -164,11 +165,47 @@ public with sharing class SenalSensorDomain {
             senal.episodio = evento.Episodio__c;
         }
         senal.claveEstado = activo.Id_Externo__c + '|' + senal.tipoMedicion;
+        senal.huella = huellaDe(evento);
         return senal;
+    }
+
+    /**
+     * Huella SHA-256 (hex, 64 caracteres) del CONTENIDO del evento (202.3 · §3.4): identifica el mensaje
+     * por su contenido para distinguir un reenvío legítimo (misma clave, misma huella → duplicado) de una
+     * colisión de clave (misma clave, huella distinta → conflicto). Une por '|', en orden fijo, diez campos
+     * del EVENTO (nulo/vacío → cadena vacía); Ocurrido_En__c va en ISO-8601 UTC con milisegundos y Valor__c
+     * se canoniza a escala 4 para que un cambio de escala no finja un conflicto. DELIBERADAMENTE excluye
+     * Id_Entrega__c, Publicado_En__c y Recibido_En__c: cambian en un reenvío legítimo y no son contenido.
+     * Determinista: el mismo evento da siempre la misma huella. Sin SOQL ni DML.
+     *
+     * @param evento El evento del bus (crudo, antes de normalizar)
+     * @return El SHA-256 en hexadecimal del contenido
+     * @example
+     * String huella = SenalSensorDomain.huellaDe(evento);
+     */
+    public static String huellaDe(Senal_Sensor__e evento) {
+        List<String> partes = new List<String>{
+            textoHuella(evento.Tipo_Mensaje__c),
+            textoHuella(evento.Edificio_Externo__c),
+            textoHuella(evento.Activo_Externo__c),
+            textoHuella(evento.Sensor_Id__c),
+            textoHuella(evento.Tipo_Medicion__c),
+            evento.Valor__c == null ? '' : String.valueOf(evento.Valor__c.setScale(4)),
+            textoHuella(evento.Unidad__c),
+            evento.Ocurrido_En__c == null ? '' : evento.Ocurrido_En__c.formatGmt(FORMATO_ISO),
+            textoHuella(evento.Estado_Comunicacion__c),
+            evento.Segundos_Sin_Senal__c == null ? '' : String.valueOf(evento.Segundos_Sin_Senal__c)
+        };
+        return EncodingUtil.convertToHex(Crypto.generateDigest('SHA-256', Blob.valueOf(String.join(partes, '|'))));
     }
 
     /** Texto legible de un valor que puede venir en blanco, para el detalle del rechazo. */
     private static String tipoTexto(String valor) {
         return String.isBlank(valor) ? '(vacío)' : valor;
+    }
+
+    /** Valor de texto para la huella: nulo se representa como cadena vacía (nunca '(vacío)'). */
+    private static String textoHuella(String valor) {
+        return valor == null ? '' : valor;
     }
 }

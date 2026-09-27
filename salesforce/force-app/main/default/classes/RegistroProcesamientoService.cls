@@ -18,7 +18,12 @@ public with sharing class RegistroProcesamientoService {
 
     private static final String RESULTADO_FALLO_TECNICO = 'Fallo_Tecnico';
     private static final String RESULTADO_RECHAZADA = 'Rechazada';
+    private static final String RESULTADO_DUPLICADA = 'Duplicada';
+    private static final String RESULTADO_CONFLICTO = 'Conflicto';
     private static final String MOTIVO_SIN_IDENTIDAD = 'SIN_IDENTIDAD';
+    private static final String MOTIVO_COLISION_CLAVE = 'COLISION_CLAVE';
+    private static final String DETALLE_DUPLICADA = 'Lectura duplicada: misma clave y mismo contenido que una ya guardada; no se vuelve a guardar.';
+    private static final String DETALLE_CONFLICTO = 'Colisión de clave: misma Clave_Mensaje__c con contenido distinto al ya guardado; no se guarda ni se elige.';
     private static final String ESCRITO_POR_INGESTA = 'Ingesta';
     private static final String ESCRITO_POR_SUSCRIPTOR = 'Suscriptor';
     private static final Set<String> TIPOS_MENSAJE_VALIDOS = new Set<String>{ 'MEASUREMENT', 'CONNECTIVITY' };
@@ -193,6 +198,95 @@ public with sharing class RegistroProcesamientoService {
         }
         Database.insert(trazas, AccessLevel.USER_MODE);
         return trazas;
+    }
+
+    /**
+     * Un desenlace de deduplicación del suscriptor (202.3): el evento que no se guardó, si es conflicto
+     * (misma clave, contenido distinto) o duplicado (mismo contenido), y a qué lectura ORIGINAL apunta la
+     * traza (la ya guardada con esa clave).
+     */
+    public class DesenlaceDedup {
+        public Senal_Sensor__e evento;
+        public Boolean esConflicto;
+        public Id lecturaOriginal;
+
+        public DesenlaceDedup(Senal_Sensor__e evento, Boolean esConflicto, Id lecturaOriginal) {
+            this.evento = evento;
+            this.esConflicto = esConflicto;
+            this.lecturaOriginal = lecturaOriginal;
+        }
+    }
+
+    /**
+     * Desenlaces de negocio del suscriptor (US-202 · §3.1) en UNA sola inserción: los RECHAZOS del paso a
+     * y los DUPLICADOS/CONFLICTOS del paso b, juntos (el lote hace una única escritura de trazas). Todas las
+     * escribe el Suscriptor y son no reintentables (el dato ya se resolvió; reintentar daría lo mismo). El
+     * duplicado y el conflicto apuntan con Lectura__c a la lectura original ya guardada; el conflicto añade
+     * Motivo__c = COLISION_CLAVE. Tipo_Mensaje__c solo se guarda si es un valor válido de la picklist
+     * restringida. Sin rechazos ni desenlaces no escribe nada.
+     *
+     * @param rechazos Los rechazos del paso a (SenalSensorDomain.validar); puede ser null o vacío
+     * @param dedup Los duplicados y conflictos del paso b; puede ser null o vacío
+     * @param ahora El momento del procesamiento (parámetro para poder probarlo con hora fija)
+     * @return Las trazas insertadas (vacío si no había nada que registrar)
+     * @example
+     * RegistroProcesamientoService.registrarDesenlaces(ctx.rechazos, desenlaces, ctx.ahora);
+     */
+    public static List<Registro_Procesamiento__c> registrarDesenlaces(
+            List<SenalSensorDomain.Rechazo> rechazos, List<DesenlaceDedup> dedup, Datetime ahora) {
+        List<Registro_Procesamiento__c> trazas = new List<Registro_Procesamiento__c>();
+        Boolean sinRechazos = rechazos == null || rechazos.isEmpty();
+        Boolean sinDedup = dedup == null || dedup.isEmpty();
+        if (sinRechazos && sinDedup) {
+            return trazas;
+        }
+        if (!sinRechazos) {
+            for (SenalSensorDomain.Rechazo rechazo : rechazos) {
+                trazas.add(construirTrazaRechazo(rechazo, ahora));
+            }
+        }
+        if (!sinDedup) {
+            for (DesenlaceDedup desenlace : dedup) {
+                Senal_Sensor__e evento = desenlace.evento;
+                trazas.add(new Registro_Procesamiento__c(
+                    Resultado__c = desenlace.esConflicto ? RESULTADO_CONFLICTO : RESULTADO_DUPLICADA,
+                    Motivo__c = desenlace.esConflicto ? MOTIVO_COLISION_CLAVE : null,
+                    Escrito_Por__c = ESCRITO_POR_SUSCRIPTOR,
+                    Reintentable__c = false,
+                    Clave_Mensaje__c = evento.Clave_Mensaje__c,
+                    Id_Entrega__c = evento.Id_Entrega__c,
+                    Tipo_Mensaje__c = TIPOS_MENSAJE_VALIDOS.contains(evento.Tipo_Mensaje__c) ? evento.Tipo_Mensaje__c : null,
+                    Recibido_En__c = evento.Recibido_En__c,
+                    Procesado_En__c = ahora,
+                    Referencia__c = referenciaDe(evento),
+                    Lectura__c = desenlace.lecturaOriginal,
+                    Detalle__c = desenlace.esConflicto ? DETALLE_CONFLICTO : DETALLE_DUPLICADA
+                ));
+            }
+        }
+        Database.insert(trazas, AccessLevel.USER_MODE);
+        return trazas;
+    }
+
+    /**
+     * Construye (sin insertar) la traza de un rechazo del suscriptor, igual que registrarRechazos, para
+     * poder combinarla con los duplicados/conflictos en una sola inserción sin tocar aquel método.
+     */
+    private static Registro_Procesamiento__c construirTrazaRechazo(SenalSensorDomain.Rechazo rechazo, Datetime ahora) {
+        Senal_Sensor__e evento = rechazo.evento;
+        return new Registro_Procesamiento__c(
+            Resultado__c = RESULTADO_RECHAZADA,
+            Motivo__c = rechazo.motivo,
+            Escrito_Por__c = ESCRITO_POR_SUSCRIPTOR,
+            Reintentable__c = false,
+            Clave_Mensaje__c = evento.Clave_Mensaje__c,
+            Id_Entrega__c = evento.Id_Entrega__c,
+            Tipo_Mensaje__c = TIPOS_MENSAJE_VALIDOS.contains(evento.Tipo_Mensaje__c) ? evento.Tipo_Mensaje__c : null,
+            Recibido_En__c = evento.Recibido_En__c,
+            Procesado_En__c = ahora,
+            Referencia__c = referenciaDe(evento),
+            Detalle__c = truncar(rechazo.detalle, MAX_DETALLE)
+        );
     }
 
     /**

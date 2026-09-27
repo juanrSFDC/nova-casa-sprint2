@@ -105,6 +105,57 @@ public with sharing class TestDataFactory {
     }
 
     /**
+     * Una Lectura_Sensor__c ya guardada, con Clave_Mensaje__c única y una medición coherente por defecto,
+     * sobre la que aplicar overrides. Activo__c es requerido (master-detail): el llamador DEBE pasarlo por
+     * overrides (p. ej. el Id de un Asset creado en @TestSetup). Útil para preparar el escenario de
+     * duplicados/conflictos del paso b (202.3).
+     *
+     * @param overrides Campos a sobrescribir (por SObjectField), o null. Debe incluir Activo__c
+     * @param doInsert Si insertar el registro
+     * @return La lectura creada
+     */
+    public static Lectura_Sensor__c createLecturaSensor(Map<SObjectField, Object> overrides, Boolean doInsert) {
+        return createLecturasSensor(1, overrides, doInsert)[0];
+    }
+
+    /**
+     * Varias Lectura_Sensor__c con Clave_Mensaje__c única (índice único) y medición coherente. Activo__c es
+     * requerido: pásalo por overrides (el mismo para todas).
+     *
+     * @param cuantos Cuántas crear
+     * @param overrides Campos a sobrescribir en cada una, o null. Debe incluir Activo__c
+     * @param doInsert Si insertar los registros
+     * @return Las lecturas creadas
+     */
+    public static List<Lectura_Sensor__c> createLecturasSensor(Integer cuantos, Map<SObjectField, Object> overrides, Boolean doInsert) {
+        List<Lectura_Sensor__c> registros = new List<Lectura_Sensor__c>();
+        for (Integer i = 0; i < cuantos; i++) {
+            Lectura_Sensor__c registro = new Lectura_Sensor__c(
+                Clave_Mensaje__c = 'prueba|lectura-' + i,
+                Huella_Contenido__c = 'huella-' + i,
+                Id_Entrega__c = 'dlv-lectura-' + i,
+                Origen__c = 'prueba',
+                Tipo_Mensaje__c = 'MEASUREMENT',
+                Tipo_Medicion__c = 'TEMPERATURE',
+                Unidad__c = 'CELSIUS',
+                Valor__c = 21.5,
+                Ocurrido_En__c = Datetime.newInstanceGmt(2026, 9, 26, 12, 0, 0),
+                Procesado_En__c = Datetime.newInstanceGmt(2026, 9, 26, 12, 0, 5)
+            );
+            if (overrides != null) {
+                for (SObjectField campo : overrides.keySet()) {
+                    registro.put(campo, overrides.get(campo));
+                }
+            }
+            registros.add(registro);
+        }
+        if (doInsert) {
+            insert registros;
+        }
+        return registros;
+    }
+
+    /**
      * Un usuario de pruebas con el perfil de acceso mínimo y SOLO el Permission Set Nova_Casa_Ingesta,
      * para probar que con esos permisos se lee la config, se guarda el cursor y se crea la traza.
      * Falla ruidoso si el perfil o el permission set no existen en la org.

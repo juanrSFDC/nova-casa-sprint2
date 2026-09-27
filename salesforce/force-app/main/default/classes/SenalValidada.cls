@@ -47,4 +47,10 @@ public class SenalValidada {
 
     /** Solo CONNECTIVITY: episodio de la caída (Episodio__c). */
     public String episodio;
+
+    /** Huella SHA-256 del contenido del evento (SenalSensorDomain.huellaDe): distingue duplicado de conflicto (202.3). */
+    public String huella;
+
+    /** La lectura insertada para esta señal (202.3): la llenan los pasos de persistencia; nula si no se guardó. */
+    public Lectura_Sensor__c lectura;
 }

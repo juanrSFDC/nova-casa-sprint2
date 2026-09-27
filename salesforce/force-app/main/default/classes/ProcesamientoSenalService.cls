@@ -35,14 +35,30 @@ public with sharing class ProcesamientoSenalService {
     private static Exception falloInyectadoTrasProcesar;
 
     /**
+     * Punto de inyección de carrera, SOLO para pruebas (null en producción): si no es nulo, insertarLecturas
+     * lo inserta JUSTO ANTES del lote, para simular que otra transacción guardó una clave del lote entre la
+     * consulta de deduplicación y la inserción, y así ejercitar el manejo del DUPLICATE_VALUE. §3.4.
+     */
+    @TestVisible
+    private static List<Lectura_Sensor__c> carreraInyectada;
+
+    /** Fallo del suscriptor al persistir (202.3): rompe el pipeline para que el catch deshaga el lote. */
+    public class ProcesamientoException extends Exception {}
+
+    /**
      * Contexto del lote que viaja entre los pasos del pipeline (§3.1): el lote de entrada, las señales
      * válidas ya normalizadas, los rechazos de negocio y la hora del lote (una sola, para toda la traza).
-     * Cada paso lo lee y lo enriquece; hoy lo llenan validarYResolverActivos y trazarDesenlaces.
+     * A partir de 202.3 también lleva las válidas NUEVAS (las que sobreviven a la deduplicación y se
+     * guardan), los desenlaces de duplicado/conflicto pendientes de traza y las lecturas ya insertadas.
+     * Cada paso lo lee y lo enriquece.
      */
     private class ContextoLote {
         List<Senal_Sensor__e> eventos;
         List<SenalValidada> validas = new List<SenalValidada>();
         List<SenalSensorDomain.Rechazo> rechazos = new List<SenalSensorDomain.Rechazo>();
+        List<SenalValidada> validasNuevas = new List<SenalValidada>();
+        List<DedupPendiente> dedupPendientes = new List<DedupPendiente>();
+        List<Lectura_Sensor__c> lecturasInsertadas = new List<Lectura_Sensor__c>();
         Datetime ahora = Datetime.now();
 
         ContextoLote(List<Senal_Sensor__e> eventos) {
@@ -51,9 +67,32 @@ public with sharing class ProcesamientoSenalService {
     }
 
     /**
-     * Procesa el lote en el orden fijo de §3.4. En 202.2 funcionan el paso a (validación y resolución
-     * de activos) y la parte de rechazos de la traza; los demás pasos siguen vacíos. El camino de fallo
-     * (try/catch → Fallo_Tecnico reintentable) sigue igual. Un lote nulo o vacío no hace nada.
+     * Un duplicado o conflicto detectado en el paso b, a la espera de su traza (202.3). Lleva el evento
+     * que no se guarda, si es conflicto (misma clave, contenido distinto) o duplicado (mismo contenido),
+     * y a qué lectura ORIGINAL apunta: su Id si la original ya estaba en la BD, o una referencia a la
+     * SenalValidada original cuando la original está en este mismo lote (su Id se resuelve tras insertar).
+     */
+    private class DedupPendiente {
+        Senal_Sensor__e evento;
+        Boolean esConflicto;
+        Id lecturaOriginalId;
+        SenalValidada originalEnLote;
+
+        DedupPendiente(Senal_Sensor__e evento, Boolean esConflicto, Id lecturaOriginalId, SenalValidada originalEnLote) {
+            this.evento = evento;
+            this.esConflicto = esConflicto;
+            this.lecturaOriginalId = lecturaOriginalId;
+            this.originalEnLote = originalEnLote;
+        }
+    }
+
+    /**
+     * Procesa el lote en el orden fijo de §3.4. En 202.3 funcionan el paso a (validación y resolución de
+     * activos), el paso b (deduplicación: duplicados y conflictos), la persistencia de las lecturas nuevas
+     * y la traza de rechazos, duplicados y conflictos (una inserción por lote). Los pasos de clasificación
+     * (204.1), reducción/atrasadas (203.1), estado (203.2) e intervención (205) siguen vacíos. El camino de
+     * fallo (try/catch → rollback al punto de retorno → Fallo_Tecnico reintentable) sigue igual: si un paso
+     * ya escribió lecturas o trazas y algo falla después, se deshacen. Un lote nulo o vacío no hace nada.
      *
      * @param eventos Los Senal_Sensor__e a procesar (Trigger.new)
      */
@@ -68,8 +107,8 @@ public with sharing class ProcesamientoSenalService {
             }
             ContextoLote ctx = new ContextoLote(eventos);
             validarYResolverActivos(ctx);           // 202.2
-            clasificar(ctx);                         // 204.1 (Flórez)
             detectarDuplicadosYConflictos(ctx);      // 202.3
+            clasificar(ctx);                         // 204.1 (Flórez)
             reducirColisionesYMarcarAtrasadas(ctx);  // 203.1
             insertarLecturas(ctx);                   // 202.3
             upsertEstado(ctx);                       // 203.2
@@ -112,10 +151,46 @@ public with sharing class ProcesamientoSenalService {
     }
 
     /**
-     * Paso b (202.3): detecta duplicados (clave repetida, mismo contenido) y conflictos (misma clave,
-     * distinto contenido) comparando clave y huella contra lo persistido. VACÍO en 202.1: lo llena 202.3.
+     * Paso b (202.3): distingue duplicados de conflictos comparando clave + huella contra lo persistido y
+     * contra las señales ya vistas en el MISMO lote (la primera del lote gana). En UNA consulta resuelve las
+     * lecturas guardadas con esas claves; luego, en el orden del lote:
+     * - misma clave que una guardada: misma huella → DUPLICADA (no se guarda); huella distinta → CONFLICTO.
+     * - misma clave que una previa del lote: misma huella → DUPLICADA; distinta → CONFLICTO (la 1.ª gana).
+     * - clave nueva: sobrevive como válida nueva (solo estas pasan a clasificar y a guardarse).
+     * Los duplicados y conflictos NO se guardan; quedan como desenlaces pendientes de traza.
      */
     private static void detectarDuplicadosYConflictos(ContextoLote ctx) {
+        if (ctx.validas.isEmpty()) {
+            return;
+        }
+        Set<String> claves = new Set<String>();
+        for (SenalValidada senal : ctx.validas) {
+            claves.add(senal.evento.Clave_Mensaje__c);
+        }
+        Map<String, Lectura_Sensor__c> guardadas = new LecturaSensorSelector().porClaveMensaje(claves);
+        Map<String, SenalValidada> vistasEnLote = new Map<String, SenalValidada>();
+        for (SenalValidada senal : ctx.validas) {
+            String claveFold = senal.evento.Clave_Mensaje__c.toLowerCase();
+            Lectura_Sensor__c guardada = guardadas.get(claveFold);
+            if (guardada != null) {
+                ctx.dedupPendientes.add(new DedupPendiente(
+                    senal.evento, !mismaHuella(senal.huella, guardada.Huella_Contenido__c), guardada.Id, null));
+                continue;
+            }
+            SenalValidada previaEnLote = vistasEnLote.get(claveFold);
+            if (previaEnLote != null) {
+                ctx.dedupPendientes.add(new DedupPendiente(
+                    senal.evento, !mismaHuella(senal.huella, previaEnLote.huella), null, previaEnLote));
+                continue;
+            }
+            vistasEnLote.put(claveFold, senal);
+            ctx.validasNuevas.add(senal);
+        }
+    }
+
+    /** Dos huellas son iguales cuando ambas existen y coinciden (equals: comparación sensible, exacta). */
+    private static Boolean mismaHuella(String unaHuella, String otraHuella) {
+        return unaHuella != null && unaHuella.equals(otraHuella);
     }
 
     /**
@@ -126,10 +201,100 @@ public with sharing class ProcesamientoSenalService {
     }
 
     /**
-     * Persistencia (202.3): inserta en bloque las lecturas válidas en Lectura_Sensor__c y sella los
-     * tiempos; la idempotencia la cubre el índice único. VACÍO en 202.1: lo llena la tarea 202.3.
+     * Persistencia (202.3): inserta en bloque las lecturas de las válidas nuevas en Lectura_Sensor__c y
+     * sella Procesado_En__c. Usa Database.insert(..., false, USER_MODE) (éxito parcial en modo usuario):
+     * cada lectura guardada se enlaza a su SenalValidada (203/205); una que choque con el índice único
+     * (DUPLICATE_VALUE, una carrera de otra transacción) se reconsulta y se degrada a duplicado o conflicto,
+     * sin tumbar el lote; cualquier OTRO error de guardado rompe el pipeline para que el catch de procesar
+     * deshaga el lote entero (todo-o-nada). NO llena severidad, umbral, atrasada ni intervención: esos
+     * pasos (204.1/203.1/205) los preparan en memoria antes de aquí; en 202.3 salen nulos.
      */
     private static void insertarLecturas(ContextoLote ctx) {
+        if (carreraInyectada != null && !carreraInyectada.isEmpty()) {
+            Database.insert(carreraInyectada, AccessLevel.USER_MODE);
+        }
+        if (ctx.validasNuevas.isEmpty()) {
+            return;
+        }
+        List<Lectura_Sensor__c> lecturas = new List<Lectura_Sensor__c>();
+        for (SenalValidada senal : ctx.validasNuevas) {
+            lecturas.add(construirLectura(senal, ctx.ahora));
+        }
+        Database.SaveResult[] resultados = Database.insert(lecturas, false, AccessLevel.USER_MODE);
+        Set<String> clavesEnColision = new Set<String>();
+        Map<String, SenalValidada> senalEnColisionPorClave = new Map<String, SenalValidada>();
+        for (Integer i = 0; i < resultados.size(); i++) {
+            SenalValidada senal = ctx.validasNuevas[i];
+            if (resultados[i].isSuccess()) {
+                senal.lectura = lecturas[i];
+                ctx.lecturasInsertadas.add(lecturas[i]);
+                continue;
+            }
+            if (esColisionDeClave(resultados[i])) {
+                clavesEnColision.add(senal.evento.Clave_Mensaje__c);
+                senalEnColisionPorClave.put(senal.evento.Clave_Mensaje__c.toLowerCase(), senal);
+            } else {
+                throw new ProcesamientoException('No se pudo guardar una lectura del lote.');
+            }
+        }
+        degradarColisiones(ctx, clavesEnColision, senalEnColisionPorClave);
+    }
+
+    /** true si el fallo de guardado es una colisión con el índice único de Clave_Mensaje__c. */
+    private static Boolean esColisionDeClave(Database.SaveResult resultado) {
+        for (Database.Error error : resultado.getErrors()) {
+            if (error.getStatusCode() == StatusCode.DUPLICATE_VALUE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Ante colisiones de clave en la inserción (carrera): reconsulta esas claves y clasifica cada señal
+     * como duplicado (misma huella que la ya guardada) o conflicto (huella distinta), apuntando a la
+     * lectura original ya persistida. Sin colisiones no consulta.
+     */
+    private static void degradarColisiones(ContextoLote ctx, Set<String> clavesEnColision,
+            Map<String, SenalValidada> senalEnColisionPorClave) {
+        if (clavesEnColision.isEmpty()) {
+            return;
+        }
+        Map<String, Lectura_Sensor__c> guardadas = new LecturaSensorSelector().porClaveMensaje(clavesEnColision);
+        for (String claveFold : senalEnColisionPorClave.keySet()) {
+            SenalValidada senal = senalEnColisionPorClave.get(claveFold);
+            Lectura_Sensor__c original = guardadas.get(claveFold);
+            Id originalId = original == null ? null : original.Id;
+            String huellaGuardada = original == null ? null : original.Huella_Contenido__c;
+            ctx.dedupPendientes.add(new DedupPendiente(
+                senal.evento, !mismaHuella(senal.huella, huellaGuardada), originalId, null));
+        }
+    }
+
+    /** Construye la lectura a persistir mapeando §3.4: valores canónicos de la SenalValidada, resto del evento. */
+    private static Lectura_Sensor__c construirLectura(SenalValidada senal, Datetime ahora) {
+        Senal_Sensor__e evento = senal.evento;
+        return new Lectura_Sensor__c(
+            Activo__c = senal.activo.Id,
+            Clave_Mensaje__c = evento.Clave_Mensaje__c,
+            Huella_Contenido__c = senal.huella,
+            Id_Entrega__c = evento.Id_Entrega__c,
+            Id_Mensaje__c = evento.Id_Mensaje__c,
+            Origen__c = evento.Origen__c,
+            Tipo_Mensaje__c = evento.Tipo_Mensaje__c,
+            Sensor_Id__c = evento.Sensor_Id__c,
+            Tipo_Medicion__c = senal.tipoMedicion,
+            Valor__c = senal.valor,
+            Unidad__c = senal.unidad,
+            Ocurrido_En__c = senal.ocurridoEn,
+            Publicado_En__c = evento.Publicado_En__c,
+            Recibido_En__c = evento.Recibido_En__c,
+            Version_Contrato__c = evento.Version_Contrato__c,
+            Procesado_En__c = ahora,
+            Estado_Comunicacion__c = senal.estadoComunicacion,
+            Ultima_Vez_Visto__c = senal.ultimaVezVisto,
+            Episodio__c = senal.episodio
+        );
     }
 
     /**
@@ -147,11 +312,22 @@ public with sharing class ProcesamientoSenalService {
     }
 
     /**
-     * Trazas (209.1): registra los desenlaces de negocio vía RegistroProcesamientoService. En 202.2 solo
-     * escribe los RECHAZOS del paso a (una inserción por lote); los demás desenlaces (Procesada/Duplicada/
-     * Conflicto/Atrasada) los llena 209.1. El fallo técnico lo cubre el catch de procesar.
+     * Trazas (202.3): registra en UNA sola inserción por lote los desenlaces de negocio del suscriptor:
+     * los RECHAZOS del paso a y los DUPLICADOS/CONFLICTOS del paso b. Para los desenlaces cuya lectura
+     * original está en este mismo lote, resuelve aquí su Id (ya insertada). La traza de las PROCESADAS y
+     * las ATRASADAS queda para 209.1; el fallo técnico lo cubre el catch de procesar.
      */
     private static void trazarDesenlaces(ContextoLote ctx) {
-        RegistroProcesamientoService.registrarRechazos(ctx.rechazos, ctx.ahora);
+        List<RegistroProcesamientoService.DesenlaceDedup> desenlaces =
+            new List<RegistroProcesamientoService.DesenlaceDedup>();
+        for (DedupPendiente pendiente : ctx.dedupPendientes) {
+            Id lecturaOriginal = pendiente.lecturaOriginalId;
+            if (lecturaOriginal == null && pendiente.originalEnLote != null && pendiente.originalEnLote.lectura != null) {
+                lecturaOriginal = pendiente.originalEnLote.lectura.Id;
+            }
+            desenlaces.add(new RegistroProcesamientoService.DesenlaceDedup(
+                pendiente.evento, pendiente.esConflicto, lecturaOriginal));
+        }
+        RegistroProcesamientoService.registrarDesenlaces(ctx.rechazos, desenlaces, ctx.ahora);
     }
 }
