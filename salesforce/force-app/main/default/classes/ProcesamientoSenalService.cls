@@ -6,9 +6,9 @@
  * Contrato: docs/entrega-discovery-sprint2.md §3.1 (pasos a–e y camino rojo) y §3.4 (orden del lote).
  *
  * Estado de los pasos: validar (202.2), deduplicar (202.3), guardar lecturas (202.3), reducir colisiones
- * y marcar atrasadas (203.1), mantener el estado actual (203.2) y la traza de rechazos, duplicados y
- * conflictos YA funcionan. Siguen vacíos: clasificar (204.1, Juan Flórez), intervenciones (205, Juan
- * Flórez) y la traza de procesadas y atrasadas (209.1).
+ * y marcar atrasadas (203.1), mantener el estado actual (203.2) y la traza de rechazos, duplicados,
+ * conflictos, PROCESADAS y ATRASADAS (209.1, una sola inserción por lote) YA funcionan. Siguen vacíos:
+ * clasificar (204.1, Juan Flórez) e intervenciones (205, Juan Flórez).
  *
  * CAMINO DE FALLO: si el pipeline lanza una excepción
  * inesperada, cada evento del lote se registra como Fallo_Tecnico (Escrito_Por__c = Suscriptor,
@@ -96,8 +96,8 @@ public with sharing class ProcesamientoSenalService {
      * Procesa el lote en el orden fijo de §3.4. Funcionan el paso a (validación y resolución de activos),
      * el paso b (deduplicación: duplicados y conflictos), la reducción de colisiones y el marcado de
      * atrasadas (203.1), la persistencia de las lecturas nuevas, el upsert del estado actual (203.2) y la
-     * traza de rechazos, duplicados y conflictos (una inserción por lote). Los pasos de clasificación
-     * (204.1) e intervención (205) siguen vacíos. El camino de fallo (try/catch → rollback al punto de
+     * traza de rechazos, duplicados, conflictos, procesadas y atrasadas (209.1, una inserción por lote).
+     * Los pasos de clasificación (204.1) e intervención (205) siguen vacíos. El camino de fallo (try/catch → rollback al punto de
      * retorno → Fallo_Tecnico reintentable) sigue igual: si un paso ya escribió lecturas, estados o trazas
      * y algo falla después, se deshacen. Un lote nulo o vacío no hace nada.
      *
@@ -403,10 +403,12 @@ public with sharing class ProcesamientoSenalService {
     }
 
     /**
-     * Trazas (202.3): registra en UNA sola inserción por lote los desenlaces de negocio del suscriptor:
-     * los RECHAZOS del paso a y los DUPLICADOS/CONFLICTOS del paso b. Para los desenlaces cuya lectura
-     * original está en este mismo lote, resuelve aquí su Id (ya insertada). La traza de las PROCESADAS y
-     * las ATRASADAS queda para 209.1; el fallo técnico lo cubre el catch de procesar.
+     * Trazas (202.3 + 209.1): registra en UNA sola inserción por lote los desenlaces de negocio del
+     * suscriptor: los RECHAZOS del paso a, los DUPLICADOS/CONFLICTOS del paso b y las PROCESADAS/ATRASADAS
+     * (una por cada lectura efectivamente guardada). Para los desenlaces cuya lectura original está en
+     * este mismo lote, resuelve aquí su Id (ya insertada). La lectura que se degradó en carrera
+     * (senal.lectura == null) ya quedó como Duplicada/Conflicto en dedupPendientes, así que se excluye de
+     * las procesadas/atrasadas para no duplicar traza. El fallo técnico lo cubre el catch de procesar.
      */
     private static void trazarDesenlaces(ContextoLote ctx) {
         List<RegistroProcesamientoService.DesenlaceDedup> desenlaces =
@@ -419,6 +421,17 @@ public with sharing class ProcesamientoSenalService {
             desenlaces.add(new RegistroProcesamientoService.DesenlaceDedup(
                 pendiente.evento, pendiente.esConflicto, lecturaOriginal));
         }
-        RegistroProcesamientoService.registrarDesenlaces(ctx.rechazos, desenlaces, ctx.ahora);
+        // 209.1: PROCESADA / ATRASADA, una por lectura efectivamente guardada (la que se degradó en
+        // carrera tiene senal.lectura == null y ya va como Duplicada/Conflicto: se excluye).
+        List<RegistroProcesamientoService.DesenlaceLectura> lecturas =
+            new List<RegistroProcesamientoService.DesenlaceLectura>();
+        for (SenalValidada senal : ctx.validasNuevas) {
+            if (senal.lectura == null) {
+                continue;
+            }
+            lecturas.add(new RegistroProcesamientoService.DesenlaceLectura(
+                senal.evento, senal.lectura.Id, senal.atrasada, senal.ganadoraEstado));
+        }
+        RegistroProcesamientoService.registrarDesenlaces(ctx.rechazos, desenlaces, lecturas, ctx.ahora);
     }
 }

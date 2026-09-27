@@ -6,9 +6,13 @@
  *   añadirá aquí sus desenlaces con Escrito_Por__c = Suscriptor.
  * Contrato: docs/entrega-discovery-sprint2.md §3.4 (la traza la escribe solo Rozo) y §6.
  *
- * Diseñado para crecer: hoy registra el fallo técnico de la ingesta (201.4) y los rechazos
- * SIN_IDENTIDAD de la traducción (201.3); el saneado de Detalle__c y las constantes de picklist
- * quedan listos para los métodos del suscriptor.
+ * Diseñado para crecer: registra el fallo técnico de la ingesta (201.4), los rechazos SIN_IDENTIDAD
+ * de la traducción (201.3), y los desenlaces del suscriptor (Escrito_Por__c = Suscriptor): rechazos y
+ * fallos técnicos (202), duplicados/conflictos (202.3) y, desde 209.1, PROCESADAS y ATRASADAS. Todos
+ * los desenlaces de negocio del suscriptor de un lote se escriben en UNA sola inserción
+ * (registrarDesenlaces). Reintentable__c se deduce del desenlace (solo Fallo_Tecnico es reintentable,
+ * §3.1). Ocurrido_En__c (fecha origen de la señal, 209.1) se llena en las trazas del suscriptor; en las
+ * de ingesta queda null (no hay señal validada). El saneado de Detalle__c nunca deja tokens ni stack.
  *
  * @example
  * RegistroProcesamientoService.registrarFalloIngesta('nova-casa-simulator', excepcion, Datetime.now());
@@ -20,10 +24,15 @@ public with sharing class RegistroProcesamientoService {
     private static final String RESULTADO_RECHAZADA = 'Rechazada';
     private static final String RESULTADO_DUPLICADA = 'Duplicada';
     private static final String RESULTADO_CONFLICTO = 'Conflicto';
+    private static final String RESULTADO_PROCESADA = 'Procesada';
+    private static final String RESULTADO_ATRASADA = 'Atrasada';
     private static final String MOTIVO_SIN_IDENTIDAD = 'SIN_IDENTIDAD';
     private static final String MOTIVO_COLISION_CLAVE = 'COLISION_CLAVE';
     private static final String DETALLE_DUPLICADA = 'Lectura duplicada: misma clave y mismo contenido que una ya guardada; no se vuelve a guardar.';
     private static final String DETALLE_CONFLICTO = 'Colisión de clave: misma Clave_Mensaje__c con contenido distinto al ya guardado; no se guarda ni se elige.';
+    private static final String DETALLE_PROCESADA_GANADORA = 'Procesada: la lectura se guardó y fijó el estado actual del activo.';
+    private static final String DETALLE_PROCESADA_EVIDENCIA = 'Procesada: la lectura se guardó solo como evidencia (perdió la colisión del lote o empató contra el estado guardado); no cambió el estado actual.';
+    private static final String DETALLE_ATRASADA = 'Atrasada: se midió antes que el estado actual del activo; se guardó como evidencia pero no cambió el estado.';
     private static final String ESCRITO_POR_INGESTA = 'Ingesta';
     private static final String ESCRITO_POR_SUSCRIPTOR = 'Suscriptor';
     private static final Set<String> TIPOS_MENSAJE_VALIDOS = new Set<String>{ 'MEASUREMENT', 'CONNECTIVITY' };
@@ -153,6 +162,7 @@ public with sharing class RegistroProcesamientoService {
                 Tipo_Mensaje__c = TIPOS_MENSAJE_VALIDOS.contains(evento.Tipo_Mensaje__c) ? evento.Tipo_Mensaje__c : null,
                 Recibido_En__c = evento.Recibido_En__c,
                 Procesado_En__c = ahora,
+                Ocurrido_En__c = ocurridoDe(evento),
                 Referencia__c = referenciaDe(evento),
                 Detalle__c = truncar(rechazo.detalle, MAX_DETALLE)
             ));
@@ -192,6 +202,7 @@ public with sharing class RegistroProcesamientoService {
                 Tipo_Mensaje__c = TIPOS_MENSAJE_VALIDOS.contains(evento.Tipo_Mensaje__c) ? evento.Tipo_Mensaje__c : null,
                 Recibido_En__c = evento.Recibido_En__c,
                 Procesado_En__c = ahora,
+                Ocurrido_En__c = ocurridoDe(evento),
                 Referencia__c = referenciaDe(evento),
                 Detalle__c = detalle
             ));
@@ -218,6 +229,27 @@ public with sharing class RegistroProcesamientoService {
     }
 
     /**
+     * Un desenlace de PERSISTENCIA del suscriptor (209.1): la señal cuya lectura SÍ se guardó, con la
+     * lectura resultante, si quedó atrasada (evidencia que se midió antes que el estado y no lo movió)
+     * y, si no, si su lectura fijó el estado actual (ganadora) o se guardó solo como evidencia del lote.
+     * El resultado de la intervención (task 205, Juan Flórez) se consultará luego vía
+     * Lectura__c → Intervencion__c cuando exista; esta traza no lo escribe.
+     */
+    public class DesenlaceLectura {
+        public Senal_Sensor__e evento;
+        public Id lectura;
+        public Boolean atrasada;
+        public Boolean ganadoraEstado;
+
+        public DesenlaceLectura(Senal_Sensor__e evento, Id lectura, Boolean atrasada, Boolean ganadoraEstado) {
+            this.evento = evento;
+            this.lectura = lectura;
+            this.atrasada = atrasada;
+            this.ganadoraEstado = ganadoraEstado;
+        }
+    }
+
+    /**
      * Desenlaces de negocio del suscriptor (US-202 · §3.1) en UNA sola inserción: los RECHAZOS del paso a
      * y los DUPLICADOS/CONFLICTOS del paso b, juntos (el lote hace una única escritura de trazas). Todas las
      * escribe el Suscriptor y son no reintentables (el dato ya se resolvió; reintentar daría lo mismo). El
@@ -234,10 +266,32 @@ public with sharing class RegistroProcesamientoService {
      */
     public static List<Registro_Procesamiento__c> registrarDesenlaces(
             List<SenalSensorDomain.Rechazo> rechazos, List<DesenlaceDedup> dedup, Datetime ahora) {
+        return registrarDesenlaces(rechazos, dedup, null, ahora);
+    }
+
+    /**
+     * Desenlaces de negocio del suscriptor (US-202/US-209 · §3.1) en UNA sola inserción por lote: los
+     * RECHAZOS del paso a, los DUPLICADOS/CONFLICTOS del paso b y, desde 209.1, las PROCESADAS y ATRASADAS
+     * (una por lectura efectivamente guardada). Todas las escribe el Suscriptor y son no reintentables (el
+     * dato ya se resolvió; Reintentable__c se deduce del desenlace, solo Fallo_Tecnico es reintentable).
+     * El duplicado/conflicto apunta con Lectura__c a la lectura original; la procesada/atrasada apunta a su
+     * propia lectura. Ocurrido_En__c = la fecha origen del evento en TODAS. Tipo_Mensaje__c solo si es un
+     * valor válido de la picklist restringida. Sin nada que registrar no escribe.
+     *
+     * @param rechazos Los rechazos del paso a (SenalSensorDomain.validar); puede ser null o vacío
+     * @param dedup Los duplicados y conflictos del paso b; puede ser null o vacío
+     * @param lecturas Las lecturas guardadas del lote, procesadas o atrasadas (209.1); puede ser null o vacío
+     * @param ahora El momento del procesamiento (parámetro para poder probarlo con hora fija)
+     * @return Las trazas insertadas (vacío si no había nada que registrar)
+     */
+    public static List<Registro_Procesamiento__c> registrarDesenlaces(
+            List<SenalSensorDomain.Rechazo> rechazos, List<DesenlaceDedup> dedup,
+            List<DesenlaceLectura> lecturas, Datetime ahora) {
         List<Registro_Procesamiento__c> trazas = new List<Registro_Procesamiento__c>();
         Boolean sinRechazos = rechazos == null || rechazos.isEmpty();
         Boolean sinDedup = dedup == null || dedup.isEmpty();
-        if (sinRechazos && sinDedup) {
+        Boolean sinLecturas = lecturas == null || lecturas.isEmpty();
+        if (sinRechazos && sinDedup && sinLecturas) {
             return trazas;
         }
         if (!sinRechazos) {
@@ -258,10 +312,16 @@ public with sharing class RegistroProcesamientoService {
                     Tipo_Mensaje__c = TIPOS_MENSAJE_VALIDOS.contains(evento.Tipo_Mensaje__c) ? evento.Tipo_Mensaje__c : null,
                     Recibido_En__c = evento.Recibido_En__c,
                     Procesado_En__c = ahora,
+                    Ocurrido_En__c = ocurridoDe(evento),
                     Referencia__c = referenciaDe(evento),
                     Lectura__c = desenlace.lecturaOriginal,
                     Detalle__c = desenlace.esConflicto ? DETALLE_CONFLICTO : DETALLE_DUPLICADA
                 ));
+            }
+        }
+        if (!sinLecturas) {
+            for (DesenlaceLectura desenlace : lecturas) {
+                trazas.add(construirTrazaLectura(desenlace, ahora));
             }
         }
         Database.insert(trazas, AccessLevel.USER_MODE);
@@ -284,8 +344,36 @@ public with sharing class RegistroProcesamientoService {
             Tipo_Mensaje__c = TIPOS_MENSAJE_VALIDOS.contains(evento.Tipo_Mensaje__c) ? evento.Tipo_Mensaje__c : null,
             Recibido_En__c = evento.Recibido_En__c,
             Procesado_En__c = ahora,
+            Ocurrido_En__c = ocurridoDe(evento),
             Referencia__c = referenciaDe(evento),
             Detalle__c = truncar(rechazo.detalle, MAX_DETALLE)
+        );
+    }
+
+    /**
+     * Construye (sin insertar) la traza de una lectura guardada del suscriptor (209.1): PROCESADA si no
+     * quedó atrasada, ATRASADA si sí. Lectura__c apunta a la propia lectura guardada; Reintentable__c es
+     * false (desenlace de éxito, no reintentable). El Detalle__c es un literal fijo (sin secretos): si es
+     * procesada, distingue si fijó el estado actual o se guardó solo como evidencia.
+     */
+    private static Registro_Procesamiento__c construirTrazaLectura(DesenlaceLectura desenlace, Datetime ahora) {
+        Senal_Sensor__e evento = desenlace.evento;
+        Boolean esAtrasada = desenlace.atrasada == true;
+        return new Registro_Procesamiento__c(
+            Resultado__c = esAtrasada ? RESULTADO_ATRASADA : RESULTADO_PROCESADA,
+            Escrito_Por__c = ESCRITO_POR_SUSCRIPTOR,
+            Reintentable__c = false,
+            Clave_Mensaje__c = evento.Clave_Mensaje__c,
+            Id_Entrega__c = evento.Id_Entrega__c,
+            Tipo_Mensaje__c = TIPOS_MENSAJE_VALIDOS.contains(evento.Tipo_Mensaje__c) ? evento.Tipo_Mensaje__c : null,
+            Recibido_En__c = evento.Recibido_En__c,
+            Procesado_En__c = ahora,
+            Ocurrido_En__c = ocurridoDe(evento),
+            Referencia__c = referenciaDe(evento),
+            Lectura__c = desenlace.lectura,
+            Detalle__c = esAtrasada
+                ? DETALLE_ATRASADA
+                : (desenlace.ganadoraEstado == true ? DETALLE_PROCESADA_GANADORA : DETALLE_PROCESADA_EVIDENCIA)
         );
     }
 
@@ -298,6 +386,15 @@ public with sharing class RegistroProcesamientoService {
             return evento.Clave_Mensaje__c;
         }
         return sha256Hex(evento.Carga_Cruda__c);
+    }
+
+    /**
+     * La fecha ORIGEN del evento (Ocurrido_En__c) para la traza del suscriptor; null si el evento no la
+     * trae. Las trazas de la ingesta (traducción/publicación) no tienen señal validada, por eso dejan
+     * Ocurrido_En__c null y no usan este helper (US-209).
+     */
+    private static Datetime ocurridoDe(Senal_Sensor__e evento) {
+        return evento == null ? null : evento.Ocurrido_En__c;
     }
 
     /**

@@ -96,9 +96,9 @@ private class ProcesamientoSenalServiceTest {
 
             List<Registro_Procesamiento__c> trazas = [
                 SELECT Resultado__c, Motivo__c, Reintentable__c, Escrito_Por__c
-                FROM Registro_Procesamiento__c ORDER BY Motivo__c
+                FROM Registro_Procesamiento__c WHERE Resultado__c = 'Rechazada' ORDER BY Motivo__c
             ];
-            Assert.areEqual(2, trazas.size(), 'Solo las dos señales rechazadas dejan traza; la válida no');
+            Assert.areEqual(2, trazas.size(), 'Las dos señales rechazadas dejan su traza Rechazada (la válida deja Procesada, 209.1)');
             Set<String> motivos = new Set<String>();
             for (Registro_Procesamiento__c t : trazas) {
                 Assert.areEqual('Rechazada', t.Resultado__c, 'El rechazo es un desenlace de negocio, no un fallo técnico');
@@ -137,11 +137,11 @@ private class ProcesamientoSenalServiceTest {
     }
 
     @isTest
-    static void procesar_loteTodoValido_insertaLecturasSinTraza() {
+    static void procesar_loteTodoValido_insertaLecturasYTrazaProcesadas() {
         // 200 eventos válidos y todos nuevos sobre el mismo activo (misma Clave_Estado__c): TRES consultas
-        // (activos + lecturas existentes + estados previos) y TRES DML (punto de retorno + inserción de
-        // lecturas + upsert del estado); ninguna traza (un todo válido no deja duplicados ni conflictos, y
-        // las procesadas son de 209.1). Como comparten clave de estado, queda UN solo Estado_Medicion__c.
+        // (activos + lecturas existentes + estados previos) y CUATRO DML (punto de retorno + inserción de
+        // lecturas + upsert del estado + UNA sola inserción de trazas Procesada, 209.1). Como comparten
+        // clave de estado, queda UN solo Estado_Medicion__c.
         List<Senal_Sensor__e> lote = new List<Senal_Sensor__e>();
         for (Integer i = 0; i < 200; i++) {
             lote.add(medicion('prueba|msg_' + i, ID_TEMP, 'TEMPERATURE', 'CELSIUS'));
@@ -153,14 +153,15 @@ private class ProcesamientoSenalServiceTest {
         ProcesamientoSenalService.procesar(lote);
         Assert.areEqual(soql + 3, Limits.getQueries(),
             'Una consulta de activos, una de lecturas existentes y una de estados previos: nada por evento');
-        Assert.areEqual(dml + 3, Limits.getDmlStatements(),
-            'Punto de retorno del lote (1) + inserción de lecturas (1) + upsert del estado (1): nada por evento');
+        Assert.areEqual(dml + 4, Limits.getDmlStatements(),
+            'Punto de retorno (1) + inserción de lecturas (1) + upsert del estado (1) + UNA inserción de trazas (1): nada por evento');
         Test.stopTest();
 
         Assert.areEqual(200, [SELECT COUNT() FROM Lectura_Sensor__c], 'Se guarda una lectura por evento del lote');
         Assert.areEqual(1, [SELECT COUNT() FROM Estado_Medicion__c],
             'Las 200 comparten Clave_Estado__c: una sola ganadora fija un solo estado');
-        Assert.areEqual(0, [SELECT COUNT() FROM Registro_Procesamiento__c], 'Un lote todo válido y nuevo no deja ninguna traza');
+        Assert.areEqual(200, [SELECT COUNT() FROM Registro_Procesamiento__c WHERE Resultado__c = 'Procesada'],
+            'Un lote todo válido y nuevo deja una traza Procesada por lectura guardada (209.1)');
     }
 
     @isTest
@@ -257,7 +258,8 @@ private class ProcesamientoSenalServiceTest {
         Assert.isNull(lectura.Umbral_Aplicado__c, 'El umbral lo aplica 204.1');
         Assert.isFalse(lectura.Atrasada__c, 'La marca de atrasada la pone 203.1');
         Assert.isNull(lectura.Intervencion__c, 'La intervención la crea 205');
-        Assert.areEqual(0, [SELECT COUNT() FROM Registro_Procesamiento__c], 'Una lectura nueva no deja traza (las procesadas son de 209.1)');
+        Assert.areEqual(1, [SELECT COUNT() FROM Registro_Procesamiento__c WHERE Resultado__c = 'Procesada'],
+            'Una lectura nueva guardada deja su traza Procesada (209.1)');
     }
 
     @isTest
@@ -345,7 +347,7 @@ private class ProcesamientoSenalServiceTest {
         Test.stopTest();
 
         Assert.areEqual(1, [SELECT COUNT() FROM Lectura_Sensor__c], 'Solo se guarda la primera del lote');
-        Registro_Procesamiento__c t = [SELECT Resultado__c, Lectura__c FROM Registro_Procesamiento__c];
+        Registro_Procesamiento__c t = [SELECT Resultado__c, Lectura__c FROM Registro_Procesamiento__c WHERE Resultado__c = 'Duplicada'];
         Assert.areEqual('Duplicada', t.Resultado__c, 'La segunda del lote es un duplicado');
         Assert.areEqual([SELECT Id FROM Lectura_Sensor__c].Id, t.Lectura__c,
             'La traza del duplicado intra-lote apunta a la lectura ya insertada de la primera');
@@ -363,7 +365,7 @@ private class ProcesamientoSenalServiceTest {
 
         Assert.areEqual(1, [SELECT COUNT() FROM Lectura_Sensor__c], 'Solo se guarda la primera; la segunda no se elige');
         Assert.areEqual(21.5, [SELECT Valor__c FROM Lectura_Sensor__c].Valor__c, 'La guardada es la primera del lote');
-        Registro_Procesamiento__c t = [SELECT Resultado__c, Motivo__c FROM Registro_Procesamiento__c];
+        Registro_Procesamiento__c t = [SELECT Resultado__c, Motivo__c FROM Registro_Procesamiento__c WHERE Resultado__c = 'Conflicto'];
         Assert.areEqual('Conflicto', t.Resultado__c, 'La segunda es un conflicto');
         Assert.areEqual('COLISION_CLAVE', t.Motivo__c, 'Lleva Motivo COLISION_CLAVE');
     }
@@ -500,8 +502,8 @@ private class ProcesamientoSenalServiceTest {
         Estado_Medicion__c estado = [SELECT Ultimo_Valor__c, Ocurrido_En__c FROM Estado_Medicion__c];
         Assert.areEqual(50, estado.Ultimo_Valor__c, 'La atrasada no mueve el estado');
         Assert.areEqual(OCURRIDO, estado.Ocurrido_En__c, 'El estado conserva la fecha del más reciente');
-        Assert.areEqual(0, [SELECT COUNT() FROM Registro_Procesamiento__c],
-            'La traza de atrasada es de 209.1: esta tarea no la escribe');
+        Assert.areEqual(1, [SELECT COUNT() FROM Registro_Procesamiento__c WHERE Resultado__c = 'Atrasada'],
+            'La señal atrasada deja su traza Atrasada (209.1), no una Procesada');
     }
 
     @isTest
@@ -675,8 +677,8 @@ private class ProcesamientoSenalServiceTest {
         Test.startTest();
         Integer dml = Limits.getDmlStatements();
         ProcesamientoSenalService.procesar(lote);
-        Assert.areEqual(dml + 3, Limits.getDmlStatements(),
-            'Punto de retorno + inserción de lecturas + UN solo upsert para los 200 estados');
+        Assert.areEqual(dml + 4, Limits.getDmlStatements(),
+            'Punto de retorno + inserción de lecturas + UN solo upsert para los 200 estados + UNA inserción de trazas (209.1)');
         Test.stopTest();
 
         Assert.areEqual(200, [SELECT COUNT() FROM Estado_Medicion__c], 'Un estado por cada activo+medición distinto');

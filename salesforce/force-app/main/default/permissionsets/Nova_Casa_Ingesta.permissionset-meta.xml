@@ -274,6 +274,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Registro_Procesamiento__c.Ocurrido_En__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Registro_Procesamiento__c.Procesado_En__c</field>
         <readable>true</readable>
     </fieldPermissions>

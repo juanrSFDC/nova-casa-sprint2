@@ -48,6 +48,7 @@
         <members>ProcesamientoSenalServiceTest</members>
         <members>RegistroProcesamientoService</members>
         <members>RegistroProcesamientoServiceTest</members>
+        <members>RegistroProcesamientoUS209Test</members>
         <members>SenalSensorDomain</members>
         <members>SenalSensorDomainTest</members>
         <members>SenalSensorService</members>
@@ -84,7 +85,26 @@
         <name>QuickAction</name>
     </types>
     <types>
+        <members>Registro_Procesamiento__c.Clave_Mensaje__c</members>
+        <members>Registro_Procesamiento__c.Ocurrido_En__c</members>
+        <members>Registro_Procesamiento__c.Referencia__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Registro_Procesamiento__c</members>
+        <name>CustomTab</name>
+    </types>
+    <types>
+        <members>Registro_Procesamiento__c.Atrasadas</members>
+        <members>Registro_Procesamiento__c.Duplicadas_y_conflictos</members>
+        <members>Registro_Procesamiento__c.Fallos_tecnicos_reintentables</members>
+        <members>Registro_Procesamiento__c.Rechazadas</members>
+        <members>Registro_Procesamiento__c.Todas_las_trazas</members>
+        <name>ListView</name>
+    </types>
+    <types>
         <members>Control_Ingesta__c-Control de ingesta Layout</members>
+        <members>Registro_Procesamiento__c-Registro de procesamiento Layout</members>
         <name>Layout</name>
     </types>
     <types>

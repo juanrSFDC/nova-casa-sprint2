@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Rechazadas</fullName>
+    <columns>NAME</columns>
+    <columns>Resultado__c</columns>
+    <columns>Motivo__c</columns>
+    <columns>Clave_Mensaje__c</columns>
+    <columns>Ocurrido_En__c</columns>
+    <columns>Recibido_En__c</columns>
+    <columns>Procesado_En__c</columns>
+    <columns>Reintentable__c</columns>
+    <columns>Escrito_Por__c</columns>
+    <columns>Lectura__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Resultado__c</field>
+        <operation>equals</operation>
+        <value>Rechazada</value>
+    </filters>
+    <label>Rechazadas</label>
+</ListView>

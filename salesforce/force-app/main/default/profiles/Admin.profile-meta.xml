@@ -268,6 +268,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Registro_Procesamiento__c.Ocurrido_En__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Registro_Procesamiento__c.Procesado_En__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -496,4 +501,8 @@
         <field>Umbral_Medicion__c.Valor_Invalido__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <tabVisibilities>
+        <tab>Registro_Procesamiento__c</tab>
+        <visibility>DefaultOn</visibility>
+    </tabVisibilities>
 </Profile>
