@@ -149,9 +149,11 @@ public with sharing class SenalSensorDomain {
         senal.tipoActivo = activo.Tipo_Activo__c;
         senal.ocurridoEn = evento.Ocurrido_En__c;
         if (tipo == TIPO_MEASUREMENT) {
-            senal.tipoMedicion = evento.Tipo_Medicion__c;
+            // Los valores canónicos son los del activo: == en Apex no distingue mayúsculas, así que
+            // 'temperature' pasó la validación contra 'TEMPERATURE' y no debe llegar así a la picklist.
+            senal.tipoMedicion = activo.Medicion_Esperada__c;
             senal.valor = evento.Valor__c;
-            senal.unidad = evento.Unidad__c;
+            senal.unidad = activo.Unidad_Esperada__c;
         } else {
             senal.tipoMedicion = MEDICION_CONNECTIVITY;
             senal.valor = evento.Segundos_Sin_Senal__c;

@@ -155,6 +155,22 @@ private class SenalSensorDomainTest {
     }
 
     @isTest
+    static void medicionEnMinusculas_seNormalizaConLosValoresDelActivo() {
+        Senal_Sensor__e evento = eventoMedicion();
+        evento.Tipo_Medicion__c = 'temperature';
+        evento.Unidad__c = 'celsius';
+
+        SenalSensorDomain.ResultadoValidacion r = SenalSensorDomain.validar(
+            new List<Senal_Sensor__e>{ evento }, activos());
+
+        Assert.areEqual(1, r.validas.size(), 'Apex compara textos sin distinguir mayúsculas: la señal es válida');
+        Assert.isTrue(r.validas[0].tipoMedicion.equals('TEMPERATURE'),
+            'La medición se normaliza al valor canónico del activo, apto para la picklist');
+        Assert.isTrue(r.validas[0].unidad.equals('CELSIUS'), 'La unidad también se normaliza');
+        Assert.isTrue(r.validas[0].claveEstado.equals(ID_TEMP + '|TEMPERATURE'), 'La clave de estado usa el valor canónico');
+    }
+
+    @isTest
     static void connectivityBienFormada_traduce() {
         SenalSensorDomain.ResultadoValidacion r = SenalSensorDomain.validar(
             new List<Senal_Sensor__e>{ eventoConectividad() }, activos());
