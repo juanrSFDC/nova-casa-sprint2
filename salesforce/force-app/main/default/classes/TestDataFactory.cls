@@ -156,6 +156,54 @@ public with sharing class TestDataFactory {
     }
 
     /**
+     * Un Estado_Medicion__c ya guardado, con Clave_Estado__c única y una medición coherente por defecto,
+     * sobre el que aplicar overrides. Activo__c es requerido (master-detail): el llamador DEBE pasarlo por
+     * overrides. Útil para sembrar el estado GUARDADO antes del lote en las pruebas de 203.x (atrasadas,
+     * empate contra el estado); para el empate por severidad/messageId, pásalos por Severidad_Nivel__c y
+     * Lectura_Ganadora__c en overrides.
+     *
+     * @param overrides Campos a sobrescribir (por SObjectField), o null. Debe incluir Activo__c
+     * @param doInsert Si insertar el registro
+     * @return El estado creado
+     */
+    public static Estado_Medicion__c createEstadoMedicion(Map<SObjectField, Object> overrides, Boolean doInsert) {
+        return createEstadosMedicion(1, overrides, doInsert)[0];
+    }
+
+    /**
+     * Varios Estado_Medicion__c con Clave_Estado__c única (índice único) y medición coherente. Activo__c es
+     * requerido: pásalo por overrides (el mismo para todos).
+     *
+     * @param cuantos Cuántos crear
+     * @param overrides Campos a sobrescribir en cada uno, o null. Debe incluir Activo__c
+     * @param doInsert Si insertar los registros
+     * @return Los estados creados
+     */
+    public static List<Estado_Medicion__c> createEstadosMedicion(Integer cuantos, Map<SObjectField, Object> overrides, Boolean doInsert) {
+        List<Estado_Medicion__c> registros = new List<Estado_Medicion__c>();
+        for (Integer i = 0; i < cuantos; i++) {
+            Estado_Medicion__c registro = new Estado_Medicion__c(
+                Clave_Estado__c = 'AST-TEST-' + i + '|TEMPERATURE',
+                Tipo_Medicion__c = 'TEMPERATURE',
+                Ultimo_Valor__c = 21.5,
+                Unidad__c = 'CELSIUS',
+                Ocurrido_En__c = Datetime.newInstanceGmt(2026, 9, 26, 12, 0, 0),
+                Actualizado_En__c = Datetime.newInstanceGmt(2026, 9, 26, 12, 0, 5)
+            );
+            if (overrides != null) {
+                for (SObjectField campo : overrides.keySet()) {
+                    registro.put(campo, overrides.get(campo));
+                }
+            }
+            registros.add(registro);
+        }
+        if (doInsert) {
+            insert registros;
+        }
+        return registros;
+    }
+
+    /**
      * Un usuario de pruebas con el perfil de acceso mínimo y SOLO el Permission Set Nova_Casa_Ingesta,
      * para probar que con esos permisos se lee la config, se guarda el cursor y se crea la traza.
      * Falla ruidoso si el perfil o el permission set no existen en la org.

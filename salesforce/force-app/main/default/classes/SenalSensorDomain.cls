@@ -29,6 +29,14 @@ public with sharing class SenalSensorDomain {
     private static final String MOTIVO_VALOR_NO_NUMERICO = 'VALOR_NO_NUMERICO';
     private static final String MOTIVO_FECHA_INVALIDA = 'FECHA_INVALIDA';
 
+    /** Nivel numérico de cada severidad para el MAX del activo y el desempate (US-203, Anexo A.6).
+     *  Sin_Configurar y la severidad vacía no tienen nivel (null): no cuentan en el MAX. */
+    private static final Map<String, Integer> NIVEL_POR_SEVERIDAD = new Map<String, Integer>{
+        'Normal' => 1,
+        'Advertencia' => 2,
+        'Critico' => 3
+    };
+
     /**
      * Resultado de validar un lote: las señales válidas (normalizadas, en el orden del lote) y los rechazos.
      */
@@ -197,6 +205,79 @@ public with sharing class SenalSensorDomain {
             evento.Segundos_Sin_Senal__c == null ? '' : String.valueOf(evento.Segundos_Sin_Senal__c)
         };
         return EncodingUtil.convertToHex(Crypto.generateDigest('SHA-256', Blob.valueOf(String.join(partes, '|'))));
+    }
+
+    /**
+     * Nivel numérico de una severidad sellada (US-203): Normal=1, Advertencia=2, Critico=3. La severidad
+     * vacía, nula o Sin_Configurar NO tiene nivel (null): así no cuenta en el MAX del activo y pierde el
+     * desempate frente a cualquier severidad con nivel. Se compara con equalsIgnoreCase implícito del Map,
+     * no: la clave se busca tal cual llega de la picklist. Sin SOQL ni DML.
+     *
+     * @param severidad Valor de la picklist de severidad (Severidad_Sellada__c/Severidad__c) o null
+     * @return 1/2/3, o null si no hay nivel (vacío o Sin_Configurar)
+     * @example
+     * Integer nivel = SenalSensorDomain.nivelDeSeveridad('Critico'); // 3
+     */
+    public static Integer nivelDeSeveridad(String severidad) {
+        if (String.isBlank(severidad)) {
+            return null;
+        }
+        return NIVEL_POR_SEVERIDAD.get(severidad);
+    }
+
+    /**
+     * Regla determinista de "quién gana" el estado (US-203, Anexo A.6), pura y reutilizable dentro del lote
+     * y contra el estado guardado: devuelve true si el PRIMER candidato gana ESTRICTAMENTE al segundo.
+     * Orden de desempate:
+     *   1) Ocurrido_En más reciente. Una fecha no nula gana a una nula; dos nulas siguen al nivel.
+     *   2) Empate de fecha → mayor nivel de severidad (3 > 2 > 1 > sin nivel). Un nivel no nulo gana a null.
+     *   3) Empate de fecha y nivel → mayor messageId por compareTo (exacto, sensible a mayúsculas, NO ==).
+     *      Dos messageId nulos empatan (false); uno nulo pierde frente al no nulo.
+     * Un empate total devuelve false (no reemplaza: no hay razón para mover el estado). Sin SOQL ni DML.
+     *
+     * @param ocurridoUno Ocurrido_En del primer candidato
+     * @param nivelUno Nivel de severidad del primero (nivelDeSeveridad), o null
+     * @param mensajeUno messageId del primero (Id_Mensaje__c), o null
+     * @param ocurridoDos Ocurrido_En del segundo candidato
+     * @param nivelDos Nivel de severidad del segundo, o null
+     * @param mensajeDos messageId del segundo, o null
+     * @return true si el primero gana estrictamente al segundo
+     * @example
+     * Boolean gana = SenalSensorDomain.ganaEstado(fechaA, 3, 'msg_5', fechaB, 2, 'msg_4');
+     */
+    public static Boolean ganaEstado(Datetime ocurridoUno, Integer nivelUno, String mensajeUno,
+            Datetime ocurridoDos, Integer nivelDos, String mensajeDos) {
+        // 1. Fecha de origen: manda el orden.
+        if (ocurridoUno != null && ocurridoDos != null) {
+            if (ocurridoUno > ocurridoDos) {
+                return true;
+            }
+            if (ocurridoUno < ocurridoDos) {
+                return false;
+            }
+        } else if (ocurridoUno != null || ocurridoDos != null) {
+            return ocurridoUno != null;  // una fecha real gana a una ausente
+        }
+        // 2. Empate de fecha → mayor severidad (un nivel real gana a la ausencia de nivel).
+        if (nivelUno != null && nivelDos != null) {
+            if (nivelUno > nivelDos) {
+                return true;
+            }
+            if (nivelUno < nivelDos) {
+                return false;
+            }
+        } else if (nivelUno != null || nivelDos != null) {
+            return nivelUno != null;
+        }
+        // 3. Empate de fecha y nivel → mayor messageId (compareTo exacto).
+        if (String.isNotBlank(mensajeUno) && String.isNotBlank(mensajeDos)) {
+            return mensajeUno.compareTo(mensajeDos) > 0;
+        }
+        if (String.isNotBlank(mensajeUno) || String.isNotBlank(mensajeDos)) {
+            return String.isNotBlank(mensajeUno);
+        }
+        // Empate total: no reemplaza.
+        return false;
     }
 
     /** Texto legible de un valor que puede venir en blanco, para el detalle del rechazo. */

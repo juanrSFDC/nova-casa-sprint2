@@ -5,9 +5,9 @@
  * La llama: SenalSensorTriggerHandler, con Trigger.new del suscriptor.
  * Contrato: docs/entrega-discovery-sprint2.md §3.1 (pasos a–e y camino rojo) y §3.4 (orden del lote).
  *
- * Estado de los pasos: validar (202.2), deduplicar (202.3), guardar lecturas (202.3) y la traza de
- * rechazos, duplicados y conflictos YA funcionan. Siguen vacíos: clasificar (204.1, Juan Flórez),
- * reducir colisiones y marcar atrasadas (203.1), estado actual (203.2), intervenciones (205, Juan
+ * Estado de los pasos: validar (202.2), deduplicar (202.3), guardar lecturas (202.3), reducir colisiones
+ * y marcar atrasadas (203.1), mantener el estado actual (203.2) y la traza de rechazos, duplicados y
+ * conflictos YA funcionan. Siguen vacíos: clasificar (204.1, Juan Flórez), intervenciones (205, Juan
  * Flórez) y la traza de procesadas y atrasadas (209.1).
  *
  * CAMINO DE FALLO: si el pipeline lanza una excepción
@@ -54,7 +54,8 @@ public with sharing class ProcesamientoSenalService {
      * válidas ya normalizadas, los rechazos de negocio y la hora del lote (una sola, para toda la traza).
      * A partir de 202.3 también lleva las válidas NUEVAS (las que sobreviven a la deduplicación y se
      * guardan), los desenlaces de duplicado/conflicto pendientes de traza y las lecturas ya insertadas.
-     * Cada paso lo lee y lo enriquece.
+     * En 203.x suma los estados guardados ANTES del lote (por Clave_Estado__c en minúsculas), con los que
+     * se marca atrasadas y se decide la ganadora contra el estado. Cada paso lo lee y lo enriquece.
      */
     private class ContextoLote {
         List<Senal_Sensor__e> eventos;
@@ -63,6 +64,7 @@ public with sharing class ProcesamientoSenalService {
         List<SenalValidada> validasNuevas = new List<SenalValidada>();
         List<DedupPendiente> dedupPendientes = new List<DedupPendiente>();
         List<Lectura_Sensor__c> lecturasInsertadas = new List<Lectura_Sensor__c>();
+        Map<String, Estado_Medicion__c> estadosPrevios = new Map<String, Estado_Medicion__c>();
         Datetime ahora = Datetime.now();
 
         ContextoLote(List<Senal_Sensor__e> eventos) {
@@ -91,12 +93,13 @@ public with sharing class ProcesamientoSenalService {
     }
 
     /**
-     * Procesa el lote en el orden fijo de §3.4. En 202.3 funcionan el paso a (validación y resolución de
-     * activos), el paso b (deduplicación: duplicados y conflictos), la persistencia de las lecturas nuevas
-     * y la traza de rechazos, duplicados y conflictos (una inserción por lote). Los pasos de clasificación
-     * (204.1), reducción/atrasadas (203.1), estado (203.2) e intervención (205) siguen vacíos. El camino de
-     * fallo (try/catch → rollback al punto de retorno → Fallo_Tecnico reintentable) sigue igual: si un paso
-     * ya escribió lecturas o trazas y algo falla después, se deshacen. Un lote nulo o vacío no hace nada.
+     * Procesa el lote en el orden fijo de §3.4. Funcionan el paso a (validación y resolución de activos),
+     * el paso b (deduplicación: duplicados y conflictos), la reducción de colisiones y el marcado de
+     * atrasadas (203.1), la persistencia de las lecturas nuevas, el upsert del estado actual (203.2) y la
+     * traza de rechazos, duplicados y conflictos (una inserción por lote). Los pasos de clasificación
+     * (204.1) e intervención (205) siguen vacíos. El camino de fallo (try/catch → rollback al punto de
+     * retorno → Fallo_Tecnico reintentable) sigue igual: si un paso ya escribió lecturas, estados o trazas
+     * y algo falla después, se deshacen. Un lote nulo o vacío no hace nada.
      *
      * @param eventos Los Senal_Sensor__e a procesar (Trigger.new)
      */
@@ -198,10 +201,60 @@ public with sharing class ProcesamientoSenalService {
     }
 
     /**
-     * Paso d (203.1): reduce colisiones dentro del lote (una ganadora por Clave_Estado__c) y marca
-     * las atrasadas comparando Ocurrido_En__c con el estado actual. VACÍO en 202.1: lo llena 203.1.
+     * Paso d (203.1): prepara en memoria, ANTES de insertar, qué señal fija el estado de cada
+     * Clave_Estado__c y cuáles son atrasadas. En UNA consulta trae los estados guardados ANTES del lote
+     * (EstadoMedicionSelector) y los deja en el contexto. Luego, sobre las válidas NUEVAS:
+     * - ATRASADA: si su Ocurrido_En__c es ESTRICTAMENTE anterior al del estado guardado, se marca
+     *   atrasada (su lectura se guarda como evidencia, pero no compite por el estado). Se compara contra
+     *   el estado PREVIO al lote, no contra la ganadora del propio lote: así una 2.ª crítica del mismo
+     *   lote no queda atrasada y podrá abrir intervención (D-6, Anexo A.6).
+     * - GANADORA: entre las NO atrasadas de cada clave se elige una con la regla determinista
+     *   SenalSensorDomain.ganaEstado (fecha → severidad → messageId). La ganadora fija el estado solo si
+     *   no hay estado previo, o si además gana a ese estado con la misma regla (así un empate de fecha
+     *   contra lo guardado no mueve la pantalla). La severidad sale de senal.severidadSellada (única
+     *   fuente; 204.1 la llenará, hoy null → el desempate cae en el messageId).
+     * Todas las válidas nuevas se guardan igual; solo la ganadora toca el estado (upsertEstado).
      */
     private static void reducirColisionesYMarcarAtrasadas(ContextoLote ctx) {
+        if (ctx.validasNuevas.isEmpty()) {
+            return;
+        }
+        Set<String> claves = new Set<String>();
+        for (SenalValidada senal : ctx.validasNuevas) {
+            claves.add(senal.claveEstado);
+        }
+        ctx.estadosPrevios = new EstadoMedicionSelector().porClaveEstado(claves);
+
+        Map<String, SenalValidada> ganadoraPorClave = new Map<String, SenalValidada>();
+        for (SenalValidada senal : ctx.validasNuevas) {
+            String claveFold = senal.claveEstado.toLowerCase();
+            Estado_Medicion__c previo = ctx.estadosPrevios.get(claveFold);
+            // Atrasada: estrictamente anterior al estado guardado antes del lote.
+            if (previo != null && previo.Ocurrido_En__c != null && senal.ocurridoEn != null
+                    && senal.ocurridoEn < previo.Ocurrido_En__c) {
+                senal.atrasada = true;
+                continue;  // no compite por el estado
+            }
+            SenalValidada mejor = ganadoraPorClave.get(claveFold);
+            if (mejor == null || SenalSensorDomain.ganaEstado(
+                    senal.ocurridoEn, SenalSensorDomain.nivelDeSeveridad(senal.severidadSellada), senal.evento.Id_Mensaje__c,
+                    mejor.ocurridoEn, SenalSensorDomain.nivelDeSeveridad(mejor.severidadSellada), mejor.evento.Id_Mensaje__c)) {
+                ganadoraPorClave.put(claveFold, senal);
+            }
+        }
+        // La ganadora del lote fija el estado solo si no hay previo o si también gana a ese estado.
+        for (String claveFold : ganadoraPorClave.keySet()) {
+            SenalValidada ganadora = ganadoraPorClave.get(claveFold);
+            Estado_Medicion__c previo = ctx.estadosPrevios.get(claveFold);
+            if (previo == null) {
+                ganadora.ganadoraEstado = true;
+            } else {
+                ganadora.ganadoraEstado = SenalSensorDomain.ganaEstado(
+                    ganadora.ocurridoEn, SenalSensorDomain.nivelDeSeveridad(ganadora.severidadSellada), ganadora.evento.Id_Mensaje__c,
+                    previo.Ocurrido_En__c, previo.Severidad_Nivel__c == null ? null : previo.Severidad_Nivel__c.intValue(),
+                    previo.Lectura_Ganadora__r?.Id_Mensaje__c);
+            }
+        }
     }
 
     /**
@@ -210,8 +263,8 @@ public with sharing class ProcesamientoSenalService {
      * cada lectura guardada se enlaza a su SenalValidada (203/205); una que choque con el índice único
      * (DUPLICATE_VALUE, una carrera de otra transacción) se reconsulta y se degrada a duplicado o conflicto,
      * sin tumbar el lote; cualquier OTRO error de guardado rompe el pipeline para que el catch de procesar
-     * deshaga el lote entero (todo-o-nada). NO llena severidad, umbral, atrasada ni intervención: esos
-     * pasos (204.1/203.1/205) los preparan en memoria antes de aquí; en 202.3 salen nulos.
+     * deshaga el lote entero (todo-o-nada). Sella Atrasada__c con lo que marcó 203.1; NO llena severidad,
+     * umbral ni intervención: esos pasos (204.1/205) los preparan en memoria antes de aquí; hoy salen nulos.
      */
     private static void insertarLecturas(ContextoLote ctx) {
         if (carreraInyectada != null && !carreraInyectada.isEmpty()) {
@@ -291,6 +344,7 @@ public with sharing class ProcesamientoSenalService {
             Valor__c = senal.valor,
             Unidad__c = senal.unidad,
             Ocurrido_En__c = senal.ocurridoEn,
+            Atrasada__c = senal.atrasada,
             Publicado_En__c = evento.Publicado_En__c,
             Recibido_En__c = evento.Recibido_En__c,
             Version_Contrato__c = evento.Version_Contrato__c,
@@ -302,10 +356,43 @@ public with sharing class ProcesamientoSenalService {
     }
 
     /**
-     * Paso e (203.2): upsert de Estado_Medicion__c por Clave_Estado__c, actualizando solo si la señal
-     * es más reciente y enlazando la lectura ganadora. VACÍO en 202.1: lo llena la tarea 203.2.
+     * Paso e (203.2): mantiene el estado actual por Clave_Estado__c con las ganadoras del lote. Corre
+     * DESPUÉS de insertar las lecturas: por cada señal marcada ganadoraEstado cuya lectura SÍ se guardó
+     * (si la ganadora chocó en carrera y se degradó, senal.lectura queda nula y no toca el estado),
+     * arma su Estado_Medicion__c y hace UN solo upsert por Clave_Estado__c en modo usuario. Activo__c
+     * solo se pone en los estados NUEVOS (no había previo): el master-detail no es reparentable, así que
+     * en las actualizaciones se omite para no romper el DML. Severidad__c/Severidad_Nivel__c salen de la
+     * severidad sellada (204.1; hoy null). allOrNone=true: cualquier fallo del upsert sube al catch de
+     * procesar → rollback al punto de retorno → Fallo_Tecnico, sin dejar el estado a medias.
      */
     private static void upsertEstado(ContextoLote ctx) {
+        List<Estado_Medicion__c> estados = new List<Estado_Medicion__c>();
+        for (SenalValidada senal : ctx.validasNuevas) {
+            if (!senal.ganadoraEstado || senal.lectura == null) {
+                continue;
+            }
+            Estado_Medicion__c estado = new Estado_Medicion__c(
+                Clave_Estado__c = senal.claveEstado,
+                Tipo_Medicion__c = senal.tipoMedicion,
+                Ultimo_Valor__c = senal.valor,
+                Unidad__c = senal.unidad,
+                Ocurrido_En__c = senal.ocurridoEn,
+                Severidad__c = senal.severidadSellada,
+                Severidad_Nivel__c = SenalSensorDomain.nivelDeSeveridad(senal.severidadSellada),
+                Lectura_Ganadora__c = senal.lectura.Id,
+                Actualizado_En__c = ctx.ahora
+            );
+            // Nuevo estado (sin previo): enlaza el activo del master-detail. En una actualización no se
+            // toca Activo__c (no reparentable).
+            if (!ctx.estadosPrevios.containsKey(senal.claveEstado.toLowerCase())) {
+                estado.Activo__c = senal.activo.Id;
+            }
+            estados.add(estado);
+        }
+        if (estados.isEmpty()) {
+            return;
+        }
+        Database.upsert(estados, Estado_Medicion__c.Clave_Estado__c, true, AccessLevel.USER_MODE);
     }
 
     /**

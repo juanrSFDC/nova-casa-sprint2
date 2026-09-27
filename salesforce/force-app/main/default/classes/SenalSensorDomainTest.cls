@@ -3,7 +3,9 @@
  *
  * Cubren: una prueba por motivo de rechazo (en el orden en que ganan), la normalización de MEASUREMENT
  * y CONNECTIVITY, que un estado de comunicación desconocido no rechaza, que una fecha futura no rechaza,
- * la precedencia de reglas y un lote mixto con cuentas exactas y orden conservado. Todo en memoria, sin DML.
+ * la precedencia de reglas y un lote mixto con cuentas exactas y orden conservado. También la regla de
+ * "quién gana" el estado (US-203: fecha → severidad → messageId, con sus casos nulos), que queda probada
+ * aunque 204.1 aún no selle severidad. Todo en memoria, sin DML.
  */
 @isTest
 private class SenalSensorDomainTest {
@@ -298,6 +300,81 @@ private class SenalSensorDomainTest {
         Assert.areEqual(0, vacio.validas.size(), 'Un lote vacío no produce válidas');
         Assert.areEqual(0, vacio.rechazos.size(), 'Un lote vacío no produce rechazos');
         Assert.areEqual(0, nulo.validas.size(), 'Un lote nulo no produce válidas');
+    }
+
+    // ─── Regla de "quién gana" el estado (US-203, Anexo A.6) ────────────────
+
+    private static final Datetime T_TARDE = Datetime.newInstanceGmt(2026, 9, 26, 13, 0, 0);
+    private static final Datetime T_TEMPRANO = Datetime.newInstanceGmt(2026, 9, 26, 12, 0, 0);
+
+    @isTest
+    static void nivelDeSeveridad_mapeaCadaValor() {
+        Assert.areEqual(1, SenalSensorDomain.nivelDeSeveridad('Normal'), 'Normal es nivel 1');
+        Assert.areEqual(2, SenalSensorDomain.nivelDeSeveridad('Advertencia'), 'Advertencia es nivel 2');
+        Assert.areEqual(3, SenalSensorDomain.nivelDeSeveridad('Critico'), 'Critico es nivel 3');
+        Assert.isNull(SenalSensorDomain.nivelDeSeveridad('Sin_Configurar'), 'Sin_Configurar no tiene nivel');
+        Assert.isNull(SenalSensorDomain.nivelDeSeveridad(null), 'Null no tiene nivel');
+        Assert.isNull(SenalSensorDomain.nivelDeSeveridad('   '), 'Vacío no tiene nivel');
+    }
+
+    @isTest
+    static void ganaEstado_masReciente_gana() {
+        Assert.isTrue(SenalSensorDomain.ganaEstado(T_TARDE, null, 'a', T_TEMPRANO, 3, 'z'),
+            'La fecha más reciente gana aunque tenga menor severidad y menor messageId');
+        Assert.isFalse(SenalSensorDomain.ganaEstado(T_TEMPRANO, 3, 'z', T_TARDE, null, 'a'),
+            'La fecha más antigua pierde');
+    }
+
+    @isTest
+    static void ganaEstado_empateFecha_mayorSeveridadGana() {
+        Assert.isTrue(SenalSensorDomain.ganaEstado(T_TARDE, 3, 'a', T_TARDE, 2, 'z'),
+            'Con la misma fecha, mayor severidad gana aunque tenga menor messageId');
+        Assert.isFalse(SenalSensorDomain.ganaEstado(T_TARDE, 1, 'z', T_TARDE, 2, 'a'),
+            'Con la misma fecha, menor severidad pierde');
+    }
+
+    @isTest
+    static void ganaEstado_severidadGanaASinSeveridad() {
+        Assert.isTrue(SenalSensorDomain.ganaEstado(T_TARDE, 1, 'a', T_TARDE, null, 'z'),
+            'Un nivel real gana a la ausencia de nivel');
+        Assert.isFalse(SenalSensorDomain.ganaEstado(T_TARDE, null, 'z', T_TARDE, 1, 'a'),
+            'La ausencia de nivel pierde frente a un nivel real');
+    }
+
+    @isTest
+    static void ganaEstado_empateFechaYNivel_mayorMensajeGana() {
+        Assert.isTrue(SenalSensorDomain.ganaEstado(T_TARDE, 2, 'msg_9', T_TARDE, 2, 'msg_1'),
+            'Empate de fecha y nivel: mayor messageId gana (compareTo)');
+        Assert.isFalse(SenalSensorDomain.ganaEstado(T_TARDE, 2, 'msg_1', T_TARDE, 2, 'msg_9'),
+            'Empate de fecha y nivel: menor messageId pierde');
+        Assert.isTrue(SenalSensorDomain.ganaEstado(T_TARDE, 2, 'B', T_TARDE, 2, 'A'),
+            'compareTo es sensible a mayúsculas: B > A (no como ==)');
+    }
+
+    @isTest
+    static void ganaEstado_mensajesNulos_noLanzaYEsDeterminista() {
+        Assert.isFalse(SenalSensorDomain.ganaEstado(T_TARDE, 2, null, T_TARDE, 2, null),
+            'Dos messageId nulos empatan (no reemplaza) y no lanza NPE');
+        Assert.isTrue(SenalSensorDomain.ganaEstado(T_TARDE, 2, 'msg_1', T_TARDE, 2, null),
+            'Un messageId real gana al nulo');
+        Assert.isFalse(SenalSensorDomain.ganaEstado(T_TARDE, 2, null, T_TARDE, 2, 'msg_1'),
+            'Un messageId nulo pierde frente al real');
+    }
+
+    @isTest
+    static void ganaEstado_fechaNull_realGanaANull() {
+        Assert.isTrue(SenalSensorDomain.ganaEstado(T_TARDE, null, 'a', null, 3, 'z'),
+            'Una fecha real gana a la ausencia de fecha, antes de mirar severidad');
+        Assert.isFalse(SenalSensorDomain.ganaEstado(null, 3, 'z', T_TARDE, null, 'a'),
+            'La ausencia de fecha pierde frente a una fecha real');
+    }
+
+    @isTest
+    static void ganaEstado_empateTotal_devuelveFalse() {
+        Assert.isFalse(SenalSensorDomain.ganaEstado(T_TARDE, 2, 'msg_1', T_TARDE, 2, 'msg_1'),
+            'Un empate total no reemplaza el estado');
+        Assert.isFalse(SenalSensorDomain.ganaEstado(null, null, null, null, null, null),
+            'Todo nulo no reemplaza y no lanza');
     }
 
     // ─── Ayudantes ──────────────────────────────────────────────────────────

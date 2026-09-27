@@ -27,6 +27,8 @@
         <members>ControlIngestaSelectorTest</members>
         <members>ControlIngestaService</members>
         <members>ControlIngestaServiceTest</members>
+        <members>EstadoMedicionSelector</members>
+        <members>EstadoMedicionSelectorTest</members>
         <members>IngestaFinalizer</members>
         <members>IngestaManualAction</members>
         <members>IngestaManualActionTest</members>
