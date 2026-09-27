@@ -20,6 +20,8 @@ public with sharing class RegistroProcesamientoService {
     private static final String RESULTADO_RECHAZADA = 'Rechazada';
     private static final String MOTIVO_SIN_IDENTIDAD = 'SIN_IDENTIDAD';
     private static final String ESCRITO_POR_INGESTA = 'Ingesta';
+    private static final String ESCRITO_POR_SUSCRIPTOR = 'Suscriptor';
+    private static final Set<String> TIPOS_MENSAJE_VALIDOS = new Set<String>{ 'MEASUREMENT', 'CONNECTIVITY' };
     private static final String PREFIJO_REFERENCIA = 'INGESTA';
     private static final String FORMATO_ISO = 'yyyy-MM-dd\'T\'HH:mm:ss.SSS\'Z\'';
     private static final String DETALLE_GENERICO = 'Error inesperado durante la ingesta';
@@ -111,6 +113,65 @@ public with sharing class RegistroProcesamientoService {
         }
         Database.insert(trazas, AccessLevel.USER_MODE);
         return trazas;
+    }
+
+    /**
+     * Traza del suscriptor (US-202, US-209 · §3.1): registra en UNA sola inserción un Fallo_Tecnico
+     * por cada evento del lote cuando el pipeline del suscriptor lanza una excepción inesperada.
+     * Escrito_Por__c = Suscriptor, Reintentable__c = true (el mensaje sigue en el bus; una persona
+     * relanza — no se reintenta solo porque el reintento desharía la transacción y borraría la traza).
+     * El detalle va saneado (nunca stack ni secretos). Tipo_Mensaje__c solo se guarda si es un valor
+     * válido de la picklist restringida; si no, null, para que el propio insert del lote no falle
+     * (el camino de fallo es la última línea de defensa y no debe lanzar). Lista vacía o nula: nada.
+     *
+     * @param eventos El lote que estaba procesando el suscriptor
+     * @param excepcion La excepción inesperada que abortó el pipeline
+     * @param ahora El momento del fallo (parámetro para poder probarlo con hora fija)
+     * @return Las trazas insertadas (vacío si no había eventos)
+     */
+    public static List<Registro_Procesamiento__c> registrarFalloSuscriptor(
+            List<Senal_Sensor__e> eventos, Exception excepcion, Datetime ahora) {
+        List<Registro_Procesamiento__c> trazas = new List<Registro_Procesamiento__c>();
+        if (eventos == null || eventos.isEmpty()) {
+            return trazas;
+        }
+        String detalle = detalleSaneado(excepcion);
+        for (Senal_Sensor__e evento : eventos) {
+            trazas.add(new Registro_Procesamiento__c(
+                Resultado__c = RESULTADO_FALLO_TECNICO,
+                Escrito_Por__c = ESCRITO_POR_SUSCRIPTOR,
+                Reintentable__c = true,
+                Clave_Mensaje__c = evento.Clave_Mensaje__c,
+                Id_Entrega__c = evento.Id_Entrega__c,
+                Tipo_Mensaje__c = TIPOS_MENSAJE_VALIDOS.contains(evento.Tipo_Mensaje__c) ? evento.Tipo_Mensaje__c : null,
+                Recibido_En__c = evento.Recibido_En__c,
+                Procesado_En__c = ahora,
+                Referencia__c = referenciaDe(evento),
+                Detalle__c = detalle
+            ));
+        }
+        Database.insert(trazas, AccessLevel.USER_MODE);
+        return trazas;
+    }
+
+    /**
+     * Referencia estable de la traza del suscriptor: la clave del mensaje si viene; si no (evento sin
+     * identidad), el SHA-256 de la carga cruda, para que Referencia__c (requerida) siempre tenga valor.
+     */
+    private static String referenciaDe(Senal_Sensor__e evento) {
+        if (String.isNotBlank(evento.Clave_Mensaje__c)) {
+            return evento.Clave_Mensaje__c;
+        }
+        return sha256Hex(evento.Carga_Cruda__c);
+    }
+
+    /**
+     * SHA-256 en hexadecimal (cadena vacía si el texto es nulo). Duplicado deliberado del helper de
+     * SenalSensorService (es ingesta y no se toca): la traza es el único escritor y deriva aquí su referencia.
+     */
+    private static String sha256Hex(String texto) {
+        String base = texto == null ? '' : texto;
+        return EncodingUtil.convertToHex(Crypto.generateDigest('SHA-256', Blob.valueOf(base)));
     }
 
     /**

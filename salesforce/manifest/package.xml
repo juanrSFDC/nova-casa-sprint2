@@ -38,10 +38,13 @@
         <members>IntervencionResultadoTest</members>
         <members>IntervencionService</members>
         <members>IntervencionServiceTest</members>
+        <members>ProcesamientoSenalService</members>
+        <members>ProcesamientoSenalServiceTest</members>
         <members>RegistroProcesamientoService</members>
         <members>RegistroProcesamientoServiceTest</members>
         <members>SenalSensorService</members>
         <members>SenalSensorServiceTest</members>
+        <members>SenalSensorTriggerHandler</members>
         <members>SimuladorCliente</members>
         <members>SimuladorClienteTest</members>
         <members>SimuladorLote</members>
@@ -52,6 +55,14 @@
         <members>SimuladorSesionTest</members>
         <members>TestDataFactory</members>
         <name>ApexClass</name>
+    </types>
+    <types>
+        <members>SenalSensorTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>Senal_Sensor_Suscriptor</members>
+        <name>PlatformEventSubscriberConfig</name>
     </types>
     <types>
         <members>Control_Ingesta_Vaciar_Cursor</members>

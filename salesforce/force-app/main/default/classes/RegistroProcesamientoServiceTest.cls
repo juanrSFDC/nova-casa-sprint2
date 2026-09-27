@@ -257,6 +257,120 @@ private class RegistroProcesamientoServiceTest {
             'Confía en el mensaje de la ingesta (texto fijo, sin secretos)');
     }
 
+    // ─── registrarFalloSuscriptor (202.1) ───────────────────────────────────
+
+    @isTest
+    static void registrarFalloSuscriptor_poblaCampos_cuandoFallo() {
+        Datetime recibido = Datetime.newInstanceGmt(2026, 9, 26, 11, 30, 0);
+        Senal_Sensor__e ev = new Senal_Sensor__e(
+            Clave_Mensaje__c = 'prueba|msg_1', Id_Entrega__c = 'dlv_1',
+            Tipo_Mensaje__c = 'MEASUREMENT', Recibido_En__c = recibido
+        );
+
+        Test.startTest();
+        List<Registro_Procesamiento__c> trazas = RegistroProcesamientoService.registrarFalloSuscriptor(
+            new List<Senal_Sensor__e>{ ev }, new PruebaException('secreto abc123'), AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c guardada = [
+            SELECT Resultado__c, Escrito_Por__c, Reintentable__c, Clave_Mensaje__c, Id_Entrega__c,
+                   Tipo_Mensaje__c, Recibido_En__c, Procesado_En__c, Referencia__c, Detalle__c
+            FROM Registro_Procesamiento__c WHERE Id = :trazas[0].Id
+        ];
+        Assert.areEqual('Fallo_Tecnico', guardada.Resultado__c, 'Es un fallo técnico');
+        Assert.areEqual('Suscriptor', guardada.Escrito_Por__c, 'La escribe el suscriptor');
+        Assert.isTrue(guardada.Reintentable__c, 'El fallo del suscriptor se marca reintentable');
+        Assert.areEqual('prueba|msg_1', guardada.Clave_Mensaje__c, 'Copia la clave del evento');
+        Assert.areEqual('dlv_1', guardada.Id_Entrega__c, 'Copia el deliveryId del evento');
+        Assert.areEqual('MEASUREMENT', guardada.Tipo_Mensaje__c, 'Copia el tipo válido del evento');
+        Assert.areEqual(recibido, guardada.Recibido_En__c, 'Recibido_En__c es el del evento');
+        Assert.areEqual(AHORA, guardada.Procesado_En__c, 'Procesado_En__c es el momento del fallo');
+        Assert.areEqual('prueba|msg_1', guardada.Referencia__c, 'Con clave, la referencia es la clave');
+        Assert.isTrue(guardada.Detalle__c.contains('Error inesperado'), 'El detalle es genérico');
+        Assert.isFalse(guardada.Detalle__c.contains('secreto'), 'Nunca filtra el mensaje interno');
+        Assert.isFalse(guardada.Detalle__c.contains('abc123'), 'Nunca filtra datos internos');
+    }
+
+    @isTest
+    static void registrarFalloSuscriptor_insertaUnaVez_cuandoVariosEventos() {
+        List<Senal_Sensor__e> eventos = new List<Senal_Sensor__e>{
+            evento('prueba|msg_1', 'dlv_1'), evento('prueba|msg_2', 'dlv_2'), evento('prueba|msg_3', 'dlv_3')
+        };
+
+        Test.startTest();
+        Integer dml = Limits.getDmlStatements();
+        RegistroProcesamientoService.registrarFalloSuscriptor(eventos, new PruebaException('x'), AHORA);
+        Assert.areEqual(dml + 1, Limits.getDmlStatements(), 'Todo el lote se inserta en UNA sola sentencia DML');
+        Test.stopTest();
+
+        Assert.areEqual(3, [SELECT COUNT() FROM Registro_Procesamiento__c WHERE Escrito_Por__c = 'Suscriptor'],
+            'Una traza por evento del lote');
+    }
+
+    @isTest
+    static void registrarFalloSuscriptor_noHaceDml_cuandoListaVacia() {
+        Test.startTest();
+        Integer dml = Limits.getDmlStatements();
+        List<Registro_Procesamiento__c> vacia = RegistroProcesamientoService.registrarFalloSuscriptor(
+            new List<Senal_Sensor__e>(), new PruebaException('x'), AHORA);
+        List<Registro_Procesamiento__c> nula = RegistroProcesamientoService.registrarFalloSuscriptor(
+            null, new PruebaException('x'), AHORA);
+        Assert.areEqual(dml, Limits.getDmlStatements(), 'Sin eventos no se escribe nada');
+        Test.stopTest();
+
+        Assert.isTrue(vacia.isEmpty(), 'Una lista vacía devuelve vacío');
+        Assert.isTrue(nula.isEmpty(), 'Una lista nula devuelve vacío');
+    }
+
+    @isTest
+    static void registrarFalloSuscriptor_sinClave_usaSha256DeLaCargaCruda() {
+        String carga = '{"raw":"sin identidad"}';
+        Senal_Sensor__e ev = new Senal_Sensor__e(Carga_Cruda__c = carga, Id_Entrega__c = 'dlv_x');
+        String esperado = EncodingUtil.convertToHex(Crypto.generateDigest('SHA-256', Blob.valueOf(carga)));
+
+        Test.startTest();
+        List<Registro_Procesamiento__c> trazas = RegistroProcesamientoService.registrarFalloSuscriptor(
+            new List<Senal_Sensor__e>{ ev }, new PruebaException('x'), AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c guardada = [SELECT Referencia__c FROM Registro_Procesamiento__c WHERE Id = :trazas[0].Id];
+        Assert.areEqual(64, guardada.Referencia__c.length(), 'El SHA-256 en hex son 64 caracteres');
+        Assert.areEqual(esperado, guardada.Referencia__c, 'Sin clave, la referencia es el SHA-256 de la carga cruda');
+    }
+
+    @isTest
+    static void registrarFalloSuscriptor_tipoFueraDePicklist_dejaNull() {
+        Senal_Sensor__e ev = new Senal_Sensor__e(
+            Clave_Mensaje__c = 'prueba|msg_1', Id_Entrega__c = 'dlv_1', Tipo_Mensaje__c = 'BASURA'
+        );
+
+        Test.startTest();
+        List<Registro_Procesamiento__c> trazas = RegistroProcesamientoService.registrarFalloSuscriptor(
+            new List<Senal_Sensor__e>{ ev }, new PruebaException('x'), AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c guardada = [SELECT Tipo_Mensaje__c FROM Registro_Procesamiento__c WHERE Id = :trazas[0].Id];
+        Assert.isNull(guardada.Tipo_Mensaje__c, 'Un tipo fuera de la picklist restringida se guarda como null, sin tumbar el insert');
+    }
+
+    @isTest
+    static void registrarFalloSuscriptor_comoIntegracion_insertaEnModoUsuario() {
+        User usuario;
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            usuario = TestDataFactory.crearUsuarioIngesta();
+        }
+
+        System.runAs(usuario) {
+            Test.startTest();
+            List<Registro_Procesamiento__c> trazas = RegistroProcesamientoService.registrarFalloSuscriptor(
+                new List<Senal_Sensor__e>{ evento('prueba|msg_u', 'dlv_u') }, new PruebaException('x'), AHORA);
+            Test.stopTest();
+
+            Assert.isNotNull(trazas[0].Id, 'Con solo Nova_Casa_Ingesta se inserta la traza del suscriptor en modo usuario');
+            Assert.areEqual('Suscriptor', trazas[0].Escrito_Por__c, 'La escribe el suscriptor');
+        }
+    }
+
     /** Un evento de prueba con su clave y su entrega. */
     private static Senal_Sensor__e evento(String clave, String idEntrega) {
         return new Senal_Sensor__e(Clave_Mensaje__c = clave, Id_Entrega__c = idEntrega);
