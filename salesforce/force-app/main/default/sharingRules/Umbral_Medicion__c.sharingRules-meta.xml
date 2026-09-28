@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SharingRules xmlns="http://soap.sforce.com/2006/04/metadata">
+    <sharingCriteriaRules>
+        <fullName>Umbral_Todos_Coordinadores</fullName>
+        <accessLevel>Edit</accessLevel>
+        <description>Los coordinadores editan todos los umbrales (son por tipo de activo, no por edificio; limite declarado en 3.3). Los operadores solo leen, por OWD Public Read Only. US-208 / 208.3.</description>
+        <includeRecordsOwnedByAll>true</includeRecordsOwnedByAll>
+        <label>Umbrales todos a Coordinadores</label>
+        <sharedTo>
+            <group>Coordinadores</group>
+        </sharedTo>
+        <criteriaItems>
+            <field>Clave_Umbral__c</field>
+            <operation>notEqual</operation>
+            <value>__NONE__</value>
+        </criteriaItems>
+    </sharingCriteriaRules>
+</SharingRules>

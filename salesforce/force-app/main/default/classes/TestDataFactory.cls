@@ -14,6 +14,7 @@
 public with sharing class TestDataFactory {
 
     private static final String PERM_SET_INGESTA = 'Nova_Casa_Ingesta';
+    private static final String PERM_SET_OPERADOR = 'Nova_Casa_Operador';
     private static final String PERFIL_MINIMO = 'Minimum Access - Salesforce';
 
     /**
@@ -227,6 +228,99 @@ public with sharing class TestDataFactory {
         );
         insert usuario;
         PermissionSet permiso = [SELECT Id FROM PermissionSet WHERE Name = :PERM_SET_INGESTA LIMIT 1];
+        insert new PermissionSetAssignment(AssigneeId = usuario.Id, PermissionSetId = permiso.Id);
+        return usuario;
+    }
+
+    /**
+     * Una Location (edificio) con Id_Externo__c único, sobre la que aplicar overrides. Es objeto de negocio
+     * (no de setup): se crea en @TestSetup o fuera de runAs(usuario de setup). Sirve para las pruebas de
+     * compartición manual (208.3).
+     *
+     * @param overrides Campos a sobrescribir (por SObjectField), o null
+     * @param doInsert Si insertar el registro
+     * @return El edificio creado
+     */
+    public static Schema.Location createLocation(Map<SObjectField, Object> overrides, Boolean doInsert) {
+        return createLocations(1, overrides, doInsert)[0];
+    }
+
+    /**
+     * Varias Location con Id_Externo__c único (se le añade el índice).
+     *
+     * @param cuantos Cuántas crear
+     * @param overrides Campos a sobrescribir en cada una, o null
+     * @param doInsert Si insertar los registros
+     * @return Los edificios creados
+     */
+    public static List<Schema.Location> createLocations(Integer cuantos, Map<SObjectField, Object> overrides, Boolean doInsert) {
+        List<Schema.Location> registros = new List<Schema.Location>();
+        for (Integer i = 0; i < cuantos; i++) {
+            Schema.Location registro = new Schema.Location(
+                Name = 'Edificio de prueba ' + i,
+                Id_Externo__c = 'BLD-TEST-' + i
+            );
+            if (overrides != null) {
+                for (SObjectField campo : overrides.keySet()) {
+                    registro.put(campo, overrides.get(campo));
+                }
+            }
+            registros.add(registro);
+        }
+        if (doInsert) {
+            insert registros;
+        }
+        return registros;
+    }
+
+    /**
+     * Varios grupos públicos (Type Regular) con DeveloperName único, para probar la compartición sin
+     * depender de los grupos desplegados (que no son visibles con SeeAllData=false). Group es objeto de
+     * setup: el llamador debe envolver la llamada en System.runAs(usuario actual) si en la misma
+     * transacción hay DML de negocio (MIXED_DML_OPERATION).
+     *
+     * @param cuantos Cuántos crear
+     * @return Los grupos insertados
+     */
+    public static List<Group> crearGrupos(Integer cuantos) {
+        String sufijo = String.valueOf(DateTime.now().getTime()) + String.valueOf(Math.round(Math.random() * 100000));
+        List<Group> grupos = new List<Group>();
+        for (Integer i = 0; i < cuantos; i++) {
+            grupos.add(new Group(
+                Name = 'Grupo de prueba ' + i,
+                DeveloperName = 'GrupoPrueba_' + sufijo + '_' + i,
+                Type = 'Regular'
+            ));
+        }
+        insert grupos;
+        return grupos;
+    }
+
+    /**
+     * Un usuario de pruebas con el perfil de acceso mínimo y SOLO el Permission Set Nova_Casa_Operador,
+     * para probar que con esos permisos lee edificios/activos/etc. y NO ve la traza ni la configuración de
+     * ingesta. Falla ruidoso si el perfil o el permission set no existen en la org. Es DML de objetos de
+     * setup: envolver en System.runAs(usuario actual) si hay DML de negocio en la misma transacción.
+     *
+     * @return El usuario insertado con el Permission Set asignado
+     */
+    public static User crearUsuarioOperador() {
+        Profile perfil = [SELECT Id FROM Profile WHERE Name = :PERFIL_MINIMO LIMIT 1];
+        String sufijo = String.valueOf(DateTime.now().getTime()) + String.valueOf(Math.round(Math.random() * 100000));
+        User usuario = new User(
+            FirstName = 'Operador',
+            LastName = 'Prueba',
+            Email = 'operador.prueba@novacasa.test.invalid',
+            Username = 'operador.' + sufijo + '@novacasa.test.invalid',
+            Alias = 'optest',
+            ProfileId = perfil.Id,
+            TimeZoneSidKey = 'America/Bogota',
+            LocaleSidKey = 'es_CO',
+            EmailEncodingKey = 'UTF-8',
+            LanguageLocaleKey = 'es'
+        );
+        insert usuario;
+        PermissionSet permiso = [SELECT Id FROM PermissionSet WHERE Name = :PERM_SET_OPERADOR LIMIT 1];
         insert new PermissionSetAssignment(AssigneeId = usuario.Id, PermissionSetId = permiso.Id);
         return usuario;
     }

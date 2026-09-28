@@ -160,6 +160,6 @@
     </nameField>
     <pluralLabel>Umbrales de medicion</pluralLabel>
     <searchLayouts></searchLayouts>
-    <sharingModel>Private</sharingModel>
+    <sharingModel>Read</sharingModel>
     <visibility>Public</visibility>
 </CustomObject>

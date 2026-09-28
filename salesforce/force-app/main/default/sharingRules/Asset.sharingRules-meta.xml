@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SharingRules xmlns="http://soap.sforce.com/2006/04/metadata">
+    <sharingCriteriaRules>
+        <fullName>Asset_BOG_Operadores</fullName>
+        <accessLevel>Read</accessLevel>
+        <description>Activos de Bogota visibles para los operadores de Bogota. US-208 / 208.3.</description>
+        <includeRecordsOwnedByAll>true</includeRecordsOwnedByAll>
+        <label>Activos BOG a Operadores BOG</label>
+        <sharedTo>
+            <group>Operadores_BOG</group>
+        </sharedTo>
+        <criteriaItems>
+            <field>Edificio_Externo__c</field>
+            <operation>equals</operation>
+            <value>BLD-BOG-001</value>
+        </criteriaItems>
+    </sharingCriteriaRules>
+    <sharingCriteriaRules>
+        <fullName>Asset_BAQ_Operadores</fullName>
+        <accessLevel>Read</accessLevel>
+        <description>Activos de Barranquilla visibles para los operadores de Barranquilla. US-208 / 208.3.</description>
+        <includeRecordsOwnedByAll>true</includeRecordsOwnedByAll>
+        <label>Activos BAQ a Operadores BAQ</label>
+        <sharedTo>
+            <group>Operadores_BAQ</group>
+        </sharedTo>
+        <criteriaItems>
+            <field>Edificio_Externo__c</field>
+            <operation>equals</operation>
+            <value>BLD-BAQ-001</value>
+        </criteriaItems>
+    </sharingCriteriaRules>
+    <sharingCriteriaRules>
+        <fullName>Asset_Todos_Coordinadores</fullName>
+        <accessLevel>Read</accessLevel>
+        <description>Todos los activos del proyecto visibles para los coordinadores. US-208 / 208.3.</description>
+        <includeRecordsOwnedByAll>true</includeRecordsOwnedByAll>
+        <label>Activos todos a Coordinadores</label>
+        <sharedTo>
+            <group>Coordinadores</group>
+        </sharedTo>
+        <criteriaItems>
+            <field>Edificio_Externo__c</field>
+            <operation>startsWith</operation>
+            <value>BLD-</value>
+        </criteriaItems>
+    </sharingCriteriaRules>
+</SharingRules>

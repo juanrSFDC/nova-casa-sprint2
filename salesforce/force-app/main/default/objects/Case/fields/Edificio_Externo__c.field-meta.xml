@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Edificio_Externo__c</fullName>
+    <description>Codigo externo del edificio del caso (copia de Asset.Edificio_Externo__c). Lo llena IntervencionService al crear el caso (205.1). Sirve para la comparticion por criterio: las reglas no aceptan formulas, por eso no se usa Case.Edificio__c. US-208 / 208.3.</description>
+    <externalId>false</externalId>
+    <label>Edificio externo</label>
+    <length>50</length>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

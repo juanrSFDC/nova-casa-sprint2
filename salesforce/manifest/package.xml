@@ -22,6 +22,8 @@
         <members>ClasificacionSolicitud</members>
         <members>ClasificacionSolicitudTest</members>
         <members>ClasificadorSeveridad</members>
+        <members>CompartirEdificiosService</members>
+        <members>CompartirEdificiosServiceTest</members>
         <members>ClasificadorSeveridadTest</members>
         <members>ControlIngestaSelector</members>
         <members>ControlIngestaSelectorTest</members>
@@ -49,6 +51,7 @@
         <members>RegistroProcesamientoService</members>
         <members>RegistroProcesamientoServiceTest</members>
         <members>RegistroProcesamientoUS209Test</members>
+        <members>SeguridadOperadorTest</members>
         <members>SenalSensorDomain</members>
         <members>SenalSensorDomainTest</members>
         <members>SenalSensorService</members>
@@ -85,6 +88,7 @@
         <name>QuickAction</name>
     </types>
     <types>
+        <members>Case.Edificio_Externo__c</members>
         <members>Registro_Procesamiento__c.Clave_Mensaje__c</members>
         <members>Registro_Procesamiento__c.Ocurrido_En__c</members>
         <members>Registro_Procesamiento__c.Referencia__c</members>
@@ -116,12 +120,30 @@
         <name>NamedCredential</name>
     </types>
     <types>
+        <members>Nova_Casa_Coordinador</members>
         <members>Nova_Casa_Ingesta</members>
+        <members>Nova_Casa_Operador</members>
         <name>PermissionSet</name>
     </types>
     <types>
         <members>Admin</members>
         <name>Profile</name>
+    </types>
+    <types>
+        <members>Coordinadores</members>
+        <members>Operadores_BAQ</members>
+        <members>Operadores_BOG</members>
+        <name>Group</name>
+    </types>
+    <types>
+        <members>Asset.Asset_BOG_Operadores</members>
+        <members>Asset.Asset_BAQ_Operadores</members>
+        <members>Asset.Asset_Todos_Coordinadores</members>
+        <members>Case.Case_BOG_Operadores</members>
+        <members>Case.Case_BAQ_Operadores</members>
+        <members>Case.Case_Intervencion_Coordinadores</members>
+        <members>Umbral_Medicion__c.Umbral_Todos_Coordinadores</members>
+        <name>SharingCriteriaRule</name>
     </types>
     <version>67.0</version>
 </Package>

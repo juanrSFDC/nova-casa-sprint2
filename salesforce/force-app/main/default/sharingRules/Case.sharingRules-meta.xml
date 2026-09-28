@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SharingRules xmlns="http://soap.sforce.com/2006/04/metadata">
+    <sharingCriteriaRules>
+        <fullName>Case_BOG_Operadores</fullName>
+        <accessLevel>Read</accessLevel>
+        <description>Intervenciones de Bogota visibles para los operadores de Bogota. Edificio_Externo__c lo llena IntervencionService (205.1). US-208 / 208.3.</description>
+        <includeRecordsOwnedByAll>true</includeRecordsOwnedByAll>
+        <label>Casos BOG a Operadores BOG</label>
+        <sharedTo>
+            <group>Operadores_BOG</group>
+        </sharedTo>
+        <criteriaItems>
+            <field>Edificio_Externo__c</field>
+            <operation>equals</operation>
+            <value>BLD-BOG-001</value>
+        </criteriaItems>
+    </sharingCriteriaRules>
+    <sharingCriteriaRules>
+        <fullName>Case_BAQ_Operadores</fullName>
+        <accessLevel>Read</accessLevel>
+        <description>Intervenciones de Barranquilla visibles para los operadores de Barranquilla. US-208 / 208.3.</description>
+        <includeRecordsOwnedByAll>true</includeRecordsOwnedByAll>
+        <label>Casos BAQ a Operadores BAQ</label>
+        <sharedTo>
+            <group>Operadores_BAQ</group>
+        </sharedTo>
+        <criteriaItems>
+            <field>Edificio_Externo__c</field>
+            <operation>equals</operation>
+            <value>BLD-BAQ-001</value>
+        </criteriaItems>
+    </sharingCriteriaRules>
+    <sharingCriteriaRules>
+        <fullName>Case_Intervencion_Coordinadores</fullName>
+        <accessLevel>Edit</accessLevel>
+        <description>Los casos del proyecto (intervenciones con Edificio_Externo__c poblado por IntervencionService 205.1) los gestiona el coordinador (lectura y escritura). No se usa RecordTypeId como criterio porque la plataforma no lo admite en reglas por criterio. US-208 / 208.3.</description>
+        <includeRecordsOwnedByAll>true</includeRecordsOwnedByAll>
+        <label>Casos de intervencion a Coordinadores</label>
+        <sharedTo>
+            <group>Coordinadores</group>
+        </sharedTo>
+        <criteriaItems>
+            <field>Edificio_Externo__c</field>
+            <operation>notEqual</operation>
+            <value>__NONE__</value>
+        </criteriaItems>
+    </sharingCriteriaRules>
+</SharingRules>
