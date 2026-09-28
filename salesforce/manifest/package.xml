@@ -98,6 +98,7 @@
         <name>CustomField</name>
     </types>
     <types>
+        <members>Control_Ingesta__c</members>
         <members>Registro_Procesamiento__c</members>
         <name>CustomTab</name>
     </types>

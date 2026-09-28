@@ -507,6 +507,10 @@
         <readable>true</readable>
     </fieldPermissions>
     <tabVisibilities>
+        <tab>Control_Ingesta__c</tab>
+        <visibility>DefaultOn</visibility>
+    </tabVisibilities>
+    <tabVisibilities>
         <tab>Registro_Procesamiento__c</tab>
         <visibility>DefaultOn</visibility>
     </tabVisibilities>
