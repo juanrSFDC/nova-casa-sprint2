@@ -50,6 +50,7 @@
         <members>LecturaSensorSelectorTest</members>
         <members>ProcesamientoSenalService</members>
         <members>ProcesamientoSenalServiceTest</members>
+        <members>ProcesamientoVolumenUS202Test</members>
         <members>RegistroProcesamientoService</members>
         <members>RegistroProcesamientoServiceTest</members>
         <members>RegistroProcesamientoUS209Test</members>
