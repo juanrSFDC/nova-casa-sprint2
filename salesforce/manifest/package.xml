@@ -109,6 +109,7 @@
         <name>ListView</name>
     </types>
     <types>
+        <members>Asset-Asset Layout</members>
         <members>Control_Ingesta__c-Control de ingesta Layout</members>
         <members>Registro_Procesamiento__c-Registro de procesamiento Layout</members>
         <name>Layout</name>
