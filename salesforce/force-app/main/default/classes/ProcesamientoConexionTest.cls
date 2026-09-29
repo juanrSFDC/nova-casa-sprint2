@@ -1,7 +1,7 @@
 /**
- * Prueba de la conexión de la clasificación (204.1) y las intervenciones (205) al procesamiento (I-1).
+ * Prueba de la conexión de la clasificación (204.1) y las intervenciones (205) al procesamiento (C-3).
  *
- * Responsable: Juan Rozo · tarea I-1. Ejecuta el pipeline como el usuario de integración
+ * Responsable: Juan Rozo · tarea C-3. Ejecuta el pipeline como el usuario de integración
  * (Nova_Casa_Ingesta) —el contexto real del suscriptor en producción, donde corre como
  * integracion@novacasa.sprint2 con ese permission set— para verificar que:
  *   - la lectura se sella con su severidad y el umbral que la decidió (D-4);
