@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <applicationVisibilities>
+        <application>Nova_Casa</application>
+        <visible>true</visible>
+    </applicationVisibilities>
+    <classAccesses>
+        <apexClass>MonitoreoActivosController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <description>Operador de edificios (US-208, 208.2). Lee edificios, activos, lecturas, estados, casos y umbrales de su edificio (acotado por comparticion de grupo). Sin traza ni config de ingesta. Sin pestanas todavia (207).</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Nova Casa · Operador</label>
@@ -83,6 +91,11 @@
     <fieldPermissions>
         <editable>false</editable>
         <field>Asset.Id_Externo__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Asset.LocationId</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -345,4 +358,12 @@
         <field>Umbral_Medicion__c.Valor_Invalido__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <tabSettings>
+        <tab>Mis_activos</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <userPermissions>
+        <enabled>true</enabled>
+        <name>LightningExperienceUser</name>
+    </userPermissions>
 </PermissionSet>

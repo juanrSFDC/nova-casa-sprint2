@@ -15,6 +15,10 @@
         <name>CustomObject</name>
     </types>
     <types>
+        <members>Nova_Casa</members>
+        <name>CustomApplication</name>
+    </types>
+    <types>
         <members>AssetSelector</members>
         <members>AssetSelectorTest</members>
         <members>ClasificacionResultado</members>
@@ -57,6 +61,7 @@
         <members>RegistroProcesamientoService</members>
         <members>RegistroProcesamientoServiceTest</members>
         <members>RegistroProcesamientoUS209Test</members>
+        <members>SeguridadMisActivosTest</members>
         <members>SeguridadOperadorTest</members>
         <members>SenalSensorDomain</members>
         <members>SenalSensorDomainTest</members>
