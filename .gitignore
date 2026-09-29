@@ -6,3 +6,6 @@ salesforce/.sfdx/
 salesforce/.localdevserver/
 
 node_modules/
+
+# Generado por la extensión de Salesforce para VS Code
+**/lwc/jsconfig.json

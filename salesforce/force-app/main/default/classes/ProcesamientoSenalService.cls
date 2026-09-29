@@ -498,8 +498,11 @@ public with sharing class ProcesamientoSenalService {
                 lecturaOriginal = pendiente.originalEnLote.lectura.Id;
             }
             // Reenvío cuyo original volvió a fallar la reintervención → Fallo_Tecnico reintentable (205);
-            // si el original recuperó su caso, errorDe da null y sigue Duplicada/Conflicto.
-            String errorIntervencion = EnrutamientoSeveridad.errorDe(ctx.intervenciones, lecturaOriginal);
+            // si el original recuperó su caso, errorDe da null y sigue Duplicada. Un conflicto nunca hereda
+            // el fallo: reenviarlo no recupera el caso (solo los duplicados exactos reintervienen).
+            String errorIntervencion = pendiente.esConflicto
+                ? null
+                : EnrutamientoSeveridad.errorDe(ctx.intervenciones, lecturaOriginal);
             desenlaces.add(new RegistroProcesamientoService.DesenlaceDedup(
                 pendiente.evento, pendiente.esConflicto, lecturaOriginal, errorIntervencion));
         }

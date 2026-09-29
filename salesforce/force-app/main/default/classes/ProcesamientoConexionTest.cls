@@ -224,6 +224,30 @@ private class ProcesamientoConexionTest {
         Assert.areEqual(1, trazas('Duplicada'), 'El reenvío idéntico deja una traza Duplicada');
     }
 
+    @isTest
+    static void falloIntervencion_conflictoEnElLote_sigueComoConflicto() {
+        User ingesta = nuevaIngesta();
+        // Original crítica y, en el mismo lote, un conflicto (misma clave, otro valor). La intervención
+        // del original falla: el original queda Fallo_Tecnico, pero el conflicto no hereda ese fallo.
+        List<Senal_Sensor__e> lote = new List<Senal_Sensor__e>{
+            tempEn(ACT_TEMP, 'conx|crit-conf', 50, OCURRIDO),
+            tempEn(ACT_TEMP, 'conx|crit-conf', 51, OCURRIDO)
+        };
+
+        Test.startTest();
+        IntervencionService.forzarFalloCreacion = true;
+        procesar(ingesta, lote);
+        IntervencionService.forzarFalloCreacion = false;
+        Test.stopTest();
+
+        Assert.areEqual(1, trazas('Fallo_Tecnico'), 'Solo el original, cuya intervención falló, es Fallo_Tecnico');
+        Registro_Procesamiento__c conflicto = [
+            SELECT Reintentable__c, Motivo__c FROM Registro_Procesamiento__c WHERE Resultado__c = 'Conflicto'];
+        Assert.isFalse(conflicto.Reintentable__c,
+            'Un conflicto no es reintentable: reenviarlo no recupera el caso del original');
+        Assert.areEqual('COLISION_CLAVE', conflicto.Motivo__c, 'El conflicto conserva su motivo');
+    }
+
     // ─── Borde: duplicado y conflicto de una inválida ─────────────────────────
 
     @isTest
