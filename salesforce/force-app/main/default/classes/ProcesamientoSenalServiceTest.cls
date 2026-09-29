@@ -138,10 +138,11 @@ private class ProcesamientoSenalServiceTest {
 
     @isTest
     static void procesar_loteTodoValido_insertaLecturasYTrazaProcesadas() {
-        // 200 eventos válidos y todos nuevos sobre el mismo activo (misma Clave_Estado__c): TRES consultas
-        // (activos + lecturas existentes + estados previos) y CUATRO DML (punto de retorno + inserción de
-        // lecturas + upsert del estado + UNA sola inserción de trazas Procesada, 209.1). Como comparten
-        // clave de estado, queda UN solo Estado_Medicion__c.
+        // 200 eventos válidos y todos nuevos sobre el mismo activo (misma Clave_Estado__c): CUATRO consultas
+        // (umbrales de clasificación + activos + lecturas existentes + estados previos) y CUATRO DML (punto de
+        // retorno + inserción de lecturas + upsert del estado + UNA sola inserción de trazas Procesada, 209.1).
+        // Sin umbrales sembrados aquí, todo sale Sin_Configurar y sin críticas: intervenir no consulta ni escribe.
+        // Como comparten clave de estado, queda UN solo Estado_Medicion__c.
         List<Senal_Sensor__e> lote = new List<Senal_Sensor__e>();
         for (Integer i = 0; i < 200; i++) {
             lote.add(medicion('prueba|msg_' + i, ID_TEMP, 'TEMPERATURE', 'CELSIUS'));
@@ -151,8 +152,8 @@ private class ProcesamientoSenalServiceTest {
         Integer soql = Limits.getQueries();
         Integer dml = Limits.getDmlStatements();
         ProcesamientoSenalService.procesar(lote);
-        Assert.areEqual(soql + 3, Limits.getQueries(),
-            'Una consulta de activos, una de lecturas existentes y una de estados previos: nada por evento');
+        Assert.areEqual(soql + 4, Limits.getQueries(),
+            'Una consulta de umbrales, una de activos, una de lecturas existentes y una de estados previos: nada por evento');
         Assert.areEqual(dml + 4, Limits.getDmlStatements(),
             'Punto de retorno (1) + inserción de lecturas (1) + upsert del estado (1) + UNA inserción de trazas (1): nada por evento');
         Test.stopTest();
@@ -166,8 +167,8 @@ private class ProcesamientoSenalServiceTest {
 
     @isTest
     static void procesar_loteMixto_unaConsultaUnaInsercionUnaTraza() {
-        // 199 válidas nuevas + 1 rechazo (activo inexistente): 3 consultas (activos + lecturas + estados
-        // previos), 4 DML (punto de retorno + inserción de lecturas + upsert del estado + inserción de
+        // 199 válidas nuevas + 1 rechazo (activo inexistente): 4 consultas (umbrales + activos + lecturas +
+        // estados previos), 4 DML (punto de retorno + inserción de lecturas + upsert del estado + inserción de
         // trazas). Demuestra "una de cada" por lote. Las 199 comparten Clave_Estado__c → un solo estado.
         List<Senal_Sensor__e> lote = new List<Senal_Sensor__e>();
         for (Integer i = 0; i < 199; i++) {
@@ -179,8 +180,8 @@ private class ProcesamientoSenalServiceTest {
         Integer soql = Limits.getQueries();
         Integer dml = Limits.getDmlStatements();
         ProcesamientoSenalService.procesar(lote);
-        Assert.areEqual(soql + 3, Limits.getQueries(),
-            'Una consulta de activos, una de lecturas existentes y una de estados previos');
+        Assert.areEqual(soql + 4, Limits.getQueries(),
+            'Una consulta de umbrales, una de activos, una de lecturas existentes y una de estados previos');
         Assert.areEqual(dml + 4, Limits.getDmlStatements(),
             'Punto de retorno + inserción de lecturas + upsert del estado + inserción de trazas');
         Test.stopTest();
@@ -254,10 +255,11 @@ private class ProcesamientoSenalServiceTest {
         Assert.areEqual(OCURRIDO, lectura.Ocurrido_En__c, 'Guarda cuándo ocurrió');
         Assert.isNotNull(lectura.Procesado_En__c, 'Sella cuándo se procesó');
         Assert.isNull(lectura.Estado_Comunicacion__c, 'Una medición no lleva estado de comunicación');
-        Assert.isNull(lectura.Severidad_Sellada__c, 'La severidad la sella 204.1, no esta tarea');
-        Assert.isNull(lectura.Umbral_Aplicado__c, 'El umbral lo aplica 204.1');
+        Assert.areEqual(ClasificacionResultado.SEVERIDAD_SIN_CONFIGURAR, lectura.Severidad_Sellada__c,
+            'Sin umbral sembrado, la clasificación sella Sin_Configurar (nunca null tras clasificar)');
+        Assert.isNull(lectura.Umbral_Aplicado__c, 'Sin_Configurar no fija umbral aplicado');
         Assert.isFalse(lectura.Atrasada__c, 'La marca de atrasada la pone 203.1');
-        Assert.isNull(lectura.Intervencion__c, 'La intervención la crea 205');
+        Assert.isNull(lectura.Intervencion__c, 'Sin crítica no se abre intervención');
         Assert.areEqual(1, [SELECT COUNT() FROM Registro_Procesamiento__c WHERE Resultado__c = 'Procesada'],
             'Una lectura nueva guardada deja su traza Procesada (209.1)');
     }
@@ -451,8 +453,9 @@ private class ProcesamientoSenalServiceTest {
         Assert.areEqual(21.5, estado.Ultimo_Valor__c, 'Guarda el último valor');
         Assert.areEqual('CELSIUS', estado.Unidad__c, 'Guarda la unidad');
         Assert.areEqual(OCURRIDO, estado.Ocurrido_En__c, 'Guarda cuándo ocurrió la ganadora');
-        Assert.isNull(estado.Severidad__c, 'La severidad la sella 204.1; hoy null');
-        Assert.isNull(estado.Severidad_Nivel__c, 'Sin severidad no hay nivel');
+        Assert.areEqual(ClasificacionResultado.SEVERIDAD_SIN_CONFIGURAR, estado.Severidad__c,
+            'Sin umbral sembrado, el estado toma la severidad Sin_Configurar de la ganadora');
+        Assert.isNull(estado.Severidad_Nivel__c, 'Sin_Configurar no tiene nivel numérico');
         Assert.areEqual([SELECT Id FROM Lectura_Sensor__c].Id, estado.Lectura_Ganadora__c, 'Enlaza la lectura ganadora insertada');
         Assert.isNotNull(estado.Actualizado_En__c, 'Sella cuándo se actualizó el estado');
     }

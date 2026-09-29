@@ -220,11 +220,18 @@ public with sharing class RegistroProcesamientoService {
         public Senal_Sensor__e evento;
         public Boolean esConflicto;
         public Id lecturaOriginal;
+        /** Error saneado si la reintervención del original obligatorio falló (205); null si no aplica. */
+        public String errorIntervencion;
 
         public DesenlaceDedup(Senal_Sensor__e evento, Boolean esConflicto, Id lecturaOriginal) {
+            this(evento, esConflicto, lecturaOriginal, null);
+        }
+
+        public DesenlaceDedup(Senal_Sensor__e evento, Boolean esConflicto, Id lecturaOriginal, String errorIntervencion) {
             this.evento = evento;
             this.esConflicto = esConflicto;
             this.lecturaOriginal = lecturaOriginal;
+            this.errorIntervencion = errorIntervencion;
         }
     }
 
@@ -232,20 +239,28 @@ public with sharing class RegistroProcesamientoService {
      * Un desenlace de PERSISTENCIA del suscriptor (209.1): la señal cuya lectura SÍ se guardó, con la
      * lectura resultante, si quedó atrasada (evidencia que se midió antes que el estado y no lo movió)
      * y, si no, si su lectura fijó el estado actual (ganadora) o se guardó solo como evidencia del lote.
-     * El resultado de la intervención (task 205, Juan Flórez) se consultará luego vía
-     * Lectura__c → Intervencion__c cuando exista; esta traza no lo escribe.
+     * errorIntervencion lleva el error saneado si la intervención obligatoria de la crítica falló (205):
+     * con él la traza sale Fallo_Tecnico reintentable en vez de Procesada. null cuando no aplica.
      */
     public class DesenlaceLectura {
         public Senal_Sensor__e evento;
         public Id lectura;
         public Boolean atrasada;
         public Boolean ganadoraEstado;
+        /** Error saneado si la intervención obligatoria de esta lectura falló (205); null si no aplica. */
+        public String errorIntervencion;
 
         public DesenlaceLectura(Senal_Sensor__e evento, Id lectura, Boolean atrasada, Boolean ganadoraEstado) {
+            this(evento, lectura, atrasada, ganadoraEstado, null);
+        }
+
+        public DesenlaceLectura(Senal_Sensor__e evento, Id lectura, Boolean atrasada, Boolean ganadoraEstado,
+                String errorIntervencion) {
             this.evento = evento;
             this.lectura = lectura;
             this.atrasada = atrasada;
             this.ganadoraEstado = ganadoraEstado;
+            this.errorIntervencion = errorIntervencion;
         }
     }
 
@@ -272,11 +287,12 @@ public with sharing class RegistroProcesamientoService {
     /**
      * Desenlaces de negocio del suscriptor (US-202/US-209 · §3.1) en UNA sola inserción por lote: los
      * RECHAZOS del paso a, los DUPLICADOS/CONFLICTOS del paso b y, desde 209.1, las PROCESADAS y ATRASADAS
-     * (una por lectura efectivamente guardada). Todas las escribe el Suscriptor y son no reintentables (el
-     * dato ya se resolvió; Reintentable__c se deduce del desenlace, solo Fallo_Tecnico es reintentable).
-     * El duplicado/conflicto apunta con Lectura__c a la lectura original; la procesada/atrasada apunta a su
-     * propia lectura. Ocurrido_En__c = la fecha origen del evento en TODAS. Tipo_Mensaje__c solo si es un
-     * valor válido de la picklist restringida. Sin nada que registrar no escribe.
+     * (una por lectura efectivamente guardada). Todas las escribe el Suscriptor; Reintentable__c se deduce
+     * del desenlace y solo es true para Fallo_Tecnico: el fallo de una intervención obligatoria (205)
+     * convierte la traza de esa lectura (o del original de un reenvío) en Fallo_Tecnico reintentable, nunca
+     * Procesada/Duplicada. El duplicado/conflicto normal apunta con Lectura__c a la lectura original; la
+     * procesada/atrasada apunta a su propia lectura. Ocurrido_En__c = la fecha origen del evento en TODAS.
+     * Tipo_Mensaje__c solo si es un valor válido de la picklist restringida. Sin nada que registrar no escribe.
      *
      * @param rechazos Los rechazos del paso a (SenalSensorDomain.validar); puede ser null o vacío
      * @param dedup Los duplicados y conflictos del paso b; puede ser null o vacío
@@ -301,22 +317,7 @@ public with sharing class RegistroProcesamientoService {
         }
         if (!sinDedup) {
             for (DesenlaceDedup desenlace : dedup) {
-                Senal_Sensor__e evento = desenlace.evento;
-                trazas.add(new Registro_Procesamiento__c(
-                    Resultado__c = desenlace.esConflicto ? RESULTADO_CONFLICTO : RESULTADO_DUPLICADA,
-                    Motivo__c = desenlace.esConflicto ? MOTIVO_COLISION_CLAVE : null,
-                    Escrito_Por__c = ESCRITO_POR_SUSCRIPTOR,
-                    Reintentable__c = false,
-                    Clave_Mensaje__c = evento.Clave_Mensaje__c,
-                    Id_Entrega__c = evento.Id_Entrega__c,
-                    Tipo_Mensaje__c = TIPOS_MENSAJE_VALIDOS.contains(evento.Tipo_Mensaje__c) ? evento.Tipo_Mensaje__c : null,
-                    Recibido_En__c = evento.Recibido_En__c,
-                    Procesado_En__c = ahora,
-                    Ocurrido_En__c = ocurridoDe(evento),
-                    Referencia__c = referenciaDe(evento),
-                    Lectura__c = desenlace.lecturaOriginal,
-                    Detalle__c = desenlace.esConflicto ? DETALLE_CONFLICTO : DETALLE_DUPLICADA
-                ));
+                trazas.add(construirTrazaDedup(desenlace, ahora));
             }
         }
         if (!sinLecturas) {
@@ -351,13 +352,69 @@ public with sharing class RegistroProcesamientoService {
     }
 
     /**
+     * Construye (sin insertar) la traza de un duplicado/conflicto del suscriptor (202.3), o —si su original
+     * obligatorio volvió a fallar la reintervención (205)— un Fallo_Tecnico reintentable apuntando al
+     * original. El duplicado/conflicto normal es no reintentable y apunta con Lectura__c al original; el
+     * conflicto añade Motivo__c = COLISION_CLAVE.
+     */
+    private static Registro_Procesamiento__c construirTrazaDedup(DesenlaceDedup desenlace, Datetime ahora) {
+        Senal_Sensor__e evento = desenlace.evento;
+        if (desenlace.errorIntervencion != null && desenlace.lecturaOriginal != null) {
+            return construirTrazaFalloIntervencion(evento, desenlace.lecturaOriginal, desenlace.errorIntervencion, ahora);
+        }
+        return new Registro_Procesamiento__c(
+            Resultado__c = desenlace.esConflicto ? RESULTADO_CONFLICTO : RESULTADO_DUPLICADA,
+            Motivo__c = desenlace.esConflicto ? MOTIVO_COLISION_CLAVE : null,
+            Escrito_Por__c = ESCRITO_POR_SUSCRIPTOR,
+            Reintentable__c = false,
+            Clave_Mensaje__c = evento.Clave_Mensaje__c,
+            Id_Entrega__c = evento.Id_Entrega__c,
+            Tipo_Mensaje__c = TIPOS_MENSAJE_VALIDOS.contains(evento.Tipo_Mensaje__c) ? evento.Tipo_Mensaje__c : null,
+            Recibido_En__c = evento.Recibido_En__c,
+            Procesado_En__c = ahora,
+            Ocurrido_En__c = ocurridoDe(evento),
+            Referencia__c = referenciaDe(evento),
+            Lectura__c = desenlace.lecturaOriginal,
+            Detalle__c = desenlace.esConflicto ? DETALLE_CONFLICTO : DETALLE_DUPLICADA
+        );
+    }
+
+    /**
+     * Construye (sin insertar) la traza de una intervención obligatoria que falló (205): Fallo_Tecnico
+     * escrito por el Suscriptor y REINTENTABLE (una persona reenvía y la reintervención recupera el caso),
+     * apuntando con Lectura__c a la lectura afectada, con el error ya saneado por Flórez y recortado.
+     * Nunca Procesada/Duplicada: por eso sustituye a esos desenlaces cuando el enrutamiento reporta error.
+     */
+    private static Registro_Procesamiento__c construirTrazaFalloIntervencion(
+            Senal_Sensor__e evento, Id lectura, String error, Datetime ahora) {
+        return new Registro_Procesamiento__c(
+            Resultado__c = RESULTADO_FALLO_TECNICO,
+            Escrito_Por__c = ESCRITO_POR_SUSCRIPTOR,
+            Reintentable__c = true,
+            Clave_Mensaje__c = evento.Clave_Mensaje__c,
+            Id_Entrega__c = evento.Id_Entrega__c,
+            Tipo_Mensaje__c = TIPOS_MENSAJE_VALIDOS.contains(evento.Tipo_Mensaje__c) ? evento.Tipo_Mensaje__c : null,
+            Recibido_En__c = evento.Recibido_En__c,
+            Procesado_En__c = ahora,
+            Ocurrido_En__c = ocurridoDe(evento),
+            Referencia__c = referenciaDe(evento),
+            Lectura__c = lectura,
+            Detalle__c = truncar(error, MAX_DETALLE)
+        );
+    }
+
+    /**
      * Construye (sin insertar) la traza de una lectura guardada del suscriptor (209.1): PROCESADA si no
-     * quedó atrasada, ATRASADA si sí. Lectura__c apunta a la propia lectura guardada; Reintentable__c es
-     * false (desenlace de éxito, no reintentable). El Detalle__c es un literal fijo (sin secretos): si es
+     * quedó atrasada, ATRASADA si sí. Si su intervención obligatoria falló (205) queda como Fallo_Tecnico
+     * reintentable, NUNCA Procesada. Lectura__c apunta a la propia lectura guardada; Reintentable__c es
+     * false salvo el fallo de intervención. El Detalle__c es un literal fijo (sin secretos): si es
      * procesada, distingue si fijó el estado actual o se guardó solo como evidencia.
      */
     private static Registro_Procesamiento__c construirTrazaLectura(DesenlaceLectura desenlace, Datetime ahora) {
         Senal_Sensor__e evento = desenlace.evento;
+        if (desenlace.errorIntervencion != null) {
+            return construirTrazaFalloIntervencion(evento, desenlace.lectura, desenlace.errorIntervencion, ahora);
+        }
         Boolean esAtrasada = desenlace.atrasada == true;
         return new Registro_Procesamiento__c(
             Resultado__c = esAtrasada ? RESULTADO_ATRASADA : RESULTADO_PROCESADA,

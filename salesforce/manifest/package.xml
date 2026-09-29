@@ -50,6 +50,7 @@
         <members>LecturaSensorSelectorTest</members>
         <members>MonitoreoActivosController</members>
         <members>MonitoreoActivosControllerTest</members>
+        <members>ProcesamientoConexionTest</members>
         <members>ProcesamientoSenalService</members>
         <members>ProcesamientoSenalServiceTest</members>
         <members>ProcesamientoVolumenUS202Test</members>
