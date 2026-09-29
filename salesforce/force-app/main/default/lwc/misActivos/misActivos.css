@@ -1,0 +1,11 @@
+.grupo-severidad {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+}
+
+.zona-carga {
+    position: relative;
+    min-height: 4rem;
+}

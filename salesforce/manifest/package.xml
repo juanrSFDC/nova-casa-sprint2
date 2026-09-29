@@ -23,14 +23,14 @@
         <members>ClasificacionServiceTest</members>
         <members>ClasificacionSolicitud</members>
         <members>ClasificacionSolicitudTest</members>
-        <members>ClasificadorSeveridad</members>
         <members>CompartirEdificiosService</members>
         <members>CompartirEdificiosServiceTest</members>
-        <members>ClasificadorSeveridadTest</members>
         <members>ControlIngestaSelector</members>
         <members>ControlIngestaSelectorTest</members>
         <members>ControlIngestaService</members>
         <members>ControlIngestaServiceTest</members>
+        <members>EnrutamientoSeveridad</members>
+        <members>EnrutamientoSeveridadTest</members>
         <members>EstadoMedicionSelector</members>
         <members>EstadoMedicionSelectorTest</members>
         <members>IngestaFinalizer</members>
@@ -48,6 +48,8 @@
         <members>IntervencionServiceTest</members>
         <members>LecturaSensorSelector</members>
         <members>LecturaSensorSelectorTest</members>
+        <members>MonitoreoActivosController</members>
+        <members>MonitoreoActivosControllerTest</members>
         <members>ProcesamientoSenalService</members>
         <members>ProcesamientoSenalServiceTest</members>
         <members>ProcesamientoVolumenUS202Test</members>
@@ -62,6 +64,7 @@
         <members>SenalSensorTriggerHandler</members>
         <members>SenalValidada</members>
         <members>SenalValidadaTest</members>
+        <members>SeveridadUS206Test</members>
         <members>SimuladorCliente</members>
         <members>SimuladorClienteTest</members>
         <members>SimuladorLote</members>
@@ -71,10 +74,13 @@
         <members>SimuladorSesionSolicitudTest</members>
         <members>SimuladorSesionTest</members>
         <members>TestDataFactory</members>
+        <members>UmbralAutorizacionUS204Test</members>
+        <members>UmbralMedicionTriggerHandler</members>
         <name>ApexClass</name>
     </types>
     <types>
         <members>SenalSensorTrigger</members>
+        <members>UmbralMedicionTrigger</members>
         <name>ApexTrigger</name>
     </types>
     <types>
@@ -92,6 +98,7 @@
     </types>
     <types>
         <members>Case.Edificio_Externo__c</members>
+        <members>Case.Severidad_Origen__c</members>
         <members>Registro_Procesamiento__c.Clave_Mensaje__c</members>
         <members>Registro_Procesamiento__c.Ocurrido_En__c</members>
         <members>Registro_Procesamiento__c.Referencia__c</members>
@@ -99,7 +106,9 @@
     </types>
     <types>
         <members>Control_Ingesta__c</members>
+        <members>Mis_activos</members>
         <members>Registro_Procesamiento__c</members>
+        <members>Umbral_Medicion__c</members>
         <name>CustomTab</name>
     </types>
     <types>
@@ -108,10 +117,12 @@
         <members>Registro_Procesamiento__c.Fallos_tecnicos_reintentables</members>
         <members>Registro_Procesamiento__c.Rechazadas</members>
         <members>Registro_Procesamiento__c.Todas_las_trazas</members>
+        <members>Umbral_Medicion__c.Todos_los_umbrales</members>
         <name>ListView</name>
     </types>
     <types>
         <members>Asset-Asset Layout</members>
+        <members>Case-Case Layout</members>
         <members>Control_Ingesta__c-Control de ingesta Layout</members>
         <members>Registro_Procesamiento__c-Registro de procesamiento Layout</members>
         <name>Layout</name>
@@ -149,6 +160,10 @@
         <members>Case.Case_Intervencion_Coordinadores</members>
         <members>Umbral_Medicion__c.Umbral_Todos_Coordinadores</members>
         <name>SharingCriteriaRule</name>
+    </types>
+    <types>
+        <members>misActivos</members>
+        <name>LightningComponentBundle</name>
     </types>
     <version>67.0</version>
 </Package>

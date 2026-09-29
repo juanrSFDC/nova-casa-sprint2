@@ -620,4 +620,8 @@
         <object>UserExternalCredential</object>
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
+    <recordTypeVisibilities>
+        <recordType>Case.Intervencion</recordType>
+        <visible>true</visible>
+    </recordTypeVisibilities>
 </PermissionSet>

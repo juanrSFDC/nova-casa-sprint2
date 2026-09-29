@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Pantalla del operador (US-207): sus activos con la severidad actual, filtro por edificio y severidad.</description>
+    <label>Mis activos</label>
+    <lwcComponent>misActivos</lwcComponent>
+    <motif>Custom53: Bell</motif>
+</CustomTab>

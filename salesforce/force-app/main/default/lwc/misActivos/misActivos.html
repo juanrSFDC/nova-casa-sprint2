@@ -1,0 +1,102 @@
+<template>
+    <lightning-card title="Mis activos" icon-name="standard:asset_object">
+        <lightning-button
+            slot="actions"
+            label="Actualizar"
+            icon-name="utility:refresh"
+            onclick={actualizar}
+            disabled={cargando}
+            data-id="actualizar"
+        ></lightning-button>
+
+        <div class="slds-p-horizontal_medium">
+            <template lwc:if={mostrarFiltros}>
+                <p class="slds-text-body_small slds-text-color_weak" data-id="conteo">{conteo}</p>
+                <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_x-small slds-m-bottom_small">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <lightning-combobox
+                            name="edificio"
+                            label="Edificio"
+                            value={edificio}
+                            options={opcionesEdificio}
+                            onchange={cambiarEdificio}
+                            data-id="filtro-edificio"
+                        ></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-3">
+                        <fieldset>
+                            <legend class="slds-form-element__label">Severidad</legend>
+                            <div class="grupo-severidad" role="group" aria-label="Filtrar por severidad">
+                                <template for:each={botonesSeveridad} for:item="boton">
+                                    <lightning-button
+                                        key={boton.clave}
+                                        label={boton.etiqueta}
+                                        variant={boton.variante}
+                                        data-valor={boton.valor}
+                                        data-id="filtro-severidad"
+                                        onclick={cambiarSeveridad}
+                                    ></lightning-button>
+                                </template>
+                            </div>
+                        </fieldset>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <template lwc:if={cargando}>
+            <div class="zona-carga" data-id="cargando">
+                <lightning-spinner alternative-text="Cargando activos" size="small"></lightning-spinner>
+            </div>
+        </template>
+
+        <template lwc:if={mostrarError}>
+            <div class="slds-p-around_medium slds-text-align_center" data-id="error" role="alert">
+                <h3 class="slds-text-heading_small">No se pudo cargar la información</h3>
+                <p class="slds-m-top_x-small">{mensajeError}</p>
+                <lightning-button
+                    class="slds-m-top_small"
+                    variant="brand"
+                    label="Reintentar"
+                    onclick={actualizar}
+                    data-id="reintentar"
+                ></lightning-button>
+            </div>
+        </template>
+
+        <template lwc:if={mostrarSinAsignacion}>
+            <div class="slds-p-around_medium slds-text-align_center" data-id="vacio-sin-asignacion">
+                <h3 class="slds-text-heading_small">No tienes activos a tu cargo</h3>
+                <p class="slds-m-top_x-small">
+                    Esta pantalla muestra los equipos de los edificios que tienes asignados.
+                    Pide a coordinación que te asigne los edificios de tu turno.
+                </p>
+            </div>
+        </template>
+
+        <template lwc:if={mostrarFiltroVacio}>
+            <div class="slds-p-around_medium slds-text-align_center" data-id="vacio-filtro">
+                <h3 class="slds-text-heading_small">Ningún activo coincide con estos filtros</h3>
+                <p class="slds-m-top_x-small">Prueba con otro edificio u otra severidad.</p>
+                <lightning-button
+                    class="slds-m-top_small"
+                    label="Quitar filtros"
+                    onclick={quitarFiltros}
+                    data-id="quitar-filtros"
+                ></lightning-button>
+            </div>
+        </template>
+
+        <template lwc:if={mostrarTabla}>
+            <div class="slds-p-horizontal_small slds-p-bottom_small" data-id="tabla">
+                <lightning-datatable
+                    key-field="id"
+                    data={filas}
+                    columns={columnas}
+                    hide-checkbox-column
+                    onrowaction={manejarFila}
+                ></lightning-datatable>
+            </div>
+        </template>
+    </lightning-card>
+</template>

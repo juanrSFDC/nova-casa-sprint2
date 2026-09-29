@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Severidad_Origen__c</fullName>
+    <description>US-205: severidad sellada de la lectura que abrió la intervención. Sale de Lectura_Origen__c; nadie la escribe a mano.</description>
+    <externalId>false</externalId>
+    <formula>TEXT(Lectura_Origen__r.Severidad_Sellada__c)</formula>
+    <inlineHelpText>Severidad con la que se clasificó la lectura que originó esta intervención.</inlineHelpText>
+    <label>Severidad de origen</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
