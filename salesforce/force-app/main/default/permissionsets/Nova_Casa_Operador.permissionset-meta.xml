@@ -8,7 +8,7 @@
         <apexClass>MonitoreoActivosController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
-    <description>Operador de edificios (US-208, 208.2). Lee edificios, activos, lecturas, estados, casos y umbrales de su edificio (acotado por comparticion de grupo). Sin traza ni config de ingesta. Sin pestanas todavia (207).</description>
+    <description>Operador de edificios (US-208). Lee edificios, activos, lecturas, estados, casos y umbrales de su edificio (acotado por comparticion de grupo). Sin traza ni config de ingesta. Abre la app Nova Casa y la pestana Mis activos (208.4).</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Nova Casa · Operador</label>
     <objectPermissions>
