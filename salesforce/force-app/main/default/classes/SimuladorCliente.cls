@@ -24,6 +24,8 @@ public with sharing class SimuladorCliente {
     private static final Integer TIMEOUT_MS = 20000;
     private static final Integer HTTP_SESION_CREADA = 201;
     private static final Integer HTTP_OK = 200;
+    private static final Integer LARGO_PROBLEM_TYPE = 80;
+    private static final String TIPO_PROBLEM_JSON = 'application/problem+json';
     private static final Pattern NOMBRE_NC = Pattern.compile('^[A-Za-z][A-Za-z0-9_]*$');
 
     private static final String ERROR_NC_INVALIDA = 'El nombre de la Named Credential es inválido.';
@@ -156,7 +158,7 @@ public with sharing class SimuladorCliente {
 
         Integer codigo = respuesta.getStatusCode();
         if (codigo != codigoEsperado) {
-            throw fallo(ERROR_HTTP, codigo, esReintentable(codigo));
+            throw fallo(ERROR_HTTP, codigo, esReintentable(codigo), tipoProblema(respuesta));
         }
 
         Object crudo;
@@ -179,12 +181,58 @@ public with sharing class SimuladorCliente {
     }
 
     /**
-     * Construye la excepción con el código HTTP y si es reintentable.
+     * Extrae el tipo estable del problema (RFC 9457) SOLO si la respuesta es application/problem+json.
+     * Devuelve el último segmento del campo `type` (p. ej. de 'https://.../problems/cursor-conflict'
+     * devuelve 'cursor-conflict'), recortado a 80. Cualquier otro caso —otro Content-Type, cuerpo no
+     * parseable, sin `type`— devuelve null y el fallo se comporta como hoy (solo el código). NUNCA lee
+     * `detail` ni ningún otro texto libre del simulador.
+     */
+    private static String tipoProblema(HttpResponse respuesta) {
+        String contentType = respuesta.getHeader('Content-Type');
+        if (contentType == null || !contentType.toLowerCase().contains(TIPO_PROBLEM_JSON)) {
+            return null;
+        }
+        try {
+            Object crudo = JSON.deserializeUntyped(respuesta.getBody());
+            if (!(crudo instanceof Map<String, Object>)) {
+                return null;
+            }
+            Object tipo = ((Map<String, Object>) crudo).get('type');
+            if (!(tipo instanceof String) || String.isBlank((String) tipo)) {
+                return null;
+            }
+            return ultimoSegmento((String) tipo);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Último segmento de un `type` (tras el último '/'), recortado a 80: ni infla el resumen ni deja
+     * que un type largo o adverso entre entero.
+     */
+    private static String ultimoSegmento(String tipo) {
+        String limpio = tipo.trim();
+        Integer barra = limpio.lastIndexOf('/');
+        String segmento = barra >= 0 ? limpio.substring(barra + 1) : limpio;
+        return segmento.length() > LARGO_PROBLEM_TYPE ? segmento.substring(0, LARGO_PROBLEM_TYPE) : segmento;
+    }
+
+    /**
+     * Construye la excepción con el código HTTP y si es reintentable (sin tipo de problema).
      */
     private static SimuladorClienteException fallo(String mensaje, Integer codigoHttp, Boolean reintentable) {
+        return fallo(mensaje, codigoHttp, reintentable, null);
+    }
+
+    /**
+     * Construye la excepción con el código HTTP, si es reintentable y el tipo de problema (problem+json).
+     */
+    private static SimuladorClienteException fallo(String mensaje, Integer codigoHttp, Boolean reintentable, String problemType) {
         SimuladorClienteException e = new SimuladorClienteException(mensaje);
         e.codigoHttp = codigoHttp;
         e.reintentable = reintentable;
+        e.problemType = problemType;
         return e;
     }
 
@@ -217,5 +265,8 @@ public with sharing class SimuladorCliente {
         public Integer codigoHttp;
         /** true si el fallo es transitorio y la 201.5 puede repetir el lote. */
         public Boolean reintentable = false;
+        /** Último segmento del `type` de un cuerpo application/problem+json (p. ej. 'cursor-conflict');
+         *  null si la respuesta no era problem+json. NUNCA lleva `detail` ni texto libre del simulador. */
+        public String problemType;
     }
 }

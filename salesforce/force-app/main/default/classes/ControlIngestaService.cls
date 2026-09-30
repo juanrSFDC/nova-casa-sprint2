@@ -231,9 +231,16 @@ public with sharing class ControlIngestaService {
         if (excepcion instanceof SimuladorCliente.SimuladorClienteException) {
             SimuladorCliente.SimuladorClienteException sce = (SimuladorCliente.SimuladorClienteException) excepcion;
             String estado = sce.reintentable == true ? 'se reintenta' : 'no se reintenta';
-            return sce.codigoHttp != null
-                ? 'Fallo HTTP ' + sce.codigoHttp + ' · ' + estado
-                : 'Fallo de red · ' + estado;
+            // Cursor rechazado: acción concreta para la persona (nadie vacía el cursor automáticamente).
+            if (sce.codigoHttp == 409 && sce.problemType != null && sce.problemType.equalsIgnoreCase('cursor-conflict')) {
+                return 'Cursor rechazado (409) · vaciar el cursor en Controles de ingesta · no se reintenta';
+            }
+            if (sce.codigoHttp == null) {
+                return 'Fallo de red · ' + estado;
+            }
+            return String.isNotBlank(sce.problemType)
+                ? 'Fallo HTTP ' + sce.codigoHttp + ' (' + sce.problemType + ') · ' + estado
+                : 'Fallo HTTP ' + sce.codigoHttp + ' · ' + estado;
         }
         if (excepcion instanceof ConfiguracionException) {
             return 'Configuración inválida · no se reintenta';

@@ -359,7 +359,8 @@ private class ControlIngestaServiceTest {
             Assert.areEqual('Ingesta', traza.Escrito_Por__c, 'La escribe la ingesta');
             Assert.isTrue(traza.Reintentable__c, 'Un 500 es reintentable');
             Assert.isTrue(traza.Referencia__c.startsWith('INGESTA|' + FUENTE_HABILITADA + '|'), 'La referencia lleva fuente y hora');
-            Assert.areEqual('Mensaje saneado', traza.Detalle__c, 'El detalle es el mensaje saneado del cliente');
+            Assert.areEqual('Mensaje saneado · HTTP 500', traza.Detalle__c,
+                'El detalle es el mensaje saneado más el código HTTP (arreglo 201.6: la traza lleva el código)');
         }
     }
 

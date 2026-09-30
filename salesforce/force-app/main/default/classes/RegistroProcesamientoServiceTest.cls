@@ -45,7 +45,8 @@ private class RegistroProcesamientoServiceTest {
                 guardada.Referencia__c,
                 'La referencia lleva prefijo, fuente y hora ISO en GMT'
             );
-            Assert.areEqual('HTTP 503 del simulador', guardada.Detalle__c, 'El detalle es el mensaje ya saneado del cliente');
+            Assert.areEqual('HTTP 503 del simulador · HTTP 503', guardada.Detalle__c,
+                'El detalle es el mensaje saneado más el código HTTP (arreglo 201.6: la traza lleva el código)');
         }
     }
 

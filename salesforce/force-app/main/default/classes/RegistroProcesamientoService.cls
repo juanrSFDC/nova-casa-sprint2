@@ -486,8 +486,19 @@ public with sharing class RegistroProcesamientoService {
      */
     @TestVisible
     private static String detalleSaneado(Exception excepcion) {
-        if (excepcion instanceof SimuladorCliente.SimuladorClienteException
-                || excepcion instanceof ControlIngestaService.ConfiguracionException
+        if (excepcion instanceof SimuladorCliente.SimuladorClienteException) {
+            // La traza lleva el código y el tipo de problema (problem+json), no el detail del simulador.
+            SimuladorCliente.SimuladorClienteException sce = (SimuladorCliente.SimuladorClienteException) excepcion;
+            String base = sce.getMessage() == null ? DETALLE_GENERICO + '.' : sce.getMessage();
+            if (sce.codigoHttp != null) {
+                base += ' · HTTP ' + sce.codigoHttp;
+            }
+            if (String.isNotBlank(sce.problemType)) {
+                base += ' · tipo ' + sce.problemType;
+            }
+            return truncar(base, MAX_DETALLE);
+        }
+        if (excepcion instanceof ControlIngestaService.ConfiguracionException
                 || excepcion instanceof IngestaService.FalloReintentableException) {
             String mensaje = excepcion.getMessage();
             if (mensaje == null) {

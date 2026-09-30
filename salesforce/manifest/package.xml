@@ -46,6 +46,7 @@
         <members>IngestaSchedulableTest</members>
         <members>IngestaService</members>
         <members>IngestaServiceTest</members>
+        <members>IngestaUS201Test</members>
         <members>IntervencionResultado</members>
         <members>IntervencionResultadoTest</members>
         <members>IntervencionService</members>
