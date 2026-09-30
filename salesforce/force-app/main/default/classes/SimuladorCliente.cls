@@ -208,13 +208,17 @@ public with sharing class SimuladorCliente {
     }
 
     /**
-     * Último segmento de un `type` (tras el último '/'), recortado a 80: ni infla el resumen ni deja
-     * que un type largo o adverso entre entero.
+     * Último segmento de un `type` (tras el último '/'), solo con letras, dígitos, '.', '_' y '-', y
+     * recortado a 80: viene de un sistema externo y acaba en la traza y en el resumen de la ingesta.
+     * Vacío tras limpiarlo → null (el fallo queda solo con su código).
      */
     private static String ultimoSegmento(String tipo) {
         String limpio = tipo.trim();
         Integer barra = limpio.lastIndexOf('/');
-        String segmento = barra >= 0 ? limpio.substring(barra + 1) : limpio;
+        String segmento = (barra >= 0 ? limpio.substring(barra + 1) : limpio).replaceAll('[^A-Za-z0-9._-]', '');
+        if (String.isBlank(segmento)) {
+            return null;
+        }
         return segmento.length() > LARGO_PROBLEM_TYPE ? segmento.substring(0, LARGO_PROBLEM_TYPE) : segmento;
     }
 

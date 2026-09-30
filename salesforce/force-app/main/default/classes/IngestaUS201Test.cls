@@ -458,4 +458,28 @@ private class IngestaUS201Test {
         Assert.areEqual(409, capturada.codigoHttp, 'Guarda el código HTTP');
         Assert.isNull(capturada.problemType, 'Sin application/problem+json no hay tipo: se comporta como hoy');
     }
+
+    @isTest
+    static void simuladorCliente_typeConCaracteresRaros_seLimpia() {
+        Test.setMock(HttpCalloutMock.class, new MockSimulador()
+            .agrega(409, problema(409, 'cursor-conflict<b onclick=x>'), 'application/problem+json')
+            .agrega(503, problema(503, '<>'), 'application/problem+json'));
+
+        List<SimuladorCliente.SimuladorClienteException> capturadas = new List<SimuladorCliente.SimuladorClienteException>();
+        Test.startTest();
+        for (Integer i = 0; i < 2; i++) {
+            try {
+                SimuladorCliente.pedirLote(NC, 'cursor-x');
+                Assert.fail('Cada respuesta de error debe lanzar SimuladorClienteException');
+            } catch (SimuladorCliente.SimuladorClienteException e) {
+                capturadas.add(e);
+            }
+        }
+        Test.stopTest();
+
+        Assert.areEqual('cursor-conflictbonclickx', capturadas[0].problemType,
+            'Del type externo solo quedan letras, dígitos, punto, guion y guion bajo');
+        Assert.isNull(capturadas[1].problemType, 'Un type que queda vacío tras limpiarlo no se guarda');
+        Assert.isTrue(capturadas[1].reintentable, 'Limpiar el type no cambia si el código es reintentable');
+    }
 }
