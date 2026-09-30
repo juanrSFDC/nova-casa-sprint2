@@ -521,7 +521,15 @@
         <visibility>DefaultOn</visibility>
     </tabVisibilities>
     <tabVisibilities>
+        <tab>Mis_activos</tab>
+        <visibility>DefaultOn</visibility>
+    </tabVisibilities>
+    <tabVisibilities>
         <tab>Registro_Procesamiento__c</tab>
+        <visibility>DefaultOn</visibility>
+    </tabVisibilities>
+    <tabVisibilities>
+        <tab>Umbral_Medicion__c</tab>
         <visibility>DefaultOn</visibility>
     </tabVisibilities>
 </Profile>
