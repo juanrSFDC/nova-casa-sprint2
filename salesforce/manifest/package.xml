@@ -131,6 +131,8 @@
         <members>Asset-Asset Layout</members>
         <members>Case-Case Layout</members>
         <members>Control_Ingesta__c-Control de ingesta Layout</members>
+        <members>Estado_Medicion__c-Estado de medicion Layout</members>
+        <members>Lectura_Sensor__c-Lectura de sensor Layout</members>
         <members>Registro_Procesamiento__c-Registro de procesamiento Layout</members>
         <name>Layout</name>
     </types>
