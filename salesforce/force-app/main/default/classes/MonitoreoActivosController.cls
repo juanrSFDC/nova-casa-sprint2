@@ -42,7 +42,8 @@ public with sharing class MonitoreoActivosController {
      * en vez de fallar entera (el modo usuario rechaza la consulta completa por un campo).
      */
     private static List<Asset> consultarVisibles() {
-        Boolean veEdificio = Schema.SObjectType.Asset.fields.LocationId.isAccessible();
+        Boolean veEdificio = Schema.SObjectType.Asset.fields.LocationId.isAccessible()
+            && Schema.SObjectType.Location.isAccessible();
         trajoEdificio = veEdificio;
         String soql = 'SELECT Id, Name, Id_Externo__c, Edificio_Externo__c, '
             + 'Severidad_Actual__c, Severidad_Etiqueta__c, Mediciones_Sin_Configurar__c'

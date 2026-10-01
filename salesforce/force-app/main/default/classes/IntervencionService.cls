@@ -182,6 +182,12 @@ public with sharing class IntervencionService {
         return porClave;
     }
 
+    /**
+     * Busca por la clave sin filtrar el record type: el índice único de Clave_Senal__c abarca todos los
+     * casos, así que un caso que ya tenga la clave es la intervención de ese mensaje aunque alguien le
+     * haya cambiado el tipo. Filtrar aquí haría que la inserción chocara con el índice y que el reintento
+     * no lo encontrara nunca.
+     */
     private static Map<String, Id> buscarExistentes(Set<String> claves) {
         Map<String, Id> porClave = new Map<String, Id>();
         if (claves == null || claves.isEmpty()) {
@@ -191,7 +197,6 @@ public with sharing class IntervencionService {
             SELECT Id, Clave_Senal__c
             FROM Case
             WHERE Clave_Senal__c IN :claves
-            AND RecordType.DeveloperName = :RT_INTERVENCION
             WITH USER_MODE
         ]) {
             porClave.put(c.Clave_Senal__c.toLowerCase(), c.Id);

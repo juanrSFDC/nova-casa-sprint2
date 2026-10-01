@@ -5,11 +5,13 @@ import listarActivos from "@salesforce/apex/MonitoreoActivosController.listarAct
 
 // La severidad llega del servidor (roll-up de US-206). Aquí solo se traduce a texto y
 // forma: cada nivel tiene un icono distinto para que no dependa solo del color.
-const PRESENTACION = {
+// «Sin configurar» = tiene lecturas pero ninguna medición con umbral; «Sin datos» = no tiene lecturas.
+export const PRESENTACION = {
     Critico: { etiqueta: "Crítica", icono: "utility:error" },
     Advertencia: { etiqueta: "Advertencia", icono: "utility:warning" },
     Normal: { etiqueta: "Normal", icono: "utility:success" },
-    "Sin datos": { etiqueta: "Sin datos", icono: "utility:help" }
+    "Sin configurar": { etiqueta: "Sin umbral", icono: "utility:help" },
+    "Sin datos": { etiqueta: "Sin datos", icono: "utility:clock" }
 };
 
 // Etiquetas para personas: las listas de selección guardan los valores del contrato del simulador.
@@ -54,6 +56,7 @@ export const FILTROS_SEVERIDAD = [
     { valor: "Critico", etiqueta: "Crítica" },
     { valor: "Advertencia", etiqueta: "Advertencia" },
     { valor: "Normal", etiqueta: "Normal" },
+    { valor: "Sin configurar", etiqueta: "Sin umbral" },
     { valor: "Sin datos", etiqueta: "Sin datos" }
 ];
 

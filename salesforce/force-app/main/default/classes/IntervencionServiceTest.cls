@@ -264,6 +264,30 @@ private class IntervencionServiceTest {
     }
 
     @isTest
+    static void unCasoDeOtroTipoConLaMismaClaveSeReutilizaEnVezDeFallar() {
+        User ingesta = usuarioIngesta();
+        Asset activo = bomba();
+        Lectura_Sensor__c critica = lecturas(1, activo.Id, ClasificacionResultado.SEVERIDAD_CRITICO, false)[0];
+        // El administrador no tiene visible el record type Intervencion: este caso nace con el tipo
+        // por defecto, como uno al que alguien le hubiera cambiado el tipo después.
+        Case deOtroTipo = new Case(AssetId = activo.Id, Clave_Senal__c = critica.Clave_Mensaje__c);
+        insert deOtroTipo;
+
+        Test.startTest();
+        IntervencionResultado r =
+            comoIngesta(ingesta, new List<Lectura_Sensor__c>{ critica }).get(critica.Id);
+        Test.stopTest();
+
+        Assert.isTrue(r.exito, 'error=' + r.error + ' | ' + IntervencionService.ultimoDetalle);
+        Assert.isTrue(r.reutilizada, 'La clave ya tiene caso: se reutiliza');
+        Assert.areEqual(deOtroTipo.Id, r.caseId);
+        Assert.areEqual(1, [SELECT COUNT() FROM Case WHERE Clave_Senal__c = :critica.Clave_Mensaje__c],
+            'El índice abarca todos los casos: sigue habiendo uno solo con esa clave');
+        Assert.areEqual(deOtroTipo.Id,
+            [SELECT Intervencion__c FROM Lectura_Sensor__c WHERE Id = :critica.Id].Intervencion__c);
+    }
+
+    @isTest
     static void falloControladoNoArrastraAlRestoNiEnlazaLaLectura() {
         User ingesta = usuarioIngesta();
         Asset activo = bomba();

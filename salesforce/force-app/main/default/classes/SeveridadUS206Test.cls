@@ -130,6 +130,21 @@ private class SeveridadUS206Test {
     }
 
     @isTest
+    static void unActivoConLecturasSinUmbralNoSeMuestraComoSinDatos() {
+        Asset activo = bomba();
+        estado(activo.Id, 'WATER_PRESSURE', 'BAR', ClasificacionResultado.SEVERIDAD_SIN_CONFIGURAR, null);
+
+        Asset leido = [
+            SELECT Severidad_Actual__c, Severidad_Etiqueta__c, Mediciones_Sin_Configurar__c
+            FROM Asset WHERE Id = :activo.Id
+        ];
+        Assert.isNull(leido.Severidad_Actual__c, 'Sin_Configurar no tiene nivel');
+        Assert.areEqual(1, leido.Mediciones_Sin_Configurar__c);
+        Assert.areEqual('Sin configurar', leido.Severidad_Etiqueta__c,
+            'Tiene lecturas: lo que le falta es el umbral, no los datos');
+    }
+
+    @isTest
     static void unActivoSinMedicionesSeMuestraSinDatos() {
         Asset activo = bomba();
 
