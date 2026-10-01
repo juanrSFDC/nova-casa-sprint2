@@ -1,2 +1,4 @@
 **/jsconfig.json
 **/.eslintrc.json
+# Pruebas Jest de los LWC: no se despliegan a la org
+**/__tests__/**

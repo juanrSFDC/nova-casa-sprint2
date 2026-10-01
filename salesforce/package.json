@@ -1,0 +1,12 @@
+{
+  "name": "nova-casa-sprint2",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Nova Casa · Sprint 2 · pruebas Jest de los LWC",
+  "scripts": {
+    "test:unit": "sfdx-lwc-jest"
+  },
+  "devDependencies": {
+    "@salesforce/sfdx-lwc-jest": "^7.9.0"
+  }
+}
