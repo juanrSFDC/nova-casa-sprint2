@@ -153,6 +153,7 @@
     </types>
     <types>
         <members>Admin</members>
+        <members>Minimum Access - Salesforce</members>
         <name>Profile</name>
     </types>
     <types>
