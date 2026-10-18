@@ -113,6 +113,21 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Estado_Medicion__c.Tendencia_Estado__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Estado_Medicion__c.Tendencia_Minutos_Critico__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Estado_Medicion__c.Tendencia_Ritmo__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Estado_Medicion__c.Tipo_Medicion__c</field>
         <readable>true</readable>
     </fieldPermissions>

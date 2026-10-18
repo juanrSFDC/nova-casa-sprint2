@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Tendencia_Minutos_Critico__c</fullName>
+    <description>Minutos hasta el umbral crítico a este ritmo (D-7), redondeados hacia arriba. Solo en Calculada.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>A este ritmo, en cuántos minutos cruzaría el crítico. Es una tendencia, no una predicción.</inlineHelpText>
+    <label>Minutos hasta el crítico</label>
+    <precision>10</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

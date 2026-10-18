@@ -205,6 +205,56 @@ public with sharing class TestDataFactory {
     }
 
     /**
+     * Un Umbral_Medicion__c activo con un rango coherente por defecto (sensor de temperatura, MAYOR_QUE,
+     * advertencia 30 / crítico 40 / inválido 80 CELSIUS), sobre el que aplicar overrides. Se crea como
+     * administrador. Útil para la tendencia (E-02), que lee el crítico y su dirección.
+     *
+     * @param overrides Campos a sobrescribir (por SObjectField), o null
+     * @param doInsert Si insertar el registro
+     * @return El umbral creado
+     */
+    public static Umbral_Medicion__c createUmbralMedicion(Map<SObjectField, Object> overrides, Boolean doInsert) {
+        return createUmbralesMedicion(1, overrides, doInsert)[0];
+    }
+
+    /**
+     * Varios Umbral_Medicion__c con el rango coherente por defecto. El índice único Clave_Umbral__c
+     * (tipo|medición|dirección, lo deriva el trigger) no admite dos iguales: con más de uno, el llamador
+     * varía Tipo_Activo__c, Tipo_Medicion__c u Operador_Comparacion__c después de crearlos.
+     *
+     * @param cuantos Cuántos crear
+     * @param overrides Campos a sobrescribir en cada uno, o null
+     * @param doInsert Si insertar los registros
+     * @return Los umbrales creados
+     */
+    public static List<Umbral_Medicion__c> createUmbralesMedicion(Integer cuantos, Map<SObjectField, Object> overrides, Boolean doInsert) {
+        List<Umbral_Medicion__c> registros = new List<Umbral_Medicion__c>();
+        for (Integer i = 0; i < cuantos; i++) {
+            Umbral_Medicion__c registro = new Umbral_Medicion__c(
+                Name = 'Umbral de prueba ' + i,
+                Tipo_Activo__c = 'TEMPERATURE_SENSOR',
+                Tipo_Medicion__c = 'TEMPERATURE',
+                Operador_Comparacion__c = 'MAYOR_QUE',
+                Unidad__c = 'CELSIUS',
+                Valor_Advertencia__c = 30,
+                Valor_Critico__c = 40,
+                Valor_Invalido__c = 80,
+                Activo__c = true
+            );
+            if (overrides != null) {
+                for (SObjectField campo : overrides.keySet()) {
+                    registro.put(campo, overrides.get(campo));
+                }
+            }
+            registros.add(registro);
+        }
+        if (doInsert) {
+            insert registros;
+        }
+        return registros;
+    }
+
+    /**
      * Un usuario de pruebas con el perfil de acceso mínimo y SOLO el Permission Set Nova_Casa_Ingesta,
      * para probar que con esos permisos se lee la config, se guarda el cursor y se crea la traza.
      * Falla ruidoso si el perfil o el permission set no existen en la org.

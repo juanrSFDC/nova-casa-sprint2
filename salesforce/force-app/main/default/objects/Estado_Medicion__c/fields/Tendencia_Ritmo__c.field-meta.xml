@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Tendencia_Ritmo__c</fullName>
+    <description>Ritmo de cambio de la tendencia (D-7): unidades de la medición por minuto, pendiente de la recta por mínimos cuadrados. Solo en Calculada, Se_Aleja_Del_Critico y Estable (0).</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Unidades de la medición por minuto. Positivo: sube; negativo: baja.</inlineHelpText>
+    <label>Ritmo de la tendencia</label>
+    <precision>16</precision>
+    <required>false</required>
+    <scale>4</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

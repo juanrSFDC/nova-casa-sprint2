@@ -7,7 +7,8 @@
  *
  * Estado de los pasos: validar (202.2), deduplicar (202.3), clasificar y sellar severidad/umbral
  * (204.1, vía EnrutamientoSeveridad de Juan Flórez), reducir colisiones y marcar atrasadas (203.1),
- * guardar lecturas (202.3), mantener el estado actual (203.2), intervenir sobre las críticas (205, vía
+ * guardar lecturas (202.3), calcular la tendencia de las ganadoras (E-02, D-7, vía TendenciaService),
+ * mantener el estado actual con esa tendencia (203.2), intervenir sobre las críticas (205, vía
  * IntervencionService de Juan Flórez) y la traza de rechazos, duplicados, conflictos, PROCESADAS,
  * ATRASADAS, VALOR_INVALIDO y fallos de intervención (209.1, una sola inserción por lote) YA funcionan.
  *
@@ -47,6 +48,13 @@ public with sharing class ProcesamientoSenalService {
     @TestVisible
     private static List<Lectura_Sensor__c> carreraInyectada;
 
+    /**
+     * Interruptor de la tendencia, SOLO para pruebas (false en producción): apagada, el lote no la calcula,
+     * para que la prueba de gobernadores mida el mismo lote con y sin ella (E-03).
+     */
+    @TestVisible
+    private static Boolean tendenciaDesactivada = false;
+
     /** Fallo del suscriptor al persistir (202.3): rompe el pipeline para que el catch deshaga el lote. */
     public class ProcesamientoException extends Exception {}
 
@@ -60,7 +68,9 @@ public with sharing class ProcesamientoSenalService {
      * A partir de 202.3 también lleva las válidas NUEVAS (las que sobreviven a la deduplicación y se
      * guardan), los desenlaces de duplicado/conflicto pendientes de traza y las lecturas ya insertadas.
      * En 203.x suma los estados guardados ANTES del lote (por Clave_Estado__c en minúsculas), con los que
-     * se marca atrasadas y se decide la ganadora contra el estado. Cada paso lo lee y lo enriquece.
+     * se marca atrasadas y se decide la ganadora contra el estado. En E-02 suma la tendencia de cada
+     * ganadora (por Clave_Estado__c en minúsculas), que el upsert del estado escribe. Cada paso lo lee y lo
+     * enriquece.
      */
     private class ContextoLote {
         List<Senal_Sensor__e> eventos;
@@ -72,6 +82,7 @@ public with sharing class ProcesamientoSenalService {
         Map<String, Estado_Medicion__c> estadosPrevios = new Map<String, Estado_Medicion__c>();
         EnrutamientoSeveridad.Clasificacion clasificacion;
         Map<Id, IntervencionResultado> intervenciones = new Map<Id, IntervencionResultado>();
+        Map<String, TendenciaCalculo.Resultado> tendencias = new Map<String, TendenciaCalculo.Resultado>();
         Datetime ahora = Datetime.now();
 
         ContextoLote(List<Senal_Sensor__e> eventos) {
@@ -102,8 +113,9 @@ public with sharing class ProcesamientoSenalService {
     /**
      * Procesa el lote en el orden fijo de §3.4. Funcionan el paso a (validación y resolución de activos),
      * el paso b (deduplicación: duplicados y conflictos), la reducción de colisiones y el marcado de
-     * atrasadas (203.1), la persistencia de las lecturas nuevas, el upsert del estado actual (203.2) y la
-     * traza de rechazos, duplicados, conflictos, procesadas y atrasadas (209.1, una inserción por lote).
+     * atrasadas (203.1), la persistencia de las lecturas nuevas, la tendencia de las ganadoras (E-02), el
+     * upsert del estado actual con esa tendencia (203.2) y la traza de rechazos, duplicados, conflictos,
+     * procesadas y atrasadas (209.1, una inserción por lote).
      * La clasificación (204.1) y la intervención (205) están conectadas a las clases de Juan Flórez. El
      * camino de fallo (try/catch → rollback al punto de retorno → Fallo_Tecnico reintentable) sigue igual:
      * si un paso ya escribió lecturas, estados o trazas y algo falla después, se deshacen. Un lote nulo o
@@ -126,6 +138,7 @@ public with sharing class ProcesamientoSenalService {
             clasificar(ctx);                         // 204.1 (Flórez)
             reducirColisionesYMarcarAtrasadas(ctx);  // 203.1
             insertarLecturas(ctx);                   // 202.3
+            calcularTendencia(ctx);                  // E-02 (D-7)
             upsertEstado(ctx);                       // 203.2
             intervenir(ctx);                         // 205 (Flórez)
             trazarDesenlaces(ctx);                   // 202.2/202.3 hoy; 209.1 completa procesadas y atrasadas
@@ -420,14 +433,29 @@ public with sharing class ProcesamientoSenalService {
     }
 
     /**
+     * Tendencia (E-02, D-7): corre DESPUÉS de guardar las lecturas, así el historial ya incluye las del
+     * lote, y ANTES del upsert del estado, que la escribe. Delega en TendenciaService: hasta dos consultas
+     * con ganadoras, cero sin ellas, ninguna DML. Sin try/catch: un fallo inesperado sigue el camino de
+     * fallo de siempre.
+     */
+    private static void calcularTendencia(ContextoLote ctx) {
+        if (tendenciaDesactivada) {
+            return;
+        }
+        ctx.tendencias = TendenciaService.calcular(ctx.validasNuevas);
+    }
+
+    /**
      * Paso e (203.2): mantiene el estado actual por Clave_Estado__c con las ganadoras del lote. Corre
      * DESPUÉS de insertar las lecturas: por cada señal marcada ganadoraEstado cuya lectura SÍ se guardó
      * (si la ganadora chocó en carrera y se degradó, senal.lectura queda nula y no toca el estado),
      * arma su Estado_Medicion__c y hace UN solo upsert por Clave_Estado__c en modo usuario. Activo__c
      * solo se pone en los estados NUEVOS (no había previo): el master-detail no es reparentable, así que
      * en las actualizaciones se omite para no romper el DML. Severidad__c/Severidad_Nivel__c salen de la
-     * severidad sellada por clasificar (204.1). allOrNone=true: cualquier fallo del upsert sube al catch de
-     * procesar → rollback al punto de retorno → Fallo_Tecnico, sin dejar el estado a medias.
+     * severidad sellada por clasificar (204.1). Los tres campos de la tendencia (E-02) salen de
+     * ctx.tendencias y se asignan aunque sean nulos, para que un estado actualizado no conserve minutos o
+     * ritmo viejos; van en el MISMO upsert (0 DML nuevos). allOrNone=true: cualquier fallo del upsert
+     * sube al catch de procesar → rollback al punto de retorno → Fallo_Tecnico, sin dejar el estado a medias.
      */
     private static void upsertEstado(ContextoLote ctx) {
         List<Estado_Medicion__c> estados = new List<Estado_Medicion__c>();
@@ -446,6 +474,12 @@ public with sharing class ProcesamientoSenalService {
                 Lectura_Ganadora__c = senal.lectura.Id,
                 Actualizado_En__c = ctx.ahora
             );
+            TendenciaCalculo.Resultado tendencia = ctx.tendencias.get(senal.claveEstado.toLowerCase());
+            if (tendencia != null) {
+                estado.Tendencia_Estado__c = tendencia.valorPicklist();
+                estado.Tendencia_Ritmo__c = tendencia.ritmo;
+                estado.Tendencia_Minutos_Critico__c = tendencia.minutos;
+            }
             // Nuevo estado (sin previo): enlaza el activo del master-detail. En una actualización no se
             // toca Activo__c (no reparentable).
             if (!ctx.estadosPrevios.containsKey(senal.claveEstado.toLowerCase())) {

@@ -10,10 +10,10 @@
  *     atrasadas), estados, la lectura ganadora esperada por estado (fecha → severidad → messageId),
  *     Atrasada__c donde toca y 0 Fallo_Tecnico. NO presupone que las 200 lleguen en una sola invocación
  *     del suscriptor: verifica TOTALES, no lotes.
- *  2. Gobernadores independientes del tamaño: la misma receta a 20 y a 200 con 5 SOQL y 4 DML iguales
- *     (el punto de retorno del lote es uno de los 4 DML). Son 5/4 porque clasificar (204.1) añade una
- *     consulta de umbrales y el reenvío-vs-BD de la receta (dupbd) hace que intervenir (205) resuelva la
- *     original pendiente en UNA consulta más; sin umbrales sembrados aquí todo sale Sin_Configurar, así
+ *  2. Gobernadores independientes del tamaño: la misma receta a 20 y a 200 con 7 SOQL y 4 DML iguales
+ *     (el punto de retorno del lote es uno de los 4 DML). Son 7/4 porque clasificar (204.1) añade una
+ *     consulta de umbrales, el reenvío-vs-BD de la receta (dupbd) hace que intervenir (205) resuelva la
+ *     original pendiente en UNA consulta más y la tendencia (E-02) suma el historial y sus umbrales; sin umbrales sembrados aquí todo sale Sin_Configurar, así
  *     que no hay críticas y la intervención no crea casos (0 DML de intervención). Antes de cada procesar
  *     medido se invalida el caché de umbrales (en producción cada invocación del suscriptor arranca frío).
  *  3. Aislamiento: las válidas producen su resultado aunque el lote traiga inválidas.
@@ -47,7 +47,7 @@ private class ProcesamientoVolumenUS202Test {
     private static final Integer N_ATRASADA = 1;
     private static final Integer N_LECTURAS_NUEVAS = 189;   // 188 procesadas + 1 atrasada
     private static final Integer N_ESTADOS = 7;             // 6 nuevos + 1 previo (atrasada) sin mover
-    private static final Integer SOQL_ESPERADAS = 5;        // activos + lecturas + umbrales (clasificar) + estados previos + candidatas (reenvío dupbd)
+    private static final Integer SOQL_ESPERADAS = 7;        // activos + lecturas + umbrales (clasificar) + estados previos + historial y umbrales (tendencia) + candidatas (reenvío dupbd)
     private static final Integer DML_ESPERADAS = 4;         // savepoint + insert lecturas + upsert estado + insert trazas (sin críticas: 0 DML de intervención)
 
     // ─── Datos de referencia (E2E) ──────────────────────────────────────────
@@ -168,10 +168,10 @@ private class ProcesamientoVolumenUS202Test {
         Test.stopTest();
 
         Assert.areEqual(SOQL_ESPERADAS, usoSoql20,
-            'Lote de 20: cinco consultas (activos, lecturas guardadas, umbrales, estados previos, candidatas del reenvío), nada por señal');
+            'Lote de 20: siete consultas (activos, lecturas guardadas, umbrales, estados previos, historial y umbrales de la tendencia, candidatas del reenvío), nada por señal');
         Assert.areEqual(DML_ESPERADAS, usoDml20,
             'Lote de 20: cuatro DML (punto de retorno, insertar lecturas, upsert estado, insertar trazas)');
-        Assert.areEqual(SOQL_ESPERADAS, usoSoql200, 'Lote de 200: las MISMAS cinco consultas que el de 20');
+        Assert.areEqual(SOQL_ESPERADAS, usoSoql200, 'Lote de 200: las MISMAS siete consultas que el de 20');
         Assert.areEqual(DML_ESPERADAS, usoDml200, 'Lote de 200: los MISMOS cuatro DML que el de 20');
         Assert.areEqual(usoSoql20, usoSoql200, 'Las consultas no dependen del tamaño del lote (sin N+1)');
         Assert.areEqual(usoDml20, usoDml200, 'Las sentencias DML no dependen del tamaño del lote (sin N+1)');

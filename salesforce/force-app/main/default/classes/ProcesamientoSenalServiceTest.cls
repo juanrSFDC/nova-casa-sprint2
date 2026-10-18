@@ -138,9 +138,10 @@ private class ProcesamientoSenalServiceTest {
 
     @isTest
     static void procesar_loteTodoValido_insertaLecturasYTrazaProcesadas() {
-        // 200 eventos válidos y todos nuevos sobre el mismo activo (misma Clave_Estado__c): CUATRO consultas
-        // (umbrales de clasificación + activos + lecturas existentes + estados previos) y CUATRO DML (punto de
-        // retorno + inserción de lecturas + upsert del estado + UNA sola inserción de trazas Procesada, 209.1).
+        // 200 eventos válidos y todos nuevos sobre el mismo activo (misma Clave_Estado__c): SEIS consultas
+        // (umbrales de clasificación + activos + lecturas existentes + estados previos + historial y umbrales
+        // de la tendencia, E-02) y CUATRO DML (punto de retorno + inserción de lecturas + upsert del estado con
+        // la tendencia + UNA sola inserción de trazas Procesada, 209.1).
         // Sin umbrales sembrados aquí, todo sale Sin_Configurar y sin críticas: intervenir no consulta ni escribe.
         // Como comparten clave de estado, queda UN solo Estado_Medicion__c.
         List<Senal_Sensor__e> lote = new List<Senal_Sensor__e>();
@@ -152,8 +153,8 @@ private class ProcesamientoSenalServiceTest {
         Integer soql = Limits.getQueries();
         Integer dml = Limits.getDmlStatements();
         ProcesamientoSenalService.procesar(lote);
-        Assert.areEqual(soql + 4, Limits.getQueries(),
-            'Una consulta de umbrales, una de activos, una de lecturas existentes y una de estados previos: nada por evento');
+        Assert.areEqual(soql + 6, Limits.getQueries(),
+            'Umbrales, activos, lecturas existentes, estados previos, historial y umbrales de la tendencia: nada por evento');
         Assert.areEqual(dml + 4, Limits.getDmlStatements(),
             'Punto de retorno (1) + inserción de lecturas (1) + upsert del estado (1) + UNA inserción de trazas (1): nada por evento');
         Test.stopTest();
@@ -167,8 +168,8 @@ private class ProcesamientoSenalServiceTest {
 
     @isTest
     static void procesar_loteMixto_unaConsultaUnaInsercionUnaTraza() {
-        // 199 válidas nuevas + 1 rechazo (activo inexistente): 4 consultas (umbrales + activos + lecturas +
-        // estados previos), 4 DML (punto de retorno + inserción de lecturas + upsert del estado + inserción de
+        // 199 válidas nuevas + 1 rechazo (activo inexistente): 6 consultas (umbrales + activos + lecturas +
+        // estados previos + historial y umbrales de la tendencia), 4 DML (punto de retorno + inserción de lecturas + upsert del estado + inserción de
         // trazas). Demuestra "una de cada" por lote. Las 199 comparten Clave_Estado__c → un solo estado.
         List<Senal_Sensor__e> lote = new List<Senal_Sensor__e>();
         for (Integer i = 0; i < 199; i++) {
@@ -180,8 +181,8 @@ private class ProcesamientoSenalServiceTest {
         Integer soql = Limits.getQueries();
         Integer dml = Limits.getDmlStatements();
         ProcesamientoSenalService.procesar(lote);
-        Assert.areEqual(soql + 4, Limits.getQueries(),
-            'Una consulta de umbrales, una de activos, una de lecturas existentes y una de estados previos');
+        Assert.areEqual(soql + 6, Limits.getQueries(),
+            'Umbrales, activos, lecturas existentes, estados previos, historial y umbrales de la tendencia');
         Assert.areEqual(dml + 4, Limits.getDmlStatements(),
             'Punto de retorno + inserción de lecturas + upsert del estado + inserción de trazas');
         Test.stopTest();

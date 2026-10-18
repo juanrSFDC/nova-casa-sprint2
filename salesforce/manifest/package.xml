@@ -80,8 +80,14 @@
         <members>SimuladorSesionSolicitud</members>
         <members>SimuladorSesionSolicitudTest</members>
         <members>SimuladorSesionTest</members>
+        <members>TendenciaCalculo</members>
+        <members>TendenciaCalculoTest</members>
+        <members>TendenciaProcesamientoTest</members>
+        <members>TendenciaService</members>
         <members>TestDataFactory</members>
         <members>UmbralAutorizacionUS204Test</members>
+        <members>UmbralMedicionSelector</members>
+        <members>UmbralMedicionSelectorTest</members>
         <members>UmbralMedicionTriggerHandler</members>
         <name>ApexClass</name>
     </types>
@@ -106,6 +112,9 @@
     <types>
         <members>Case.Edificio_Externo__c</members>
         <members>Case.Severidad_Origen__c</members>
+        <members>Estado_Medicion__c.Tendencia_Estado__c</members>
+        <members>Estado_Medicion__c.Tendencia_Minutos_Critico__c</members>
+        <members>Estado_Medicion__c.Tendencia_Ritmo__c</members>
         <members>Registro_Procesamiento__c.Clave_Mensaje__c</members>
         <members>Registro_Procesamiento__c.Ocurrido_En__c</members>
         <members>Registro_Procesamiento__c.Referencia__c</members>

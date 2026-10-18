@@ -283,7 +283,8 @@ private class ProcesamientoConexionTest {
         // y el upsert cuente igual; sin esto, la ganadora de la 2.ª escala empataría con el estado ya fijado
         // por la 1.ª y el upsert se saltaría, rompiendo la simetría de DML. Todas críticas y con claves
         // distintas: una fija el estado, el resto son evidencia, y CADA una abre su propio caso. Con críticas
-        // el pipeline hace 6 SOQL y 6 DML, y no debe crecer con el tamaño del lote.
+        // el pipeline hace 8 SOQL (6 + historial y umbrales de la tendencia, E-02) y 6 DML, y no debe crecer
+        // con el tamaño del lote.
         Asset a20 = activoTemp('AST-CONX-G20');
         Asset a200 = activoTemp('AST-CONX-G200');
         insert new List<Asset>{ a20, a200 };
@@ -308,8 +309,8 @@ private class ProcesamientoConexionTest {
         }
         Test.stopTest();
 
-        Assert.areEqual(6, usoSoql20,
-            'Con críticas: activos + lecturas + umbrales + estados previos + activos y casos de intervención');
+        Assert.areEqual(8, usoSoql20,
+            'Con críticas: activos + lecturas + umbrales + estados previos + historial y umbrales de la tendencia + activos y casos de intervención');
         Assert.areEqual(6, usoDml20,
             'Con críticas: punto de retorno + lecturas + upsert estado + insertar casos + enlazar lecturas + trazas');
         Assert.areEqual(usoSoql20, usoSoql200, 'Las consultas no dependen del tamaño del lote (sin N+1)');
