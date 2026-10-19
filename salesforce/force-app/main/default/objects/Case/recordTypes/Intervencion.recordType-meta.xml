@@ -61,6 +61,10 @@
     <picklistValues>
         <picklist>Tipo_Medicion_Origen__c</picklist>
         <values>
+            <fullName>CAMERA_CONNECTIVITY</fullName>
+            <default>false</default>
+        </values>
+        <values>
             <fullName>ENERGY_CONSUMPTION</fullName>
             <default>false</default>
         </values>

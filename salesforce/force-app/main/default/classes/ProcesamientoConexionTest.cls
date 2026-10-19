@@ -5,7 +5,8 @@
  * (Nova_Casa_Ingesta) —el contexto real del suscriptor en producción, donde corre como
  * integracion@novacasa.sprint2 con ese permission set— para verificar que:
  *   - la lectura se sella con su severidad y el umbral que la decidió (D-4);
- *   - solo la crítica vigente y no atrasada abre (o reutiliza) su Case de intervención;
+ *   - solo la crítica vigente y no atrasada abre (o reutiliza) su Case de intervención, también la de
+ *     una cámara que pierde señal (el record type Intervencion admite CAMERA_CONNECTIVITY);
  *   - un valor fuera de rango se rechaza como VALOR_INVALIDO sin guardar lectura ni mover el estado;
  *   - si la intervención obligatoria de una crítica falla, la lectura queda guardada y su traza es
  *     Fallo_Tecnico reintentable (nunca Procesada), y un reenvío recupera el caso;
@@ -125,6 +126,38 @@ private class ProcesamientoConexionTest {
         Assert.areEqual(EDIFICIO, casos[0].Edificio_Externo__c, 'El caso hereda el edificio del activo');
         Assert.areEqual(lectura.Id, casos[0].Lectura_Origen__c, 'El caso apunta a la lectura de origen');
         Assert.areEqual(lectura.Intervencion__c, casos[0].Id, 'La lectura enlaza justo ese caso');
+    }
+
+    @isTest
+    static void criticaDeCamara_abreCasoConMedicionDeConectividad() {
+        insert TestDataFactory.createAsset(new Map<SObjectField, Object>{
+            Asset.Id_Externo__c => 'AST-CONX-CAM-001',
+            Asset.Tipo_Activo__c => 'SECURITY_CAMERA',
+            Asset.Medicion_Esperada__c => 'CAMERA_CONNECTIVITY',
+            Asset.Unidad_Esperada__c => 'SECONDS',
+            Asset.Edificio_Externo__c => EDIFICIO
+        }, false);
+        insert umbral('SECURITY_CAMERA', 'CAMERA_CONNECTIVITY', 'MAYOR_QUE', 'SECONDS', 120, 300, null);
+        User ingesta = nuevaIngesta();
+        Senal_Sensor__e caida = new Senal_Sensor__e(
+            Clave_Mensaje__c = 'conx|cam-lost', Id_Entrega__c = 'dlv-cam-lost', Id_Mensaje__c = 'msg-cam-lost',
+            Tipo_Mensaje__c = 'CONNECTIVITY', Activo_Externo__c = 'AST-CONX-CAM-001',
+            Segundos_Sin_Senal__c = 480, Estado_Comunicacion__c = 'LOST', Ultima_Vez_Visto__c = OCURRIDO,
+            Episodio__c = 'EP-1', Ocurrido_En__c = OCURRIDO, Recibido_En__c = OCURRIDO, Origen__c = 'prueba');
+
+        Test.startTest();
+        procesar(ingesta, new List<Senal_Sensor__e>{ caida });
+        Test.stopTest();
+
+        Lectura_Sensor__c lectura = [SELECT Severidad_Sellada__c, Intervencion__c FROM Lectura_Sensor__c];
+        Assert.areEqual(ClasificacionResultado.SEVERIDAD_CRITICO, lectura.Severidad_Sellada__c,
+            '480 s sin señal superan el crítico de 300 s: Critico');
+        Assert.isNotNull(lectura.Intervencion__c,
+            'La cámara crítica abre su intervención: el record type Intervencion admite CAMERA_CONNECTIVITY');
+        Case caso = [SELECT Tipo_Medicion_Origen__c FROM Case WHERE Id = :lectura.Intervencion__c];
+        Assert.areEqual('CAMERA_CONNECTIVITY', caso.Tipo_Medicion_Origen__c,
+            'El caso guarda la medición de origen de la cámara');
+        Assert.areEqual(0, trazas('Fallo_Tecnico'), 'Sin fallo técnico: antes del arreglo caía por la picklist');
     }
 
     @isTest
