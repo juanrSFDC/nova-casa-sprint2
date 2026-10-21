@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ApprovalProcess xmlns="http://soap.sforce.com/2006/04/metadata">
+    <active>true</active>
+    <allowRecall>true</allowRecall>
+    <allowedSubmitters>
+        <type>allInternalUsers</type>
+    </allowedSubmitters>
+    <approvalPageFields>
+        <field>Name</field>
+        <field>Operador_Comparacion__c</field>
+        <field>Valor_Advertencia__c</field>
+        <field>Valor_Advertencia_Propuesto__c</field>
+        <field>Valor_Critico__c</field>
+        <field>Valor_Critico_Propuesto__c</field>
+        <field>Valor_Invalido__c</field>
+        <field>Valor_Invalido_Propuesto__c</field>
+        <field>Motivo_Cambio__c</field>
+        <field>Owner</field>
+    </approvalPageFields>
+    <approvalStep>
+        <allowDelegate>false</allowDelegate>
+        <assignedApprover>
+            <approver>
+                <name>gerente@novacasa.sprint2</name>
+                <type>user</type>
+            </approver>
+            <whenMultipleApprovers>FirstResponse</whenMultipleApprovers>
+        </assignedApprover>
+        <description>El gerente regional decide sobre cada cambio de límite que propone coordinación.</description>
+        <label>Aprobación de gerencia</label>
+        <name>Aprobacion_gerencia</name>
+    </approvalStep>
+    <description>US-204 (extra). Un cambio de límite propuesto por coordinación solo se aplica cuando el gerente lo aprueba. El envío lo hace UmbralMedicionTrigger al guardarse la propuesta; quién puede proponer lo decide la seguridad de campo de los campos propuestos, no este proceso. El administrador cambia los límites vigentes directamente, sin pasar por aquí.</description>
+    <enableMobileDeviceAccess>false</enableMobileDeviceAccess>
+    <entryCriteria>
+        <formula>AND(
+  OR(
+    NOT(ISBLANK(Valor_Advertencia_Propuesto__c)),
+    NOT(ISBLANK(Valor_Critico_Propuesto__c)),
+    NOT(ISBLANK(Valor_Invalido_Propuesto__c))
+  ),
+  NOT(ISPICKVAL(Estado_Propuesta__c, &quot;Pendiente&quot;))
+)</formula>
+    </entryCriteria>
+    <finalApprovalActions>
+        <action>
+            <name>Umbral_Propuesta_Aprobada</name>
+            <type>FieldUpdate</type>
+        </action>
+    </finalApprovalActions>
+    <finalApprovalRecordLock>false</finalApprovalRecordLock>
+    <finalRejectionActions>
+        <action>
+            <name>Umbral_Propuesta_Rechazada</name>
+            <type>FieldUpdate</type>
+        </action>
+    </finalRejectionActions>
+    <finalRejectionRecordLock>false</finalRejectionRecordLock>
+    <initialSubmissionActions>
+        <action>
+            <name>Umbral_Propuesta_Pendiente</name>
+            <type>FieldUpdate</type>
+        </action>
+    </initialSubmissionActions>
+    <label>Cambio de umbral</label>
+    <processOrder>1</processOrder>
+    <recallActions>
+        <action>
+            <name>Umbral_Propuesta_Retirada</name>
+            <type>FieldUpdate</type>
+        </action>
+    </recallActions>
+    <recordEditability>AdminOnly</recordEditability>
+    <showApprovalHistory>true</showApprovalHistory>
+</ApprovalProcess>

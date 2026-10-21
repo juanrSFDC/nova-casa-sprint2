@@ -51,6 +51,92 @@ export function medicionLegible(medicion, valor, unidad) {
     return `${nombre}: ${numero} ${simbolo}`.trim();
 }
 
+// La tendencia la calcula el procesamiento (E-02, Juan Rozo). Aquí solo se pone en palabras.
+export const TENDENCIAS = {
+    Calculada: "Hacia el crítico",
+    Ya_En_Critico: "Ya en crítico",
+    Se_Aleja_Del_Critico: "Se aleja del crítico",
+    Estable: "Estable",
+    Sin_Tendencia_Clara: "Sin tendencia clara",
+    Pocas_Lecturas: "Pocas lecturas",
+    Sin_Umbral: "Sin umbral"
+};
+
+/**
+ * Cuánto falta, legible: «~13 min» o, desde dos horas, «~3 h».
+ * @param {number} minutos
+ * @returns {string}
+ */
+export function tiempoHastaCritico(minutos) {
+    if (minutos < 120) {
+        return `~${minutos} min`;
+    }
+    return `~${Math.round(minutos / 60)} h`;
+}
+
+/**
+ * Tendencia legible: «Temperatura: crítico en ~13 min», o el estado que explica por qué no hay minutos.
+ * @param {string} estado Valor de Tendencia_Estado__c
+ * @param {number} minutos Tendencia_Minutos_Critico__c
+ * @param {string} medicion Tipo_Medicion__c de esa tendencia
+ * @returns {string}
+ */
+export function tendenciaLegible(estado, minutos, medicion) {
+    if (!estado) {
+        return "—";
+    }
+    if (estado === "Calculada" && minutos !== null && minutos !== undefined) {
+        const nombre = MEDICIONES[medicion] || medicion;
+        const cuando = `crítico en ${tiempoHastaCritico(minutos)}`;
+        return nombre ? `${nombre}: ${cuando}` : cuando.charAt(0).toUpperCase() + cuando.slice(1);
+    }
+    return TENDENCIAS[estado] || estado;
+}
+
+function contar(n, singular, plural) {
+    return n > 0 ? `${n} ${n === 1 ? singular : plural}` : null;
+}
+
+/**
+ * La frase del resumen de turno. Los números los manda el servidor; aquí solo se redactan.
+ * @param {object} resumen ResumenTurno del controlador
+ * @param {number} ahora Milisegundos de referencia
+ * @returns {string|null}
+ */
+export function resumenTurno(resumen, ahora) {
+    if (!resumen) {
+        return null;
+    }
+    const partes = [
+        contar(resumen.criticos, "crítica", "críticas"),
+        contar(resumen.advertencias, "advertencia", "advertencias"),
+        contar(resumen.normales, "normal", "normales"),
+        contar(resumen.sinUmbral, "sin umbral", "sin umbral"),
+        contar(resumen.sinDatos, "sin datos", "sin datos")
+    ].filter((p) => p);
+    const donde = resumen.edificios === 1 ? "En tu edificio" : `En tus ${resumen.edificios} edificios`;
+    let texto = `${donde}: ${partes.join(" · ")}.`;
+
+    const urgente = resumen.masUrgente;
+    if (urgente) {
+        const lugar = urgente.edificioNombre || urgente.edificioExterno;
+        const estado = urgente.severidad === "Critico" ? "en crítico" : "en advertencia";
+        const medicion = MEDICIONES[urgente.medicion] ? ` por ${MEDICIONES[urgente.medicion].toLowerCase()}` : "";
+        const hace = urgente.ocurridoEn ? `, última lectura ${antiguedadDe(urgente.ocurridoEn, ahora).toLowerCase()}` : "";
+        texto += ` Lo más urgente: ${urgente.nombre} (${lugar}), ${estado}${medicion}${hace}.`;
+    } else if (resumen.criticos === 0 && resumen.advertencias === 0 && resumen.normales > 0) {
+        texto += " No hay nada en advertencia ni en crítico.";
+    }
+
+    const proximo = resumen.proximoAlCritico;
+    if (proximo && proximo.tendenciaMinutos !== null && proximo.tendenciaMinutos !== undefined) {
+        texto += ` A este ritmo, ${proximo.nombre} llegaría al crítico en ${tiempoHastaCritico(proximo.tendenciaMinutos)}.`;
+    }
+    return texto;
+}
+
+export const INTERVALO_ACTUALIZACION_MS = 30000;
+
 export const FILTROS_SEVERIDAD = [
     { valor: "", etiqueta: "Todas" },
     { valor: "Critico", etiqueta: "Crítica" },
@@ -73,6 +159,12 @@ const COLUMNAS = [
     { label: "Activo", fieldName: "nombre", wrapText: true },
     { label: "Edificio", fieldName: "edificioNombre" },
     { label: "Medición que la provoca", fieldName: "medicionTexto", wrapText: true },
+    {
+        label: "Tendencia",
+        fieldName: "tendenciaTexto",
+        wrapText: true,
+        cellAttributes: { iconName: { fieldName: "tendenciaIcono" } }
+    },
     {
         label: "Fecha de la lectura",
         fieldName: "ocurridoEn",
@@ -137,6 +229,18 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
     recibido = false;
     refrescando = false;
     cableado;
+    resumen;
+    autoActualizar = true;
+    actualizadoEn;
+    temporizador;
+
+    connectedCallback() {
+        this.programarActualizacion();
+    }
+
+    disconnectedCallback() {
+        this.detenerActualizacion();
+    }
 
     @wire(listarActivos, { edificioExterno: "$edificio", severidad: "$severidad" })
     recibir(valor) {
@@ -150,6 +254,8 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
             this.totalSinFiltro = data.totalSinFiltro || 0;
             this.edificios = data.edificios || [];
             this.filas = (data.filas || []).map((fila) => this.aFila(fila, ahora));
+            this.resumen = resumenTurno(data.resumen, ahora);
+            this.actualizadoEn = new Date(ahora);
         } else if (error) {
             this.recibido = true;
             this.hayError = true;
@@ -159,6 +265,8 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
 
     aFila(fila, ahora) {
         const presentacion = PRESENTACION[fila.severidad] || PRESENTACION["Sin datos"];
+        // La tendencia necesita cinco lecturas; una fila ya crítica lo dice por su severidad.
+        const critica = fila.severidad === "Critico";
         let medicionTexto = medicionLegible(fila.medicion, fila.valor, fila.unidad);
         if (fila.medicionesSinConfigurar > 0) {
             const plural = fila.medicionesSinConfigurar === 1 ? "medición" : "mediciones";
@@ -171,6 +279,10 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
             edificioNombre: fila.edificioNombre || fila.edificioExterno || "—",
             medicionTexto,
             antiguedad: antiguedadDe(fila.ocurridoEn, ahora),
+            tendenciaTexto: critica
+                ? TENDENCIAS.Ya_En_Critico
+                : tendenciaLegible(fila.tendenciaEstado, fila.tendenciaMinutos, fila.tendenciaMedicion),
+            tendenciaIcono: !critica && fila.tendenciaEstado === "Calculada" ? "utility:trending" : "",
             sinIntervencion: !fila.intervencionId,
             intervencionEtiqueta: fila.intervencionId ? `Intervención ${fila.intervencionNumero || ""}`.trim() : "Sin intervención"
         };
@@ -198,6 +310,18 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
 
     get mostrarFiltros() {
         return this.recibido && !this.hayError && !this.sinAsignacion;
+    }
+
+    get mostrarResumen() {
+        return this.mostrarFiltros && !!this.resumen;
+    }
+
+    get textoActualizado() {
+        if (!this.actualizadoEn) {
+            return "";
+        }
+        const hora = this.actualizadoEn.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+        return this.autoActualizar ? `Actualizado a las ${hora} · se actualiza cada 30 s` : `Actualizado a las ${hora}`;
     }
 
     get mensajeError() {
@@ -247,6 +371,32 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
             await refreshApex(this.cableado);
         } finally {
             this.refrescando = false;
+        }
+    }
+
+    cambiarAutoActualizar(event) {
+        this.autoActualizar = event.target.checked;
+        this.programarActualizacion();
+    }
+
+    // Sin indicador de carga para no hacer parpadear la tabla; solo se pide si la pestaña está a la vista.
+    programarActualizacion() {
+        this.detenerActualizacion();
+        if (!this.autoActualizar) {
+            return;
+        }
+        // eslint-disable-next-line @lwc/lwc/no-async-operation
+        this.temporizador = setInterval(() => {
+            if (document.visibilityState === "visible" && !this.refrescando && this.cableado) {
+                refreshApex(this.cableado);
+            }
+        }, INTERVALO_ACTUALIZACION_MS);
+    }
+
+    detenerActualizacion() {
+        if (this.temporizador) {
+            clearInterval(this.temporizador);
+            this.temporizador = null;
         }
     }
 

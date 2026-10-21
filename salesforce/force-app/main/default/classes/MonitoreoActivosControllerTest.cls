@@ -154,4 +154,90 @@ private class MonitoreoActivosControllerTest {
         Assert.areEqual('WATER_PRESSURE', resultado.filas[0].medicion);
         Assert.isNotNull(resultado.filas[0].edificioNombre, 'Sin permiso sobre Location se muestra el código');
     }
+
+    private static void estadoConTendencia(Asset a, String medicion, String unidad, String severidad, Decimal nivel,
+            Datetime cuando, String tendencia, Decimal minutos, Decimal ritmo) {
+        TestDataFactory.createEstadoMedicion(new Map<SObjectField, Object>{
+            Estado_Medicion__c.Activo__c => a.Id,
+            Estado_Medicion__c.Clave_Estado__c => a.Id_Externo__c + '|' + medicion,
+            Estado_Medicion__c.Tipo_Medicion__c => medicion,
+            Estado_Medicion__c.Unidad__c => unidad,
+            Estado_Medicion__c.Severidad__c => severidad,
+            Estado_Medicion__c.Severidad_Nivel__c => nivel,
+            Estado_Medicion__c.Ocurrido_En__c => cuando,
+            Estado_Medicion__c.Tendencia_Estado__c => tendencia,
+            Estado_Medicion__c.Tendencia_Minutos_Critico__c => minutos,
+            Estado_Medicion__c.Tendencia_Ritmo__c => ritmo
+        }, true);
+    }
+
+    @isTest
+    static void laTendenciaYElResumenDeTurnoSalenDeLaMismaConsulta() {
+        List<Schema.Location> edificios = TestDataFactory.createLocations(2, null, true);
+        Asset bomba = activo('Bomba', 'AST-T-PUMP', edificios[0], 'WATER_PUMP', 'WATER_PRESSURE', 'BAR');
+        Asset sala = activo('Sala', 'AST-T-ROOM', edificios[0], 'TECHNICAL_ROOM', 'TEMPERATURE', 'CELSIUS');
+        Asset medidor = activo('Medidor', 'AST-T-WATER', edificios[1], 'WATER_METER', 'WATER_CONSUMPTION', 'LITER_PER_15_MIN');
+        Asset camara = activo('Camara', 'AST-T-CAM', edificios[1], 'SECURITY_CAMERA', 'CAMERA_CONNECTIVITY', 'SECONDS');
+
+        Datetime ahora = Datetime.now();
+        estadoConTendencia(bomba, 'WATER_PRESSURE', 'BAR', ClasificacionResultado.SEVERIDAD_CRITICO, 3, ahora,
+            'Ya_En_Critico', null, null);
+        estadoConTendencia(bomba, 'TEMPERATURE', 'CELSIUS', ClasificacionResultado.SEVERIDAD_NORMAL, 1, ahora,
+            MonitoreoActivosController.TENDENCIA_CALCULADA, 40, 0.1);
+        estadoConTendencia(sala, 'TEMPERATURE', 'CELSIUS', ClasificacionResultado.SEVERIDAD_ADVERTENCIA, 2, ahora,
+            MonitoreoActivosController.TENDENCIA_CALCULADA, 13, 0.5);
+        estadoConTendencia(medidor, 'WATER_CONSUMPTION', 'LITER_PER_15_MIN', ClasificacionResultado.SEVERIDAD_NORMAL, 1,
+            ahora, 'Estable', null, 0);
+
+        Test.startTest();
+        MonitoreoActivosController.ListaActivosResultado todos = MonitoreoActivosController.listarActivos(null, null);
+        MonitoreoActivosController.ListaActivosResultado filtrado =
+            MonitoreoActivosController.listarActivos(edificios[1].Id_Externo__c, null);
+        Test.stopTest();
+
+        Map<Id, MonitoreoActivosController.ActivoFila> porId = new Map<Id, MonitoreoActivosController.ActivoFila>();
+        for (MonitoreoActivosController.ActivoFila fila : todos.filas) {
+            porId.put(fila.id, fila);
+        }
+        Assert.areEqual('Ya_En_Critico', porId.get(bomba.Id).tendenciaEstado,
+            'Un activo ya crítico enseña la tendencia de lo que lo pone en crítico, no la de otra medición');
+        Assert.areEqual('WATER_PRESSURE', porId.get(bomba.Id).tendenciaMedicion);
+        Assert.areEqual(MonitoreoActivosController.TENDENCIA_CALCULADA, porId.get(sala.Id).tendenciaEstado);
+        Assert.areEqual(13, porId.get(sala.Id).tendenciaMinutos, 'Los minutos hasta el crítico llegan tal cual');
+        Assert.isTrue(porId.get(sala.Id).tendenciaRitmo == 0.5, 'El ritmo llega tal cual: ' + porId.get(sala.Id).tendenciaRitmo);
+        Assert.areEqual('TEMPERATURE', porId.get(sala.Id).tendenciaMedicion);
+        Assert.areEqual('Estable', porId.get(medidor.Id).tendenciaEstado);
+        Assert.isNull(porId.get(camara.Id).tendenciaEstado, 'Sin lecturas no hay tendencia que enseñar');
+
+        MonitoreoActivosController.ResumenTurno resumen = todos.resumen;
+        Assert.areEqual(2, resumen.edificios);
+        Assert.areEqual(1, resumen.criticos);
+        Assert.areEqual(1, resumen.advertencias);
+        Assert.areEqual(1, resumen.normales);
+        Assert.areEqual(1, resumen.sinDatos);
+        Assert.areEqual(0, resumen.sinUmbral);
+        Assert.areEqual(bomba.Id, resumen.masUrgente.id, 'Lo más urgente es la crítica');
+        Assert.areEqual(sala.Id, resumen.proximoAlCritico.id, 'Lo más próximo al crítico es la tendencia con menos minutos');
+
+        Assert.areEqual(2, filtrado.filas.size(), 'El filtro deja solo el segundo edificio');
+        Assert.areEqual(1, filtrado.resumen.criticos, 'El resumen de turno no depende de los filtros');
+        Assert.areEqual(bomba.Id, filtrado.resumen.masUrgente.id);
+    }
+
+    @isTest
+    static void sinNadaUrgenteElResumenNoSenalaNingunActivo() {
+        List<Schema.Location> edificios = TestDataFactory.createLocations(1, null, true);
+        Asset medidor = activo('Medidor', 'AST-T-WATER', edificios[0], 'WATER_METER', 'WATER_CONSUMPTION', 'LITER_PER_15_MIN');
+        estadoConTendencia(medidor, 'WATER_CONSUMPTION', 'LITER_PER_15_MIN', ClasificacionResultado.SEVERIDAD_NORMAL, 1,
+            Datetime.now(), 'Pocas_Lecturas', null, null);
+
+        Test.startTest();
+        MonitoreoActivosController.ListaActivosResultado resultado = MonitoreoActivosController.listarActivos(null, null);
+        Test.stopTest();
+
+        Assert.areEqual(1, resultado.resumen.normales);
+        Assert.isNull(resultado.resumen.masUrgente, 'Con todo en normal no hay nada urgente que señalar');
+        Assert.isNull(resultado.resumen.proximoAlCritico, 'Pocas lecturas no es una tendencia hacia el crítico');
+        Assert.areEqual('Pocas_Lecturas', resultado.filas[0].tendenciaEstado);
+    }
 }

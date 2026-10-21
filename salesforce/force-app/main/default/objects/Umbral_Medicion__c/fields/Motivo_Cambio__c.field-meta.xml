@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Motivo_Cambio__c</fullName>
+    <description>Por qué se propone el cambio. Obligatorio si hay algún límite propuesto (regla Propuesta_Con_Motivo). Viaja como comentario de la solicitud de aprobación, que lo conserva en el historial, y se vacía al aprobarse.</description>
+    <inlineHelpText>Cuéntale al gerente por qué hay que cambiar el límite; es lo que lee para decidir.</inlineHelpText>
+    <label>Motivo del cambio</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>TextArea</type>
+</CustomField>

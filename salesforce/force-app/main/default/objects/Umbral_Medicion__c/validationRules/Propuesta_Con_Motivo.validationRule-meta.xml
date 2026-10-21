@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Propuesta_Con_Motivo</fullName>
+    <active>true</active>
+    <description>Un cambio de límite sin motivo obliga al gerente a aprobar a ciegas. Si hay algún límite propuesto, el motivo es obligatorio.</description>
+    <errorConditionFormula>AND(
+  OR(
+    NOT(ISBLANK(Valor_Advertencia_Propuesto__c)),
+    NOT(ISBLANK(Valor_Critico_Propuesto__c)),
+    NOT(ISBLANK(Valor_Invalido_Propuesto__c))
+  ),
+  ISBLANK(Motivo_Cambio__c)
+)</errorConditionFormula>
+    <errorDisplayField>Motivo_Cambio__c</errorDisplayField>
+    <errorMessage>Explica el motivo del cambio: es lo que el gerente lee para decidir si lo aprueba.</errorMessage>
+</ValidationRule>

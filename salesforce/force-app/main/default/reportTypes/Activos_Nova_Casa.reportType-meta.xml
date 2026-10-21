@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ReportType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <baseObject>Asset</baseObject>
+    <category>other</category>
+    <deployed>true</deployed>
+    <description>Los activos de Nova Casa con su edificio y su severidad actual (roll-up de sus mediciones). Base del dashboard regional del gerente.</description>
+    <label>Activos de Nova Casa</label>
+    <sections>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Name</field>
+            <table>Asset</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Id_Externo__c</field>
+            <table>Asset</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Location</field>
+            <table>Asset</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Edificio_Externo__c</field>
+            <table>Asset</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Tipo_Activo__c</field>
+            <table>Asset</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Severidad_Etiqueta__c</field>
+            <table>Asset</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Severidad_Actual__c</field>
+            <table>Asset</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Mediciones_Sin_Configurar__c</field>
+            <table>Asset</table>
+        </columns>
+        <masterLabel>Activo</masterLabel>
+    </sections>
+</ReportType>

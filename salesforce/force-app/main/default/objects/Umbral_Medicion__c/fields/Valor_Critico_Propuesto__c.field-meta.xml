@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Valor_Critico_Propuesto__c</fullName>
+    <description>Límite crítico que propone el coordinador. No clasifica nada: pasa a Valor_Critico__c cuando el gerente aprueba el cambio (proceso Cambio_de_umbral). En blanco, se conserva el vigente.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>El nuevo límite crítico. Se aplica cuando el gerente lo aprueba; mientras tanto se sigue usando el vigente. Déjalo en blanco si no cambia.</inlineHelpText>
+    <label>Crítico propuesto</label>
+    <precision>16</precision>
+    <required>false</required>
+    <scale>4</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

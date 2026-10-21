@@ -89,6 +89,8 @@
         <members>UmbralMedicionSelector</members>
         <members>UmbralMedicionSelectorTest</members>
         <members>UmbralMedicionTriggerHandler</members>
+        <members>AvisosNovaCasa</members>
+        <members>AvisosNovaCasaTest</members>
         <name>ApexClass</name>
     </types>
     <types>
@@ -103,6 +105,8 @@
     <types>
         <members>Control_Ingesta_Vaciar_Cursor</members>
         <members>Ingerir_Ahora</members>
+        <members>Nova_Casa_Aviso_Intervencion</members>
+        <members>Nova_Casa_Aviso_Tendencia</members>
         <name>Flow</name>
     </types>
     <types>
@@ -118,6 +122,11 @@
         <members>Registro_Procesamiento__c.Clave_Mensaje__c</members>
         <members>Registro_Procesamiento__c.Ocurrido_En__c</members>
         <members>Registro_Procesamiento__c.Referencia__c</members>
+        <members>Umbral_Medicion__c.Estado_Propuesta__c</members>
+        <members>Umbral_Medicion__c.Motivo_Cambio__c</members>
+        <members>Umbral_Medicion__c.Valor_Advertencia_Propuesto__c</members>
+        <members>Umbral_Medicion__c.Valor_Critico_Propuesto__c</members>
+        <members>Umbral_Medicion__c.Valor_Invalido_Propuesto__c</members>
         <name>CustomField</name>
     </types>
     <types>
@@ -158,6 +167,8 @@
         <members>Nova_Casa_Coordinador</members>
         <members>Nova_Casa_Ingesta</members>
         <members>Nova_Casa_Operador</members>
+        <members>Nova_Casa_Avisos</members>
+        <members>Nova_Casa_Gerente</members>
         <name>PermissionSet</name>
     </types>
     <types>
@@ -169,6 +180,7 @@
         <members>Coordinadores</members>
         <members>Operadores_BAQ</members>
         <members>Operadores_BOG</members>
+        <members>Gerencia_Regional</members>
         <name>Group</name>
     </types>
     <types>
@@ -184,6 +196,36 @@
     <types>
         <members>misActivos</members>
         <name>LightningComponentBundle</name>
+    </types>
+    <types>
+        <members>Nova_Casa_Alerta</members>
+        <name>CustomNotificationType</name>
+    </types>
+    <types>
+        <members>Umbral_Medicion__c.Cambio_de_umbral</members>
+        <name>ApprovalProcess</name>
+    </types>
+    <types>
+        <members>Umbral_Medicion__c</members>
+        <name>Workflow</name>
+    </types>
+    <types>
+        <members>Activos_Nova_Casa</members>
+        <members>Activos_con_estados_Nova_Casa</members>
+        <name>ReportType</name>
+    </types>
+    <types>
+        <members>Nova_Casa_Operacion</members>
+        <members>Nova_Casa_Operacion/Activos_por_edificio_y_severidad</members>
+        <members>Nova_Casa_Operacion/Equipos_que_van_hacia_el_critico</members>
+        <members>Nova_Casa_Operacion/Intervenciones_abiertas_por_edificio</members>
+        <members>Nova_Casa_Operacion/Mediciones_hacia_el_critico_por_edificio</members>
+        <name>Report</name>
+    </types>
+    <types>
+        <members>Nova_Casa_Operacion</members>
+        <members>Nova_Casa_Operacion/Panel_regional_Nova_Casa</members>
+        <name>Dashboard</name>
     </types>
     <version>67.0</version>
 </Package>

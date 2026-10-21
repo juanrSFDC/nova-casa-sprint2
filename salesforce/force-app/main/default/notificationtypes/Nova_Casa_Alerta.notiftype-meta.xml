@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomNotificationType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customNotifTypeName>Nova Casa · Alerta del edificio</customNotifTypeName>
+    <description>Avisos a los operadores del edificio y a coordinación: una intervención crítica nueva, o una tendencia que a su ritmo cruzaría el crítico en 30 minutos o menos.</description>
+    <desktop>true</desktop>
+    <masterLabel>Nova Casa · Alerta del edificio</masterLabel>
+    <mobile>true</mobile>
+    <slack>false</slack>
+</CustomNotificationType>

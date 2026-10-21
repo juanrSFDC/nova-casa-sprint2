@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Permite enviar los avisos del edificio (Send Custom Notifications). Lo lleva el usuario de integración porque los Flows de aviso corren como quien guarda la intervención o el estado, y en el procesamiento ese es él. No da acceso a ningún dato.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>Nova Casa · Avisos</label>
+    <userPermissions>
+        <enabled>true</enabled>
+        <name>SendCustomNotifications</name>
+    </userPermissions>
+</PermissionSet>

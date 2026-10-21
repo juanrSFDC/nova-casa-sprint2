@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <name>Avisar_al_edificio</name>
+        <label>Avisar al edificio</label>
+        <locationX>308</locationX>
+        <locationY>276</locationY>
+        <actionName>AvisosNovaCasa</actionName>
+        <actionType>apex</actionType>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>registroId</name>
+            <value>
+                <elementReference>$Record.Id</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>tipo</name>
+            <value>
+                <stringValue>TENDENCIA</stringValue>
+            </value>
+        </inputParameters>
+        <nameSegment>AvisosNovaCasa</nameSegment>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </actionCalls>
+    <apiVersion>67.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
+    <description>Cuando la tendencia de un estado de medición pasa a decir que, a su ritmo, cruzaría el crítico en 30 minutos o menos, avisa a los operadores del edificio y a Coordinadores. Solo avisa al entrar en esa condición, no en cada lote mientras siga en ella. No abre intervención: eso lo hace solo una señal crítica (BR-206). Va por la ruta asíncrona, fuera de la transacción del procesamiento. La lógica está en la clase AvisosNovaCasa.</description>
+    <environments>Default</environments>
+    <interviewLabel>Nova Casa · Aviso de tendencia {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Nova Casa · Aviso de tendencia</label>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <doesRequireRecordChangedToMeetCriteria>true</doesRequireRecordChangedToMeetCriteria>
+        <filterFormula>AND(ISPICKVAL({!$Record.Tendencia_Estado__c}, &quot;Calculada&quot;), NOT(ISBLANK({!$Record.Tendencia_Minutos_Critico__c})), {!$Record.Tendencia_Minutos_Critico__c} &lt;= 30)</filterFormula>
+        <object>Estado_Medicion__c</object>
+        <recordTriggerType>CreateAndUpdate</recordTriggerType>
+        <scheduledPaths>
+            <connector>
+                <targetReference>Avisar_al_edificio</targetReference>
+            </connector>
+            <pathType>AsyncAfterCommit</pathType>
+        </scheduledPaths>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Active</status>
+</Flow>

@@ -1,17 +1,33 @@
 <template>
     <lightning-card title="Mis activos" icon-name="standard:asset_object">
-        <lightning-button
-            slot="actions"
-            label="Actualizar"
-            icon-name="utility:refresh"
-            onclick={actualizar}
-            disabled={cargando}
-            data-id="actualizar"
-        ></lightning-button>
+        <div slot="actions" class="acciones">
+            <lightning-input
+                type="toggle"
+                label="Actualizar solo"
+                checked={autoActualizar}
+                message-toggle-active="Cada 30 s"
+                message-toggle-inactive="En pausa"
+                onchange={cambiarAutoActualizar}
+                data-id="auto-actualizar"
+            ></lightning-input>
+            <lightning-button
+                label="Actualizar"
+                icon-name="utility:refresh"
+                onclick={actualizar}
+                disabled={cargando}
+                data-id="actualizar"
+            ></lightning-button>
+        </div>
 
         <div class="slds-p-horizontal_medium">
+            <template lwc:if={mostrarResumen}>
+                <p class="resumen slds-m-bottom_x-small" data-id="resumen">{resumen}</p>
+            </template>
             <template lwc:if={mostrarFiltros}>
-                <p class="slds-text-body_small slds-text-color_weak" data-id="conteo">{conteo}</p>
+                <p class="slds-text-body_small slds-text-color_weak">
+                    <span data-id="conteo">{conteo}</span>
+                    <span class="slds-m-left_x-small" data-id="actualizado">{textoActualizado}</span>
+                </p>
                 <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_x-small slds-m-bottom_small">
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
                         <lightning-combobox

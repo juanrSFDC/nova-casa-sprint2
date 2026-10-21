@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <name>Avisar_al_edificio</name>
+        <label>Avisar al edificio</label>
+        <locationX>308</locationX>
+        <locationY>276</locationY>
+        <actionName>AvisosNovaCasa</actionName>
+        <actionType>apex</actionType>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>registroId</name>
+            <value>
+                <elementReference>$Record.Id</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>tipo</name>
+            <value>
+                <stringValue>INTERVENCION</stringValue>
+            </value>
+        </inputParameters>
+        <nameSegment>AvisosNovaCasa</nameSegment>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </actionCalls>
+    <apiVersion>67.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
+    <description>Cuando se crea un caso de intervención (lleva Clave_Senal__c), avisa a los operadores de su edificio y a Coordinadores con la notificación «Nova Casa · Alerta del edificio». Va por la ruta asíncrona: corre cuando la transacción que creó el caso ya terminó, así que un aviso que falle no deshace la intervención ni suma consultas al procesamiento. La lógica está en la clase AvisosNovaCasa.</description>
+    <environments>Default</environments>
+    <interviewLabel>Nova Casa · Aviso de intervención {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Nova Casa · Aviso de intervención</label>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <filterFormula>NOT(ISBLANK({!$Record.Clave_Senal__c}))</filterFormula>
+        <object>Case</object>
+        <recordTriggerType>Create</recordTriggerType>
+        <scheduledPaths>
+            <connector>
+                <targetReference>Avisar_al_edificio</targetReference>
+            </connector>
+            <pathType>AsyncAfterCommit</pathType>
+        </scheduledPaths>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Active</status>
+</Flow>

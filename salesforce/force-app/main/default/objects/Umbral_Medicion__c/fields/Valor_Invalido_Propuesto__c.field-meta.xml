@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Valor_Invalido_Propuesto__c</fullName>
+    <description>Límite de lectura inválida que propone el coordinador. Pasa a Valor_Invalido__c cuando el gerente aprueba el cambio (proceso Cambio_de_umbral). En blanco, se conserva el vigente.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>El nuevo valor a partir del cual una lectura se descarta por imposible. Se aplica cuando el gerente lo aprueba. Déjalo en blanco si no cambia.</inlineHelpText>
+    <label>Inválido propuesto</label>
+    <precision>16</precision>
+    <required>false</required>
+    <scale>4</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>
