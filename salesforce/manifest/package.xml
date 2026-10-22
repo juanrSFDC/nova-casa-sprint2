@@ -91,6 +91,12 @@
         <members>UmbralMedicionTriggerHandler</members>
         <members>AvisosNovaCasa</members>
         <members>AvisosNovaCasaTest</members>
+        <members>ReprocesoTrazaAction</members>
+        <members>ReprocesoTrazaActionTest</members>
+        <members>ReprocesoTrazaIntervencionTest</members>
+        <members>ReprocesoTrazaLoteIngestaTest</members>
+        <members>ReprocesoTrazaReglasTest</members>
+        <members>ReprocesoTrazaService</members>
         <name>ApexClass</name>
     </types>
     <types>
@@ -107,10 +113,12 @@
         <members>Ingerir_Ahora</members>
         <members>Nova_Casa_Aviso_Intervencion</members>
         <members>Nova_Casa_Aviso_Tendencia</members>
+        <members>Reprocesar_Traza</members>
         <name>Flow</name>
     </types>
     <types>
         <members>Control_Ingesta__c.Ingerir_Ahora</members>
+        <members>Registro_Procesamiento__c.Reprocesar</members>
         <name>QuickAction</name>
     </types>
     <types>
@@ -120,8 +128,12 @@
         <members>Estado_Medicion__c.Tendencia_Minutos_Critico__c</members>
         <members>Estado_Medicion__c.Tendencia_Ritmo__c</members>
         <members>Registro_Procesamiento__c.Clave_Mensaje__c</members>
+        <members>Registro_Procesamiento__c.Carga_Evento__c</members>
         <members>Registro_Procesamiento__c.Ocurrido_En__c</members>
         <members>Registro_Procesamiento__c.Referencia__c</members>
+        <members>Registro_Procesamiento__c.Reprocesado_En__c</members>
+        <members>Registro_Procesamiento__c.Reprocesado_Por__c</members>
+        <members>Registro_Procesamiento__c.Resultado_Reproceso__c</members>
         <members>Umbral_Medicion__c.Estado_Propuesta__c</members>
         <members>Umbral_Medicion__c.Motivo_Cambio__c</members>
         <members>Umbral_Medicion__c.Valor_Advertencia_Propuesto__c</members>
@@ -226,6 +238,10 @@
         <members>Nova_Casa_Operacion</members>
         <members>Nova_Casa_Operacion/Panel_regional_Nova_Casa</members>
         <name>Dashboard</name>
+    </types>
+    <types>
+        <members>Reprocesar_Trazas</members>
+        <name>CustomPermission</name>
     </types>
     <version>67.0</version>
 </Package>

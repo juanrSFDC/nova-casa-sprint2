@@ -6,6 +6,10 @@
         <visible>true</visible>
     </applicationVisibilities>
     <custom>false</custom>
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>Reprocesar_Trazas</name>
+    </customPermissions>
     <fieldPermissions>
         <editable>true</editable>
         <field>Umbral_Medicion__c.Estado_Propuesta__c</field>
@@ -293,6 +297,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Registro_Procesamiento__c.Carga_Evento__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Registro_Procesamiento__c.Clave_Mensaje__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -339,6 +348,21 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Registro_Procesamiento__c.Reintentable__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Registro_Procesamiento__c.Reprocesado_En__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Registro_Procesamiento__c.Reprocesado_Por__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Registro_Procesamiento__c.Resultado_Reproceso__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

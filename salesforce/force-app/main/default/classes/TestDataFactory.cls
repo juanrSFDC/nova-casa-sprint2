@@ -255,6 +255,53 @@ public with sharing class TestDataFactory {
     }
 
     /**
+     * Una traza Registro_Procesamiento__c con valores por defecto de un fallo técnico reintentable del
+     * suscriptor (el caso que se reprocesa, E-06), sobre los que aplicar overrides. Se crea como
+     * administrador. Para una traza de ingesta, pasa Escrito_Por__c = 'Ingesta' y una Referencia__c
+     * 'INGESTA|fuente|fecha'.
+     *
+     * @param overrides Campos a sobrescribir (por SObjectField), o null
+     * @param doInsert Si insertar el registro
+     * @return La traza creada
+     */
+    public static Registro_Procesamiento__c createRegistroProcesamiento(Map<SObjectField, Object> overrides, Boolean doInsert) {
+        return createRegistrosProcesamiento(1, overrides, doInsert)[0];
+    }
+
+    /**
+     * Varias trazas con Referencia__c y Clave_Mensaje__c distintas (se les añade el índice).
+     *
+     * @param cuantos Cuántas crear
+     * @param overrides Campos a sobrescribir en cada una, o null
+     * @param doInsert Si insertar los registros
+     * @return Las trazas creadas
+     */
+    public static List<Registro_Procesamiento__c> createRegistrosProcesamiento(Integer cuantos, Map<SObjectField, Object> overrides, Boolean doInsert) {
+        List<Registro_Procesamiento__c> registros = new List<Registro_Procesamiento__c>();
+        for (Integer i = 0; i < cuantos; i++) {
+            Registro_Procesamiento__c registro = new Registro_Procesamiento__c(
+                Referencia__c = 'prueba|traza-' + i,
+                Clave_Mensaje__c = 'prueba|traza-' + i,
+                Resultado__c = 'Fallo_Tecnico',
+                Escrito_Por__c = 'Suscriptor',
+                Reintentable__c = true,
+                Detalle__c = 'Error inesperado durante el procesamiento (prueba).',
+                Procesado_En__c = Datetime.newInstanceGmt(2026, 9, 26, 12, 0, 5)
+            );
+            if (overrides != null) {
+                for (SObjectField campo : overrides.keySet()) {
+                    registro.put(campo, overrides.get(campo));
+                }
+            }
+            registros.add(registro);
+        }
+        if (doInsert) {
+            insert registros;
+        }
+        return registros;
+    }
+
+    /**
      * Un usuario de pruebas con el perfil de acceso mínimo y SOLO el Permission Set Nova_Casa_Ingesta,
      * para probar que con esos permisos se lee la config, se guarda el cursor y se crea la traza.
      * Falla ruidoso si el perfil o el permission set no existen en la org.

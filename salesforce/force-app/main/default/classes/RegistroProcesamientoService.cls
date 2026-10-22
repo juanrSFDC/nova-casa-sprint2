@@ -13,6 +13,8 @@
  * (registrarDesenlaces). Reintentable__c se deduce del desenlace (solo Fallo_Tecnico es reintentable,
  * §3.1). Ocurrido_En__c (fecha origen de la señal, 209.1) se llena en las trazas del suscriptor; en las
  * de ingesta queda null (no hay señal validada). El saneado de Detalle__c nunca deja tokens ni stack.
+ * Desde E-06 los fallos reintentables del suscriptor guardan la carga de su señal (Carga_Evento__c) y
+ * marcarReprocesadas deja constancia de quién reprocesó cada traza desde la pantalla.
  *
  * @example
  * RegistroProcesamientoService.registrarFalloIngesta('nova-casa-simulator', excepcion, Datetime.now());
@@ -42,6 +44,16 @@ public with sharing class RegistroProcesamientoService {
     private static final String DETALLE_GENERICO_SUSCRIPTOR = 'Error inesperado durante el procesamiento';
     private static final String DETALLE_NO_PUBLICADO = 'El bus rechazó el evento; no se publicó (dato no reintentable).';
     private static final Integer MAX_DETALLE = 4000;
+    private static final Integer MAX_RESULTADO_REPROCESO = 255;
+    private static final String CAMPO_CARGA_CRUDA = 'Carga_Cruda__c';
+    private static final String SUFIJO_CAMPO = '__c';
+
+    /**
+     * Tope de Carga_Evento__c (E-06): el largo del campo. @TestVisible para que la prueba fuerce una carga
+     * que no cabe y compruebe que la traza se escribe igual, con la carga en null.
+     */
+    @TestVisible
+    private static Integer maxCarga = 131072;
 
     /**
      * Registra la traza de un fallo de la ingesta: Fallo_Tecnico escrito por Ingesta, reintentable
@@ -179,6 +191,8 @@ public with sharing class RegistroProcesamientoService {
      * El detalle va saneado (nunca stack ni secretos). Tipo_Mensaje__c solo se guarda si es un valor
      * válido de la picklist restringida; si no, null, para que el propio insert del lote no falle
      * (el camino de fallo es la última línea de defensa y no debe lanzar). Lista vacía o nula: nada.
+     * Desde E-06 cada traza guarda en Carga_Evento__c el contenido de su señal (sin Carga_Cruda__c), para
+     * que el administrador pueda reenviarla desde la traza; si no cabe o no se puede escribir, queda null.
      *
      * @param eventos El lote que estaba procesando el suscriptor
      * @param excepcion La excepción inesperada que abortó el pipeline
@@ -204,11 +218,42 @@ public with sharing class RegistroProcesamientoService {
                 Procesado_En__c = ahora,
                 Ocurrido_En__c = ocurridoDe(evento),
                 Referencia__c = referenciaDe(evento),
-                Detalle__c = detalle
+                Detalle__c = detalle,
+                Carga_Evento__c = cargaDe(evento)
             ));
         }
         Database.insert(trazas, AccessLevel.USER_MODE);
         return trazas;
+    }
+
+    /**
+     * Marca como reprocesadas (E-06) las trazas que el administrador relanzó, en UNA sola actualización:
+     * cuándo, quién y qué se hizo. No toca Resultado__c ni Reintentable__c: la traza original sigue
+     * diciendo qué pasó; el reintento deja sus propias trazas. Un mapa vacío o nulo no escribe nada.
+     *
+     * @param resultadoPorTraza Qué se hizo con cada traza («Señal reenviada (lote)», «Ingesta encolada»…)
+     * @param usuario Quién la reprocesó
+     * @param ahora Cuándo
+     * @return Las trazas actualizadas (vacío si no había nada que marcar)
+     * @example
+     * RegistroProcesamientoService.marcarReprocesadas(marcas, UserInfo.getUserId(), Datetime.now());
+     */
+    public static List<Registro_Procesamiento__c> marcarReprocesadas(
+            Map<Id, String> resultadoPorTraza, Id usuario, Datetime ahora) {
+        List<Registro_Procesamiento__c> marcas = new List<Registro_Procesamiento__c>();
+        if (resultadoPorTraza == null || resultadoPorTraza.isEmpty()) {
+            return marcas;
+        }
+        for (Id trazaId : resultadoPorTraza.keySet()) {
+            marcas.add(new Registro_Procesamiento__c(
+                Id = trazaId,
+                Reprocesado_En__c = ahora,
+                Reprocesado_Por__c = usuario,
+                Resultado_Reproceso__c = truncar(resultadoPorTraza.get(trazaId), MAX_RESULTADO_REPROCESO)
+            ));
+        }
+        Database.update(marcas, AccessLevel.USER_MODE);
+        return marcas;
     }
 
     /**
@@ -384,6 +429,8 @@ public with sharing class RegistroProcesamientoService {
      * escrito por el Suscriptor y REINTENTABLE (una persona reenvía y la reintervención recupera el caso),
      * apuntando con Lectura__c a la lectura afectada, con el error ya saneado por Flórez y recortado.
      * Nunca Procesada/Duplicada: por eso sustituye a esos desenlaces cuando el enrutamiento reporta error.
+     * Guarda la carga de la señal (E-06): el reproceso la prefiere a la lectura, porque es la señal tal como
+     * la entregó el bus (edificio y segundos sin señal incluidos).
      */
     private static Registro_Procesamiento__c construirTrazaFalloIntervencion(
             Senal_Sensor__e evento, Id lectura, String error, Datetime ahora) {
@@ -399,7 +446,8 @@ public with sharing class RegistroProcesamientoService {
             Ocurrido_En__c = ocurridoDe(evento),
             Referencia__c = referenciaDe(evento),
             Lectura__c = lectura,
-            Detalle__c = truncar(error, MAX_DETALLE)
+            Detalle__c = truncar(error, MAX_DETALLE),
+            Carga_Evento__c = cargaDe(evento)
         );
     }
 
@@ -443,6 +491,32 @@ public with sharing class RegistroProcesamientoService {
             return evento.Clave_Mensaje__c;
         }
         return sha256Hex(evento.Carga_Cruda__c);
+    }
+
+    /**
+     * Contenido de la señal para Carga_Evento__c (E-06): JSON de una copia con solo los campos __c poblados,
+     * SIN Carga_Cruda__c (ni el procesamiento ni la huella la usan, puede pesar 32 KB y US-209 pide no
+     * guardar datos innecesarios). La autenticación vive en la Named Credential: el evento no lleva secretos.
+     * null si el usuario no puede escribir el campo (la inserción en modo usuario no debe fallar), si no
+     * cabe o si algo falla: el camino de fallo nunca lanza por culpa de la carga.
+     */
+    private static String cargaDe(Senal_Sensor__e evento) {
+        try {
+            if (evento == null || !Schema.SObjectType.Registro_Procesamiento__c.fields.Carga_Evento__c.isCreateable()) {
+                return null;
+            }
+            Senal_Sensor__e copia = new Senal_Sensor__e();
+            Map<String, Object> poblados = evento.getPopulatedFieldsAsMap();
+            for (String campo : poblados.keySet()) {
+                if (campo.endsWithIgnoreCase(SUFIJO_CAMPO) && !CAMPO_CARGA_CRUDA.equalsIgnoreCase(campo)) {
+                    copia.put(campo, poblados.get(campo));
+                }
+            }
+            String carga = JSON.serialize(copia);
+            return carga.length() <= maxCarga ? carga : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**

@@ -264,6 +264,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Registro_Procesamiento__c.Carga_Evento__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Registro_Procesamiento__c.Clave_Mensaje__c</field>
         <readable>true</readable>
     </fieldPermissions>

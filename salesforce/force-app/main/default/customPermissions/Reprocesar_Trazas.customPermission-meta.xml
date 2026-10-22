@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Permite reprocesar desde la traza un fallo técnico reintentable (E-06, US-209). Solo el perfil de administrador lo tiene; el servicio lo comprueba en el servidor.</description>
+    <isLicensed>false</isLicensed>
+    <label>Reprocesar trazas</label>
+</CustomPermission>

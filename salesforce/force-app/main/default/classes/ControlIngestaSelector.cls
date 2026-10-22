@@ -47,4 +47,27 @@ public inherited sharing class ControlIngestaSelector {
         List<Control_Ingesta__c> filas = Database.query(consulta);
         return filas.isEmpty() ? null : filas[0];
     }
+
+    /**
+     * Trae en UNA consulta la configuración de varias fuentes (E-06: el reproceso de varias trazas de
+     * ingesta). Las fuentes sin registro no aparecen en el mapa.
+     *
+     * @param fuentes Valores de Control_Ingesta__c.Fuente__c
+     * @return Los registros por Fuente__c (vacío si no hay fuentes o ninguna existe)
+     * @example
+     * Map<String, Control_Ingesta__c> configs = new ControlIngestaSelector().porFuentes(fuentes);
+     */
+    public Map<String, Control_Ingesta__c> porFuentes(Set<String> fuentes) {
+        Map<String, Control_Ingesta__c> porFuente = new Map<String, Control_Ingesta__c>();
+        if (fuentes == null || fuentes.isEmpty()) {
+            return porFuente;
+        }
+        String consulta =
+            'SELECT ' + String.join(CAMPOS, ', ') +
+            ' FROM Control_Ingesta__c WHERE Fuente__c IN :fuentes WITH USER_MODE';
+        for (Control_Ingesta__c fila : (List<Control_Ingesta__c>) Database.query(consulta)) {
+            porFuente.put(fila.Fuente__c, fila);
+        }
+        return porFuente;
+    }
 }

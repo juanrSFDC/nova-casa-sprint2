@@ -22,5 +22,9 @@
         <operation>equals</operation>
         <value>1</value>
     </filters>
+    <filters>
+        <field>Reprocesado_En__c</field>
+        <operation>equals</operation>
+    </filters>
     <label>Fallos técnicos (reintentables)</label>
 </ListView>
