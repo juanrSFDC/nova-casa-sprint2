@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Consolidar_Por_Equipo__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Encendido: una crítica nueva de un equipo que ya tiene una intervención abierta por la misma medición se enlaza a ella en vez de abrir otra. Apagado: una intervención por mensaje crítico, como en el acuerdo base de US-205.</description>
+    <label>Consolidar por equipo</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

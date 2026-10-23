@@ -240,4 +240,89 @@ private class MonitoreoActivosControllerTest {
         Assert.isNull(resultado.resumen.proximoAlCritico, 'Pocas lecturas no es una tendencia hacia el crítico');
         Assert.areEqual('Pocas_Lecturas', resultado.filas[0].tendenciaEstado);
     }
+
+    // ── Diagnóstico con Prompt Builder (extra E-18) ─────────────────────────────────────────
+
+    private class NarradorFalso implements MonitoreoActivosController.Narrador {
+        private String texto;
+        private Boolean falla;
+
+        NarradorFalso(String texto, Boolean falla) {
+            this.texto = texto;
+            this.falla = falla;
+        }
+
+        public String narrar(Id activoId) {
+            if (falla) {
+                throw new CalloutException('Einstein no disponible');
+            }
+            return texto;
+        }
+    }
+
+    private static Asset activoParaNarrar() {
+        Schema.Location edificio = TestDataFactory.createLocation(
+            new Map<SObjectField, Object>{ Schema.Location.Name => 'Edificio Narración' }, true);
+        return activo('Bomba narrada', 'AST-NARRAR', edificio, 'WATER_PUMP', 'WATER_PRESSURE', 'BAR');
+    }
+
+    @isTest
+    static void conEinsteinElDiagnosticoLoRedactaLaIa() {
+        Asset a = activoParaNarrar();
+        MonitoreoActivosController.narrador = new NarradorFalso('  La bomba está estable.  ', false);
+
+        Test.startTest();
+        MonitoreoActivosController.Narracion narracion = MonitoreoActivosController.narrarActivo(a.Id);
+        Test.stopTest();
+
+        Assert.isTrue(narracion.conIa, 'Lo redactó Einstein');
+        Assert.areEqual('La bomba está estable.', narracion.texto, 'Sin espacios de sobra');
+        Assert.areEqual('Bomba narrada', narracion.equipo);
+    }
+
+    @isTest
+    static void siEinsteinFallaOCallaSaleElDiagnosticoArmadoConLosDatos() {
+        Asset a = activoParaNarrar();
+
+        Test.startTest();
+        MonitoreoActivosController.narrador = new NarradorFalso(null, true);
+        MonitoreoActivosController.Narracion falla = MonitoreoActivosController.narrarActivo(a.Id);
+        MonitoreoActivosController.narrador = new NarradorFalso('   ', false);
+        MonitoreoActivosController.Narracion calla = MonitoreoActivosController.narrarActivo(a.Id);
+        Test.stopTest();
+
+        Assert.isFalse(falla.conIa, 'Si Einstein falla, la pantalla lo sabe');
+        Assert.areEqual('Bomba narrada (Edificio Narración) todavía no tiene lecturas.', falla.texto);
+        Assert.isFalse(calla.conIa, 'Una respuesta vacía tampoco cuenta como diagnóstico');
+        Assert.areEqual(falla.texto, calla.texto);
+    }
+
+    @isTest
+    static void sinAccesoAlActivoNoHayDiagnostico() {
+        Asset a = activoParaNarrar();
+        Id borrado = a.Id;
+        delete a;
+
+        String mensaje;
+        Test.startTest();
+        try {
+            MonitoreoActivosController.narrarActivo(borrado);
+        } catch (AuraHandledException e) {
+            mensaje = e.getMessage();
+        }
+        Test.stopTest();
+
+        Assert.areEqual(DiagnosticoActivoService.ERROR_SIN_ACCESO, mensaje, 'Un mensaje para la pantalla, no un error de plataforma');
+    }
+
+    @isTest
+    static void conElNarradorRealLaPantallaSiempreRecibeTexto() {
+        Asset a = activoParaNarrar();
+
+        Test.startTest();
+        MonitoreoActivosController.Narracion narracion = MonitoreoActivosController.narrarActivo(a.Id);
+        Test.stopTest();
+
+        Assert.isTrue(String.isNotBlank(narracion.texto), 'Con Einstein o sin él, nunca vuelve vacío');
+    }
 }

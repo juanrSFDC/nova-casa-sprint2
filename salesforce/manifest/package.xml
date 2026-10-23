@@ -12,6 +12,8 @@
         <members>Registro_Procesamiento__c</members>
         <members>Senal_Sensor__e</members>
         <members>Control_Ingesta__c</members>
+        <members>Integracion_Slack__c</members>
+        <members>Politica_Intervencion__c</members>
         <name>CustomObject</name>
     </types>
     <types>
@@ -97,6 +99,10 @@
         <members>ReprocesoTrazaLoteIngestaTest</members>
         <members>ReprocesoTrazaReglasTest</members>
         <members>ReprocesoTrazaService</members>
+        <members>DiagnosticoActivoService</members>
+        <members>DiagnosticoActivoServiceTest</members>
+        <members>HechosDiagnosticoActivo</members>
+        <members>TextoNovaCasa</members>
         <name>ApexClass</name>
     </types>
     <types>
@@ -181,6 +187,7 @@
         <members>Nova_Casa_Operador</members>
         <members>Nova_Casa_Avisos</members>
         <members>Nova_Casa_Gerente</members>
+        <members>Nova_Casa_Narracion</members>
         <name>PermissionSet</name>
     </types>
     <types>
@@ -242,6 +249,14 @@
     <types>
         <members>Reprocesar_Trazas</members>
         <name>CustomPermission</name>
+    </types>
+    <types>
+        <members>Slack_Webhooks</members>
+        <name>RemoteSiteSetting</name>
+    </types>
+    <types>
+        <members>Narrar_Diagnostico_Activo</members>
+        <name>GenAiPromptTemplate</name>
     </types>
     <version>67.0</version>
 </Package>

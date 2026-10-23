@@ -2,6 +2,7 @@ import { LightningElement, wire } from "lwc";
 import { NavigationMixin } from "lightning/navigation";
 import { refreshApex } from "@salesforce/apex";
 import listarActivos from "@salesforce/apex/MonitoreoActivosController.listarActivos";
+import narrarActivo from "@salesforce/apex/MonitoreoActivosController.narrarActivo";
 
 // La severidad llega del servidor (roll-up de US-206). Aquí solo se traduce a texto y
 // forma: cada nivel tiene un icono distinto para que no dependa solo del color.
@@ -180,6 +181,17 @@ const COLUMNAS = [
     },
     {
         type: "button",
+        initialWidth: 120,
+        typeAttributes: {
+            label: "Explicar",
+            name: "explicar",
+            variant: "base",
+            iconName: "utility:einstein",
+            title: "Diagnóstico del equipo en un párrafo"
+        }
+    },
+    {
+        type: "button",
         initialWidth: 160,
         typeAttributes: {
             label: { fieldName: "intervencionEtiqueta" },
@@ -191,6 +203,12 @@ const COLUMNAS = [
 ];
 
 export const MENSAJE_ERROR = "No se pudo cargar la información. Revisa tu conexión e inténtalo de nuevo.";
+
+// E-18: la severidad y las intervenciones las decide el procesamiento; la IA solo las cuenta.
+export const NOTA_CON_IA =
+    "Lo redactó Einstein con los datos del equipo. La severidad y las intervenciones las decide el sistema, no la IA.";
+export const NOTA_SIN_IA = "Einstein no respondió: este diagnóstico se armó con los datos del equipo, sin IA.";
+export const MENSAJE_NARRACION_ERROR = "No se pudo preparar el diagnóstico. Inténtalo de nuevo.";
 
 /**
  * Antigüedad legible del dato de origen, relativa a ahora.
@@ -233,6 +251,11 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
     autoActualizar = true;
     actualizadoEn;
     temporizador;
+    diagnostico;
+    equipoNarrado;
+    narrando = false;
+    errorNarracion;
+    peticionNarracion = 0;
 
     connectedCallback() {
         this.programarActualizacion();
@@ -328,6 +351,22 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
         return MENSAJE_ERROR;
     }
 
+    get mostrarDiagnostico() {
+        return this.narrando || !!this.diagnostico || !!this.errorNarracion;
+    }
+
+    get tituloDiagnostico() {
+        return `Diagnóstico de ${this.equipoNarrado}`;
+    }
+
+    get textoDiagnostico() {
+        return this.diagnostico ? this.diagnostico.texto : "";
+    }
+
+    get notaDiagnostico() {
+        return this.diagnostico && this.diagnostico.conIa ? NOTA_CON_IA : NOTA_SIN_IA;
+    }
+
     get conteo() {
         if (this.filas.length === this.totalSinFiltro) {
             return `${this.totalSinFiltro} activos`;
@@ -407,7 +446,40 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
             this.irA("Asset", fila.id);
         } else if (accion === "intervencion" && fila.intervencionId) {
             this.irA("Case", fila.intervencionId);
+        } else if (accion === "explicar") {
+            this.explicar(fila);
         }
+    }
+
+    // Si se pide otro equipo antes de que llegue la respuesta, la anterior se descarta.
+    async explicar(fila) {
+        const peticion = ++this.peticionNarracion;
+        this.equipoNarrado = fila.nombre;
+        this.diagnostico = null;
+        this.errorNarracion = null;
+        this.narrando = true;
+        try {
+            const respuesta = await narrarActivo({ activoId: fila.id });
+            if (peticion === this.peticionNarracion) {
+                this.diagnostico = respuesta;
+                this.equipoNarrado = respuesta.equipo || fila.nombre;
+            }
+        } catch (error) {
+            if (peticion === this.peticionNarracion) {
+                this.errorNarracion = (error && error.body && error.body.message) || MENSAJE_NARRACION_ERROR;
+            }
+        } finally {
+            if (peticion === this.peticionNarracion) {
+                this.narrando = false;
+            }
+        }
+    }
+
+    cerrarDiagnostico() {
+        this.peticionNarracion++;
+        this.diagnostico = null;
+        this.errorNarracion = null;
+        this.narrando = false;
     }
 
     irA(objeto, id) {

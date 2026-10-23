@@ -12,6 +12,11 @@
  *
  * Los Flows corren como quien guardó el registro, que en el procesamiento es «Integracion
  * Nova Casa»: para enviar necesita el permiso Send Custom Notifications (Nova_Casa_Avisos).
+ *
+ * Slack (extra E-15): si el ajuste Integracion_Slack__c tiene URL, el mismo aviso se publica
+ * además en #nova-casa-alertas a través de un flujo de Workflow Builder que empieza con un
+ * webhook. Va antes que la campana, para que la llamada nunca quede detrás de trabajo pendiente,
+ * y con tope por lote. Si Slack falla, la campana sale igual.
  */
 public with sharing class AvisosNovaCasa {
 
@@ -20,23 +25,11 @@ public with sharing class AvisosNovaCasa {
     @TestVisible private static final String TIPO_NOTIFICACION = 'Nova_Casa_Alerta';
     @TestVisible private static final String GRUPO_COORDINADORES = 'Coordinadores';
     private static final String PREFIJO_GRUPO_OPERADORES = 'Operadores_';
-    private static final Map<String, String> MEDICIONES = new Map<String, String>{
-        'TEMPERATURE' => 'la temperatura',
-        'WATER_PRESSURE' => 'la presión de agua',
-        'WATER_CONSUMPTION' => 'el consumo de agua',
-        'ENERGY_CONSUMPTION' => 'el consumo de energía',
-        'CAMERA_CONNECTIVITY' => 'la conectividad de la cámara'
-    };
-    private static final Map<String, String> UNIDADES = new Map<String, String>{
-        'CELSIUS' => '°C',
-        'BAR' => 'bar',
-        'KWH_PER_15_MIN' => 'kWh/15 min',
-        'LITER_PER_15_MIN' => 'L/15 min',
-        'SECONDS' => 's'
-    };
-
     /** Lo que se intentó mandar, para que las pruebas comprueben a quién y qué. */
     @TestVisible private static List<Aviso> enviados = new List<Aviso>();
+
+    /** Cuántos avisos de un mismo lote se publican en Slack; el resto se resume en uno. */
+    @TestVisible private static final Integer MAXIMO_SLACK = 10;
 
     /** Entrada del Flow. */
     public class Solicitud {
@@ -58,10 +51,13 @@ public with sharing class AvisosNovaCasa {
      * @param solicitudes Un registro por aviso; las de tipo desconocido o sin registro se ignoran
      */
     @InvocableMethod(label='Avisar al edificio'
-        description='Manda un aviso a los operadores del edificio y a Coordinadores.' category='Nova Casa')
+        description='Manda un aviso a los operadores del edificio y a Coordinadores, y lo publica en Slack si hay webhook.'
+        category='Nova Casa' callout=true)
     public static void avisar(List<Solicitud> solicitudes) {
         try {
-            enviar(construir(solicitudes));
+            List<Aviso> avisos = construir(solicitudes);
+            publicarEnSlack(avisos);
+            enviar(avisos);
         } catch (Exception e) {
             System.debug(LoggingLevel.ERROR, 'AvisosNovaCasa · ' + e.getTypeName() + ' · ' + e.getMessage());
         }
@@ -174,6 +170,50 @@ public with sharing class AvisosNovaCasa {
         }
     }
 
+    private static void publicarEnSlack(List<Aviso> avisos) {
+        if (avisos.isEmpty()) {
+            return;
+        }
+        Integracion_Slack__c ajuste = Integracion_Slack__c.getOrgDefaults();
+        String webhook = ajuste == null ? null : ajuste.URL_Webhook__c;
+        if (String.isBlank(webhook)) {
+            return;
+        }
+        String dominio = URL.getOrgDomainUrl().toExternalForm();
+        for (Integer i = 0; i < avisos.size(); i++) {
+            if (i == MAXIMO_SLACK) {
+                publicar(webhook, 'Y ' + (avisos.size() - MAXIMO_SLACK) + ' avisos más',
+                    'En este lote hubo más avisos de los que se publican aquí: el resto está en la campana de Salesforce.',
+                    dominio);
+                return;
+            }
+            publicar(webhook, avisos[i].titulo, avisos[i].cuerpo, dominio + '/' + avisos[i].destinoId);
+        }
+    }
+
+    /** El flujo de Workflow Builder espera exactamente estas tres variables de texto. */
+    private static void publicar(String webhook, String titulo, String mensaje, String enlace) {
+        HttpRequest peticion = new HttpRequest();
+        peticion.setEndpoint(webhook);
+        peticion.setMethod('POST');
+        peticion.setHeader('Content-Type', 'application/json');
+        peticion.setTimeout(10000);
+        peticion.setBody(JSON.serialize(new Map<String, String>{
+            'titulo' => titulo,
+            'mensaje' => mensaje,
+            'enlace' => enlace
+        }));
+        try {
+            HttpResponse respuesta = new Http().send(peticion);
+            if (respuesta.getStatusCode() >= 300) {
+                System.debug(LoggingLevel.ERROR, 'AvisosNovaCasa · Slack respondió ' + respuesta.getStatusCode()
+                    + ' a «' + titulo + '» · ' + respuesta.getBody());
+            }
+        } catch (Exception e) {
+            System.debug(LoggingLevel.ERROR, 'AvisosNovaCasa · no salió a Slack «' + titulo + '» · ' + e.getMessage());
+        }
+    }
+
     /** BLD-BOG-001 → Operadores_BOG, el grupo que ya usa la compartición de ese edificio. */
     @TestVisible
     private static String grupoOperadoresDe(String edificioExterno) {
@@ -202,14 +242,11 @@ public with sharing class AvisosNovaCasa {
     }
 
     private static String medicionDe(String medicion) {
-        return MEDICIONES.containsKey(medicion) ? MEDICIONES.get(medicion) : 'la medición';
+        return TextoNovaCasa.medicion(medicion);
     }
 
-    /** 1,1 bar · 32 °C: coma decimal, como lo lee el operador, sin depender del idioma de quien envía. */
     @TestVisible
     private static String valorLegible(Decimal valor, String unidad) {
-        String numero = valor.stripTrailingZeros().toPlainString().replace('.', ',');
-        String simbolo = UNIDADES.containsKey(unidad) ? UNIDADES.get(unidad) : unidad;
-        return String.isBlank(simbolo) ? numero : numero + ' ' + simbolo;
+        return TextoNovaCasa.valor(valor, unidad);
     }
 }

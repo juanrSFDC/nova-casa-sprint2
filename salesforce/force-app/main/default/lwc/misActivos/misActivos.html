@@ -60,6 +60,35 @@
             </template>
         </div>
 
+        <template lwc:if={mostrarDiagnostico}>
+            <section class="diagnostico slds-m-horizontal_medium slds-m-bottom_small" data-id="diagnostico" aria-live="polite">
+                <div class="cabecera-diagnostico">
+                    <h3 class="slds-text-heading_small" data-id="titulo-diagnostico">{tituloDiagnostico}</h3>
+                    <lightning-button-icon
+                        icon-name="utility:close"
+                        variant="bare"
+                        alternative-text="Cerrar el diagnóstico"
+                        onclick={cerrarDiagnostico}
+                        data-id="cerrar-diagnostico"
+                    ></lightning-button-icon>
+                </div>
+                <template lwc:if={narrando}>
+                    <div class="zona-carga" data-id="narrando">
+                        <lightning-spinner alternative-text="Preparando el diagnóstico" size="small"></lightning-spinner>
+                    </div>
+                </template>
+                <template lwc:elseif={errorNarracion}>
+                    <p class="slds-m-top_x-small" role="alert" data-id="error-diagnostico">{errorNarracion}</p>
+                </template>
+                <template lwc:else>
+                    <p class="slds-m-top_x-small" data-id="texto-diagnostico">{textoDiagnostico}</p>
+                    <p class="slds-m-top_x-small slds-text-body_small slds-text-color_weak" data-id="nota-diagnostico">
+                        {notaDiagnostico}
+                    </p>
+                </template>
+            </section>
+        </template>
+
         <template lwc:if={cargando}>
             <div class="zona-carga" data-id="cargando">
                 <lightning-spinner alternative-text="Cargando activos" size="small"></lightning-spinner>

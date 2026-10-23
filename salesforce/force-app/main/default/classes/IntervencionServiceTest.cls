@@ -359,4 +359,155 @@ private class IntervencionServiceTest {
         Assert.areEqual(2, consultas, 'Activos y casos existentes, una vez por lote');
         Assert.areEqual(2, escrituras, 'Una inserción de casos y una actualización de lecturas');
     }
+
+    // ── Consolidación por equipo (extra E-11) ────────────────────────────────────────────────
+
+    private static void consolidacionEncendida() {
+        insert new Politica_Intervencion__c(
+            SetupOwnerId = UserInfo.getOrganizationId(), Consolidar_Por_Equipo__c = true);
+    }
+
+    /** Críticas con claves propias, para poder crear más de un lote en la misma prueba. */
+    private static List<Lectura_Sensor__c> criticas(Integer cuantas, Id activoId, String medicion, String prefijo) {
+        List<Lectura_Sensor__c> registros = TestDataFactory.createLecturasSensor(cuantas, new Map<SObjectField, Object>{
+            Lectura_Sensor__c.Activo__c => activoId,
+            Lectura_Sensor__c.Severidad_Sellada__c => ClasificacionResultado.SEVERIDAD_CRITICO,
+            Lectura_Sensor__c.Atrasada__c => false,
+            Lectura_Sensor__c.Tipo_Medicion__c => medicion,
+            Lectura_Sensor__c.Unidad__c => medicion == 'TEMPERATURE' ? 'CELSIUS' : 'BAR',
+            Lectura_Sensor__c.Valor__c => medicion == 'TEMPERATURE' ? 40 : 0.7
+        }, false);
+        for (Integer i = 0; i < registros.size(); i++) {
+            registros[i].Clave_Mensaje__c = prefijo + '|' + i;
+            registros[i].Huella_Contenido__c = 'huella-' + prefijo + '-' + i;
+            registros[i].Id_Entrega__c = 'dlv-' + prefijo + '|' + i;
+        }
+        insert registros;
+        return registros;
+    }
+
+    private static Set<Id> casosEnlazados(List<Lectura_Sensor__c> lecturas) {
+        Set<Id> casos = new Set<Id>();
+        for (Lectura_Sensor__c l : [SELECT Intervencion__c FROM Lectura_Sensor__c WHERE Id IN :lecturas]) {
+            casos.add(l.Intervencion__c);
+        }
+        return casos;
+    }
+
+    @isTest
+    static void conLaPoliticaApagadaCadaMensajeCriticoAbreSuIntervencion() {
+        User ingesta = usuarioIngesta();
+        Asset activo = bomba();
+        List<Lectura_Sensor__c> lote = criticas(3, activo.Id, 'WATER_PRESSURE', 'apagada');
+
+        Test.startTest();
+        comoIngesta(ingesta, lote);
+        Test.stopTest();
+
+        Assert.areEqual(3, intervencionesDe(activo.Id),
+            'Sin encenderla rige el acuerdo base de US-205: una intervención por mensaje crítico');
+    }
+
+    @isTest
+    static void consolidando_variasCriticasDelMismoEquipoEnUnLoteAbrenUnaSola() {
+        consolidacionEncendida();
+        User ingesta = usuarioIngesta();
+        Asset activo = bomba();
+        List<Lectura_Sensor__c> lote = criticas(3, activo.Id, 'WATER_PRESSURE', 'lote');
+
+        Test.startTest();
+        Map<Id, IntervencionResultado> resultados = comoIngesta(ingesta, lote);
+        Test.stopTest();
+
+        Assert.areEqual(1, intervencionesDe(activo.Id), 'Tres críticas del mismo equipo y medición: una intervención');
+        Set<Id> casos = casosEnlazados(lote);
+        Assert.areEqual(1, casos.size(), 'Las tres quedan enlazadas al mismo caso');
+        Assert.isFalse(casos.contains(null), 'Ninguna queda sin caso');
+        Assert.isFalse(resultados.get(lote[0].Id).reutilizada, 'La primera abre el caso');
+        Assert.isTrue(resultados.get(lote[1].Id).reutilizada, 'Las demás se suman a él');
+        Assert.isTrue(resultados.get(lote[2].Id).reutilizada, 'Las demás se suman a él');
+        Assert.areEqual(lote[0].Id, [SELECT Lectura_Origen__c FROM Case WHERE Id IN :casos].Lectura_Origen__c,
+            'A igual momento, decide la clave: el resultado no depende del orden del lote');
+    }
+
+    @isTest
+    static void consolidando_unaCriticaNuevaSeSumaALaIntervencionAbierta() {
+        consolidacionEncendida();
+        User ingesta = usuarioIngesta();
+        Asset activo = bomba();
+        Lectura_Sensor__c primera = criticas(1, activo.Id, 'WATER_PRESSURE', 'primera')[0];
+        Lectura_Sensor__c segunda = criticas(1, activo.Id, 'WATER_PRESSURE', 'segunda')[0];
+
+        Test.startTest();
+        Id caso = comoIngesta(ingesta, new List<Lectura_Sensor__c>{ primera }).get(primera.Id).caseId;
+        IntervencionResultado r = comoIngesta(ingesta, new List<Lectura_Sensor__c>{ segunda }).get(segunda.Id);
+        Test.stopTest();
+
+        Assert.isTrue(r.exito, 'error=' + r.error + ' | ' + IntervencionService.ultimoDetalle);
+        Assert.isTrue(r.reutilizada, 'Se suma a la intervención que ya estaba abierta');
+        Assert.areEqual(caso, r.caseId, 'Es la misma intervención');
+        Assert.areEqual(1, intervencionesDe(activo.Id), 'Un mensaje crítico distinto del mismo equipo no abre otra');
+    }
+
+    @isTest
+    static void consolidando_cerradaLaIntervencionLaSiguienteCriticaAbreOtra() {
+        consolidacionEncendida();
+        User ingesta = usuarioIngesta();
+        Asset activo = bomba();
+        Lectura_Sensor__c primera = criticas(1, activo.Id, 'WATER_PRESSURE', 'antes')[0];
+        Lectura_Sensor__c segunda = criticas(1, activo.Id, 'WATER_PRESSURE', 'despues')[0];
+
+        Test.startTest();
+        Id caso = comoIngesta(ingesta, new List<Lectura_Sensor__c>{ primera }).get(primera.Id).caseId;
+        update new Case(Id = caso, Status = 'Closed');
+        IntervencionResultado r = comoIngesta(ingesta, new List<Lectura_Sensor__c>{ segunda }).get(segunda.Id);
+        Test.stopTest();
+
+        Assert.isTrue(r.exito, 'error=' + r.error + ' | ' + IntervencionService.ultimoDetalle);
+        Assert.isFalse(r.reutilizada, 'Con la anterior cerrada, el problema vuelve a empezar');
+        Assert.areNotEqual(caso, r.caseId, 'Es una intervención nueva');
+        Assert.areEqual(2, intervencionesDe(activo.Id));
+    }
+
+    @isTest
+    static void consolidando_otraMedicionDelMismoEquipoAbreSuPropiaIntervencion() {
+        consolidacionEncendida();
+        User ingesta = usuarioIngesta();
+        Asset activo = bomba();
+        Lectura_Sensor__c presion = criticas(1, activo.Id, 'WATER_PRESSURE', 'presion')[0];
+        Lectura_Sensor__c temperatura = criticas(1, activo.Id, 'TEMPERATURE', 'temperatura')[0];
+
+        Test.startTest();
+        Map<Id, IntervencionResultado> resultados =
+            comoIngesta(ingesta, new List<Lectura_Sensor__c>{ presion, temperatura });
+        Test.stopTest();
+
+        Assert.areEqual(2, intervencionesDe(activo.Id), 'Cada medición en crítico es un problema distinto');
+        Assert.areNotEqual(resultados.get(presion.Id).caseId, resultados.get(temperatura.Id).caseId);
+    }
+
+    @isTest
+    static void consolidando_doscientasCriticasDelMismoEquipoCuestanTresConsultasYDosEscrituras() {
+        consolidacionEncendida();
+        User ingesta = usuarioIngesta();
+        Asset activo = bomba();
+        List<Lectura_Sensor__c> lote = criticas(200, activo.Id, 'WATER_PRESSURE', 'volumen');
+
+        Integer consultas;
+        Integer escrituras;
+        Test.startTest();
+        System.runAs(ingesta) {
+            consultas = Limits.getQueries();
+            escrituras = Limits.getDmlStatements();
+            IntervencionService.crearIntervenciones(lote);
+            consultas = Limits.getQueries() - consultas;
+            escrituras = Limits.getDmlStatements() - escrituras;
+        }
+        Test.stopTest();
+
+        Assert.areEqual(1, intervencionesDe(activo.Id), 'Doscientas críticas del mismo equipo: una intervención');
+        Assert.areEqual(1, casosEnlazados(lote).size(), 'Las doscientas enlazadas al mismo caso');
+        Assert.areEqual(3, consultas, 'Activos, casos existentes e intervenciones abiertas, una vez por lote');
+        Assert.areEqual(2, escrituras, 'Una inserción de casos y una actualización de lecturas');
+    }
 }

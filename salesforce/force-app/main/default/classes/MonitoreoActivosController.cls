@@ -13,6 +13,10 @@
  * Extras de US-207 (19-oct): cada fila trae la tendencia más urgente del activo, la que
  * calcula el procesamiento (E-02 de Juan Rozo), y la respuesta trae un resumen de turno
  * sobre todos los activos visibles, sin filtros. Los dos salen de la misma consulta.
+ *
+ * Extra E-18 (21-oct): narrarActivo redacta el diagnóstico de un activo con la plantilla de
+ * Prompt Builder Narrar_Diagnostico_Activo; si Einstein no responde, devuelve el mismo
+ * diagnóstico armado sin IA y lo dice.
  */
 public with sharing class MonitoreoActivosController {
 
@@ -252,6 +256,67 @@ public with sharing class MonitoreoActivosController {
     }
 
     /** Lo que recibe el LWC. */
+    /**
+     * @param activoId El activo de la fila
+     * @return El diagnóstico en un párrafo y si lo redactó la IA
+     */
+    @AuraEnabled
+    public static Narracion narrarActivo(Id activoId) {
+        DiagnosticoActivoService.Diagnostico diagnostico;
+        try {
+            diagnostico = DiagnosticoActivoService.cargar(activoId);
+        } catch (Exception e) {
+            System.debug(LoggingLevel.WARN, 'MonitoreoActivosController · ' + e.getTypeName() + ' · ' + e.getMessage());
+            AuraHandledException error = new AuraHandledException(DiagnosticoActivoService.ERROR_SIN_ACCESO);
+            error.setMessage(DiagnosticoActivoService.ERROR_SIN_ACCESO);
+            throw error;
+        }
+        Narracion narracion = new Narracion();
+        narracion.equipo = diagnostico.activo.Name;
+        try {
+            String texto = narrador.narrar(activoId);
+            if (String.isNotBlank(texto)) {
+                narracion.texto = texto.trim();
+                narracion.conIa = true;
+                return narracion;
+            }
+        } catch (Exception e) {
+            System.debug(LoggingLevel.WARN, 'MonitoreoActivosController · Einstein no respondió · '
+                + e.getTypeName() + ' · ' + e.getMessage());
+        }
+        narracion.texto = DiagnosticoActivoService.sinIa(diagnostico);
+        return narracion;
+    }
+
+    /** Quien redacta el diagnóstico. En las pruebas se sustituye: ahí no hay Einstein. */
+    public interface Narrador {
+        String narrar(Id activoId);
+    }
+
+    @TestVisible private static final String PLANTILLA_DIAGNOSTICO = 'Narrar_Diagnostico_Activo';
+    @TestVisible private static Narrador narrador = new NarradorEinstein();
+
+    private class NarradorEinstein implements Narrador {
+        public String narrar(Id activoId) {
+            ConnectApi.WrappedValue activo = new ConnectApi.WrappedValue();
+            activo.value = new Map<String, String>{ 'id' => activoId };
+            ConnectApi.EinsteinPromptTemplateGenerationsInput entrada = new ConnectApi.EinsteinPromptTemplateGenerationsInput();
+            entrada.inputParams = new Map<String, ConnectApi.WrappedValue>{ 'Input:Activo' => activo };
+            entrada.additionalConfig = new ConnectApi.EinsteinLlmAdditionalConfigInput();
+            entrada.additionalConfig.applicationName = 'PromptBuilderPreview';
+            entrada.isPreview = false;
+            ConnectApi.EinsteinPromptTemplateGenerationsRepresentation salida =
+                ConnectApi.EinsteinLLM.generateMessagesForPromptTemplate(PLANTILLA_DIAGNOSTICO, entrada);
+            return salida.generations == null || salida.generations.isEmpty() ? null : salida.generations[0].text;
+        }
+    }
+
+    public class Narracion {
+        @AuraEnabled public String equipo;
+        @AuraEnabled public String texto;
+        @AuraEnabled public Boolean conIa = false;
+    }
+
     public class ListaActivosResultado {
         @AuraEnabled public Boolean sinAsignacion;
         @AuraEnabled public Integer totalSinFiltro;

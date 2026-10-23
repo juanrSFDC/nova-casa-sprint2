@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customSettingsType>Hierarchy</customSettingsType>
+    <description>Política de intervenciones que el administrador cambia sin desplegar (extra E-11). Es un ajuste personalizado y no Custom Metadata a propósito: sus datos no se ven en las pruebas, así que las pruebas del acuerdo base (un caso por mensaje crítico) no dependen de cómo esté encendido en la org.</description>
+    <enableFeeds>false</enableFeeds>
+    <label>Política de intervención</label>
+    <visibility>Public</visibility>
+</CustomObject>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <classAccesses>
+        <apexClass>HechosDiagnosticoActivo</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <description>Extra E-18: deja que la plantilla Narrar_Diagnostico_Activo lea los hechos del activo con HechosDiagnosticoActivo. Va con el permission set estándar Prompt Template User, que es el que permite ejecutar plantillas.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>Nova Casa · Narración del diagnóstico</label>
+</PermissionSet>

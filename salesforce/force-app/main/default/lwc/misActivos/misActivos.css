@@ -20,3 +20,17 @@
     font-size: 0.875rem;
     line-height: 1.4;
 }
+
+.diagnostico {
+    border: 1px solid #c9c9c9;
+    border-radius: 0.25rem;
+    padding: 0.75rem;
+    line-height: 1.5;
+}
+
+.cabecera-diagnostico {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}

@@ -20,6 +20,13 @@
  *     Tipo_Medicion_Origen__c, Valor_Origen__c y Ocurrido_En_Origen__c). Priority, Subject u
  *     Origin exigirían permiso de campo nuevo en ese permission set. El record type
  *     Intervencion tiene que estar visible para el usuario que ejecuta (Nova_Casa_Ingesta).
+ *
+ * Consolidación por equipo (extra E-11, apagada salvo que el administrador la encienda en
+ * Politica_Intervencion__c): una crítica nueva de un equipo que ya tiene una intervención abierta
+ * por la misma medición se enlaza a ella en vez de abrir otra, y dentro de un lote la crítica más
+ * antigua de cada equipo y medición abre el caso y las demás se enlazan a ese. Es por mejor
+ * esfuerzo: dos lotes simultáneos del mismo equipo pueden abrir dos casos. La garantía fuerte
+ * sigue siendo la de siempre, una intervención por mensaje, que da el índice único.
  */
 public with sharing class IntervencionService {
 
@@ -89,10 +96,16 @@ public with sharing class IntervencionService {
         Map<String, Id> casoPorClave = buscarExistentes(porClave.keySet());
         Set<String> reutilizadas = new Set<String>(casoPorClave.keySet());
 
+        // clave de una crítica que se enlaza al caso que abra otra del mismo equipo en este lote
+        Map<String, String> seguidoras = new Map<String, String>();
+        if (consolidacionEncendida()) {
+            consolidar(porClave, casoPorClave, reutilizadas, seguidoras, tipoIntervencion);
+        }
+
         List<Case> nuevos = new List<Case>();
         List<String> clavesNuevas = new List<String>();
         for (String clave : porClave.keySet()) {
-            if (casoPorClave.containsKey(clave)) {
+            if (casoPorClave.containsKey(clave) || seguidoras.containsKey(clave)) {
                 continue;
             }
             Lectura_Sensor__c primera = porClave.get(clave)[0];
@@ -106,9 +119,102 @@ public with sharing class IntervencionService {
         if (!nuevos.isEmpty()) {
             insertarNuevos(nuevos, clavesNuevas, porClave, casoPorClave, reutilizadas, resultados);
         }
+        for (String clave : seguidoras.keySet()) {
+            Id casoDelLider = casoPorClave.get(seguidoras.get(clave));
+            if (casoDelLider == null) {
+                marcarFallidas(porClave.get(clave), ERROR_CREAR, resultados);
+                continue;
+            }
+            casoPorClave.put(clave, casoDelLider);
+            reutilizadas.add(clave);
+        }
 
         enlazarLecturas(porClave, casoPorClave, reutilizadas, resultados);
         return resultados;
+    }
+
+    private static Boolean consolidacionEncendida() {
+        Politica_Intervencion__c politica = Politica_Intervencion__c.getOrgDefaults();
+        return politica != null && politica.Consolidar_Por_Equipo__c == true;
+    }
+
+    /**
+     * Extra E-11. Las críticas que ya tienen caso por su clave (reenvíos) no se tocan. Para el resto:
+     * si su equipo y medición tienen una intervención abierta, se enlazan a la más antigua; si no,
+     * la más antigua del lote para ese equipo y medición abrirá el caso y las demás la siguen.
+     * Una consulta por lote, y solo si hay críticas sin caso.
+     */
+    private static void consolidar(
+            Map<String, List<Lectura_Sensor__c>> porClave,
+            Map<String, Id> casoPorClave,
+            Set<String> reutilizadas,
+            Map<String, String> seguidoras,
+            Id tipoIntervencion) {
+        Set<Id> activos = new Set<Id>();
+        for (String clave : porClave.keySet()) {
+            if (!casoPorClave.containsKey(clave)) {
+                activos.add(porClave.get(clave)[0].Activo__c);
+            }
+        }
+        if (activos.isEmpty()) {
+            return;
+        }
+        Map<String, Id> abiertaPorEquipo = new Map<String, Id>();
+        for (Case abierto : [
+            SELECT Id, AssetId, Tipo_Medicion_Origen__c
+            FROM Case
+            WHERE RecordTypeId = :tipoIntervencion AND IsClosed = false AND AssetId IN :activos
+            WITH USER_MODE
+            ORDER BY CreatedDate ASC
+        ]) {
+            String equipo = claveEquipo(abierto.AssetId, abierto.Tipo_Medicion_Origen__c);
+            if (!abiertaPorEquipo.containsKey(equipo)) {
+                abiertaPorEquipo.put(equipo, abierto.Id);
+            }
+        }
+
+        Map<String, String> liderPorEquipo = new Map<String, String>();
+        for (String clave : porClave.keySet()) {
+            if (casoPorClave.containsKey(clave)) {
+                continue;
+            }
+            Lectura_Sensor__c lectura = porClave.get(clave)[0];
+            String equipo = claveEquipo(lectura.Activo__c, lectura.Tipo_Medicion__c);
+            if (abiertaPorEquipo.containsKey(equipo)) {
+                casoPorClave.put(clave, abiertaPorEquipo.get(equipo));
+                reutilizadas.add(clave);
+                continue;
+            }
+            String lider = liderPorEquipo.get(equipo);
+            if (lider == null || esAnterior(lectura, clave, porClave.get(lider)[0], lider)) {
+                liderPorEquipo.put(equipo, clave);
+            }
+        }
+        for (String clave : porClave.keySet()) {
+            if (casoPorClave.containsKey(clave)) {
+                continue;
+            }
+            Lectura_Sensor__c lectura = porClave.get(clave)[0];
+            String lider = liderPorEquipo.get(claveEquipo(lectura.Activo__c, lectura.Tipo_Medicion__c));
+            if (lider != null && lider != clave) {
+                seguidoras.put(clave, lider);
+            }
+        }
+    }
+
+    private static String claveEquipo(Id activoId, String medicion) {
+        return activoId + '|' + medicion;
+    }
+
+    /** La más antigua abre el caso; a igual momento decide la clave, para que el resultado no dependa del orden. */
+    private static Boolean esAnterior(Lectura_Sensor__c a, String claveA, Lectura_Sensor__c b, String claveB) {
+        if (a.Ocurrido_En__c != null && b.Ocurrido_En__c != null && a.Ocurrido_En__c != b.Ocurrido_En__c) {
+            return a.Ocurrido_En__c < b.Ocurrido_En__c;
+        }
+        if (a.Ocurrido_En__c != b.Ocurrido_En__c) {
+            return a.Ocurrido_En__c != null;
+        }
+        return claveA < claveB;
     }
 
     /**

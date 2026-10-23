@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>gzH3WRQ1B+xdcMzAZRCLaKxqAEIVeMu2ZYfWj52oJUc=_3</activeVersionIdentifier>
+    <description>Extra E-18 de Nova Casa: redacta para el operador un diagnóstico breve del equipo con los hechos que ya calculó el procesamiento. La IA explica; no decide severidades ni intervenciones.</description>
+    <developerName>Narrar_Diagnostico_Activo</developerName>
+    <masterLabel>Narrar diagnóstico del activo</masterLabel>
+    <overridable>false</overridable>
+    <templateVersions>
+        <content>Eres el asistente de operación de mantenimiento de Nova Casa, una inmobiliaria que vigila con sensores los equipos de sus edificios. Redacta para el operador del edificio un diagnóstico breve del equipo, en español de Colombia, en un solo párrafo de tres o cuatro frases.
+
+Reglas que no puedes romper:
+- Usa solo los hechos de abajo. No inventes valores, horas, causas, antecedentes ni nombres.
+- La severidad y las intervenciones ya las calculó el sistema y vienen en los hechos. No las cambies ni propongas otras; puedes explicar qué significan.
+- Si una medición va hacia el crítico, di en cuánto tiempo lo cruzaría a ese ritmo.
+- Si una intervención abierta reúne varias señales críticas, dilo: significa que el problema persiste.
+- Si los hechos no bastan para una conclusión, dilo así.
+- Sin saludos, sin listas, sin títulos y sin instrucciones técnicas de reparación.
+
+Hechos del equipo:
+{!$Apex:HechosDiagnosticoActivo.Prompt}</content>
+        <inputs>
+            <apiName>Activo</apiName>
+            <definition>SOBJECT://Asset</definition>
+            <masterLabel>Activo</masterLabel>
+            <referenceName>Input:Activo</referenceName>
+            <required>true</required>
+        </inputs>
+        <isCitationEnabled>false</isCitationEnabled>
+        <status>Published</status>
+        <templateDataProviders>
+            <definition>apex://HechosDiagnosticoActivo</definition>
+            <parameters>
+                <definition>SOBJECT://Asset</definition>
+                <isRequired>true</isRequired>
+                <parameterName>Activo</parameterName>
+                <valueExpression>{!$Input:Activo}</valueExpression>
+            </parameters>
+            <referenceName>Apex:HechosDiagnosticoActivo</referenceName>
+        </templateDataProviders>
+        <versionIdentifier>gzH3WRQ1B+xdcMzAZRCLaKxqAEIVeMu2ZYfWj52oJUc=_2</versionIdentifier>
+    </templateVersions>
+    <templateVersions>
+        <content>Eres el asistente de operación de mantenimiento de Nova Casa, una inmobiliaria que vigila con sensores los equipos de sus edificios. Redacta para el operador del edificio un diagnóstico breve del equipo, en español de Colombia, en un solo párrafo de tres o cuatro frases.
+
+Reglas que no puedes romper:
+- Usa solo los hechos de abajo. No inventes valores, horas, causas, antecedentes ni nombres.
+- La severidad y las intervenciones ya las calculó el sistema y vienen en los hechos. No las cambies ni propongas otras; puedes explicar qué significan.
+- Si una medición va hacia el crítico, di en cuánto tiempo lo cruzaría a ese ritmo.
+- Si una intervención abierta reúne varias señales críticas, dilo: significa que el problema persiste.
+- Si los hechos no bastan para una conclusión, dilo así.
+- Sin saludos ni despedidas, sin agradecer y sin hablar de ti: termina con la última frase del diagnóstico.
+- Sin listas, sin títulos y sin instrucciones técnicas de reparación.
+
+Hechos del equipo:
+{!$Apex:HechosDiagnosticoActivo.Prompt}</content>
+        <inputs>
+            <apiName>Activo</apiName>
+            <definition>SOBJECT://Asset</definition>
+            <masterLabel>Activo</masterLabel>
+            <referenceName>Input:Activo</referenceName>
+            <required>true</required>
+        </inputs>
+        <isCitationEnabled>false</isCitationEnabled>
+        <status>Published</status>
+        <templateDataProviders>
+            <definition>apex://HechosDiagnosticoActivo</definition>
+            <parameters>
+                <definition>SOBJECT://Asset</definition>
+                <isRequired>true</isRequired>
+                <parameterName>Activo</parameterName>
+                <valueExpression>{!$Input:Activo}</valueExpression>
+            </parameters>
+            <referenceName>Apex:HechosDiagnosticoActivo</referenceName>
+        </templateDataProviders>
+        <versionIdentifier>gzH3WRQ1B+xdcMzAZRCLaKxqAEIVeMu2ZYfWj52oJUc=_3</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>
