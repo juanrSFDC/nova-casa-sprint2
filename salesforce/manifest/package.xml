@@ -153,6 +153,7 @@
         <members>Case.Causa_Raiz__c</members>
         <members>Case.Plan_Accion__c</members>
         <members>Location.Region__c</members>
+        <members>Integracion_Slack__c.Activo__c</members>
         <name>CustomField</name>
     </types>
     <types>
@@ -183,10 +184,12 @@
     </types>
     <types>
         <members>Simulador_Nova_Casa_Token</members>
+        <members>Slack_Nova_Casa</members>
         <name>ExternalCredential</name>
     </types>
     <types>
         <members>Simulador_Nova_Casa</members>
+        <members>Slack_Nova_Casa</members>
         <name>NamedCredential</name>
     </types>
     <types>
@@ -266,10 +269,6 @@
     <types>
         <members>Reprocesar_Trazas</members>
         <name>CustomPermission</name>
-    </types>
-    <types>
-        <members>Slack_Webhooks</members>
-        <name>RemoteSiteSetting</name>
     </types>
     <types>
         <members>Narrar_Diagnostico_Activo</members>

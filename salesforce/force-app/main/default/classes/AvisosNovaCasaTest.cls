@@ -4,13 +4,14 @@
  * Comprueban a quién va cada aviso (el grupo de operadores del edificio y Coordinadores),
  * qué dice, a qué registro lleva, que nada de lo que llegue mal lo hace reventar y que un
  * lote de 200 avisos sigue costando las mismas tres consultas. Las de Slack (extra E-15)
- * comprueban qué recibe el webhook, que sin URL no se llama a nadie y que un fallo de Slack
- * no impide la campana.
+ * comprueban que la llamada sale por la Named Credential con lo que espera el flujo, que sin
+ * ajuste o con el ajuste apagado no se llama a nadie y que un fallo de Slack no impide la campana.
  */
 @isTest
 private class AvisosNovaCasaTest {
 
-    private static final String WEBHOOK = 'https://hooks.slack.com/triggers/T000/prueba';
+    /** Lo que debe recibir el simulador: el nombre de la credencial, nunca una URL. */
+    private static final String NAMED_CREDENTIAL = 'callout:Slack_Nova_Casa';
 
     private class SlackSimulado implements HttpCalloutMock {
         private Integer codigo;
@@ -29,8 +30,18 @@ private class AvisosNovaCasaTest {
         }
     }
 
-    private static void conWebhook() {
-        insert new Integracion_Slack__c(SetupOwnerId = UserInfo.getOrganizationId(), URL_Webhook__c = WEBHOOK);
+    /** Se llama antes de Test.startTest(): un DML después dejaría trabajo pendiente antes de la llamada. */
+    private static void conSlack(Boolean activo) {
+        insert new Integracion_Slack__c(SetupOwnerId = UserInfo.getOrganizationId(), Activo__c = activo);
+    }
+
+    private static Estado_Medicion__c unaTendencia(String nombre, String idExterno) {
+        Asset sala = activo(nombre, idExterno, 'BLD-BOG-001', 'CELSIUS');
+        return TestDataFactory.createEstadoMedicion(new Map<SObjectField, Object>{
+            Estado_Medicion__c.Activo__c => sala.Id,
+            Estado_Medicion__c.Tendencia_Estado__c => 'Calculada',
+            Estado_Medicion__c.Tendencia_Minutos_Critico__c => 13
+        }, true);
     }
 
     private static Map<String, Object> cuerpoDe(HttpRequest peticion) {
@@ -186,14 +197,9 @@ private class AvisosNovaCasaTest {
     }
 
     @isTest
-    static void conWebhookElAvisoTambienSalePorSlack() {
-        Asset sala = activo('Sala de Slack', 'AST-T-AVISO-SLACK', 'BLD-BOG-001', 'CELSIUS');
-        Estado_Medicion__c estado = TestDataFactory.createEstadoMedicion(new Map<SObjectField, Object>{
-            Estado_Medicion__c.Activo__c => sala.Id,
-            Estado_Medicion__c.Tendencia_Estado__c => 'Calculada',
-            Estado_Medicion__c.Tendencia_Minutos_Critico__c => 13
-        }, true);
-        conWebhook();
+    static void conSlackActivoElAvisoSalePorLaNamedCredential() {
+        Estado_Medicion__c estado = unaTendencia('Sala de Slack', 'AST-T-AVISO-SLACK');
+        conSlack(true);
         SlackSimulado slack = new SlackSimulado(200);
         Test.setMock(HttpCalloutMock.class, slack);
 
@@ -203,23 +209,19 @@ private class AvisosNovaCasaTest {
 
         Assert.areEqual(1, slack.recibidas.size(), 'Un aviso, una publicación en Slack');
         HttpRequest peticion = slack.recibidas[0];
-        Assert.areEqual(WEBHOOK, peticion.getEndpoint(), 'Llama a la URL del ajuste, que no está en el código');
+        Assert.areEqual(NAMED_CREDENTIAL, peticion.getEndpoint(),
+            'Llama por la Named Credential: la URL del webhook no está en el código ni en el ajuste');
         Assert.areEqual('POST', peticion.getMethod());
         Map<String, Object> cuerpo = cuerpoDe(peticion);
         Assert.areEqual('Va hacia el crítico · Sala de Slack', cuerpo.get('titulo'), 'El mismo título que la campana');
         Assert.isTrue(((String) cuerpo.get('mensaje')).contains('en unos 13 min'), (String) cuerpo.get('mensaje'));
-        Assert.areEqual(URL.getOrgDomainUrl().toExternalForm() + '/' + sala.Id, cuerpo.get('enlace'),
+        Assert.areEqual(URL.getOrgDomainUrl().toExternalForm() + '/' + estado.Activo__c, cuerpo.get('enlace'),
             'El enlace abre el activo en Salesforce');
     }
 
     @isTest
-    static void sinWebhookNoSePublicaNadaEnSlack() {
-        Asset sala = activo('Sala sin Slack', 'AST-T-AVISO-NOSLACK', 'BLD-BOG-001', 'CELSIUS');
-        Estado_Medicion__c estado = TestDataFactory.createEstadoMedicion(new Map<SObjectField, Object>{
-            Estado_Medicion__c.Activo__c => sala.Id,
-            Estado_Medicion__c.Tendencia_Estado__c => 'Calculada',
-            Estado_Medicion__c.Tendencia_Minutos_Critico__c => 13
-        }, true);
+    static void sinAjusteNoSePublicaNadaEnSlack() {
+        Estado_Medicion__c estado = unaTendencia('Sala sin ajuste', 'AST-T-AVISO-NOSLACK');
         SlackSimulado slack = new SlackSimulado(200);
         Test.setMock(HttpCalloutMock.class, slack);
 
@@ -227,7 +229,22 @@ private class AvisosNovaCasaTest {
         ejecutar(new List<AvisosNovaCasa.Solicitud>{ solicitud(estado.Id, AvisosNovaCasa.TIPO_TENDENCIA) });
         Test.stopTest();
 
-        Assert.areEqual(0, slack.recibidas.size(), 'Sin URL en el ajuste no se llama a nadie');
+        Assert.areEqual(0, slack.recibidas.size(), 'Sin ajuste no se llama a nadie');
+        Assert.areEqual(1, AvisosNovaCasa.enviados.size(), 'La campana no depende de Slack');
+    }
+
+    @isTest
+    static void conSlackApagadoNoSePublicaNadaEnSlack() {
+        Estado_Medicion__c estado = unaTendencia('Sala con Slack apagado', 'AST-T-AVISO-APAGADO');
+        conSlack(false);
+        SlackSimulado slack = new SlackSimulado(200);
+        Test.setMock(HttpCalloutMock.class, slack);
+
+        Test.startTest();
+        ejecutar(new List<AvisosNovaCasa.Solicitud>{ solicitud(estado.Id, AvisosNovaCasa.TIPO_TENDENCIA) });
+        Test.stopTest();
+
+        Assert.areEqual(0, slack.recibidas.size(), 'Con Activo apagado no se llama a nadie');
         Assert.areEqual(1, AvisosNovaCasa.enviados.size(), 'La campana no depende de Slack');
     }
 
@@ -239,7 +256,7 @@ private class AvisosNovaCasaTest {
             Estado_Medicion__c.Tendencia_Estado__c => 'Calculada',
             Estado_Medicion__c.Tendencia_Minutos_Critico__c => 20
         }, true);
-        conWebhook();
+        conSlack(true);
         SlackSimulado slack = new SlackSimulado(500);
         Test.setMock(HttpCalloutMock.class, slack);
         List<AvisosNovaCasa.Solicitud> solicitudes = new List<AvisosNovaCasa.Solicitud>();
@@ -250,10 +267,12 @@ private class AvisosNovaCasaTest {
         Test.startTest();
         ejecutar(solicitudes);
         Integer publicadas = slack.recibidas.size();
-        Map<String, Object> ultimo = cuerpoDe(slack.recibidas[publicadas - 1]);
+        HttpRequest resumen = slack.recibidas[publicadas - 1];
+        Map<String, Object> ultimo = cuerpoDe(resumen);
         Test.stopTest();
 
         Assert.areEqual(AvisosNovaCasa.MAXIMO_SLACK + 1, publicadas, 'Diez avisos y uno que resume el resto');
+        Assert.areEqual(NAMED_CREDENTIAL, resumen.getEndpoint(), 'También el resumen sale por la Named Credential');
         Assert.areEqual('Y 2 avisos más', ultimo.get('titulo'));
         Assert.areEqual(12, AvisosNovaCasa.enviados.size(),
             'Aunque Slack responda con error, los avisos de la campana salen igual');

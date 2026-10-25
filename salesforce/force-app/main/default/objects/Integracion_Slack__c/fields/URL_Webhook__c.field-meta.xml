@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>URL_Webhook__c</fullName>
-    <description>URL del flujo de Workflow Builder que publica en #nova-casa-alertas (https://hooks.slack.com/triggers/...). Recibe un JSON con titulo, mensaje y enlace.</description>
-    <label>URL del webhook</label>
-    <required>false</required>
-    <trackTrending>false</trackTrending>
-    <type>Url</type>
-</CustomField>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Activo__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Encendido: AvisosNovaCasa publica cada aviso también en Slack, por la Named Credential Slack_Nova_Casa. Se enciende después de poner la URL real en esa NC. Apagado: solo la campana.</description>
+    <label>Activo</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

@@ -13,10 +13,11 @@
  * Los Flows corren como quien guardó el registro, que en el procesamiento es «Integracion
  * Nova Casa»: para enviar necesita el permiso Send Custom Notifications (Nova_Casa_Avisos).
  *
- * Slack (extra E-15): si el ajuste Integracion_Slack__c tiene URL, el mismo aviso se publica
+ * Slack (extra E-15): si el ajuste Integracion_Slack__c está activo, el mismo aviso se publica
  * además en #nova-casa-alertas a través de un flujo de Workflow Builder que empieza con un
- * webhook. Va antes que la campana, para que la llamada nunca quede detrás de trabajo pendiente,
- * y con tope por lote. Si Slack falla, la campana sale igual.
+ * webhook. La URL del webhook es la credencial: vive en la Named Credential Slack_Nova_Casa,
+ * nunca en el código ni en el ajuste. Va antes que la campana, para que la llamada nunca quede
+ * detrás de trabajo pendiente, y con tope por lote. Si Slack falla, la campana sale igual.
  */
 public with sharing class AvisosNovaCasa {
 
@@ -30,6 +31,8 @@ public with sharing class AvisosNovaCasa {
 
     /** Cuántos avisos de un mismo lote se publican en Slack; el resto se resume en uno. */
     @TestVisible private static final Integer MAXIMO_SLACK = 10;
+    /** El webhook entero, que es secreto, lo pone el administrador en esta Named Credential. */
+    private static final String SLACK = 'callout:Slack_Nova_Casa';
 
     /** Entrada del Flow. */
     public class Solicitud {
@@ -51,7 +54,7 @@ public with sharing class AvisosNovaCasa {
      * @param solicitudes Un registro por aviso; las de tipo desconocido o sin registro se ignoran
      */
     @InvocableMethod(label='Avisar al edificio'
-        description='Manda un aviso a los operadores del edificio y a Coordinadores, y lo publica en Slack si hay webhook.'
+        description='Manda un aviso a los operadores del edificio y a Coordinadores, y lo publica en Slack si está activo.'
         category='Nova Casa' callout=true)
     public static void avisar(List<Solicitud> solicitudes) {
         try {
@@ -175,26 +178,25 @@ public with sharing class AvisosNovaCasa {
             return;
         }
         Integracion_Slack__c ajuste = Integracion_Slack__c.getOrgDefaults();
-        String webhook = ajuste == null ? null : ajuste.URL_Webhook__c;
-        if (String.isBlank(webhook)) {
+        if (ajuste == null || ajuste.Activo__c != true) {
             return;
         }
         String dominio = URL.getOrgDomainUrl().toExternalForm();
         for (Integer i = 0; i < avisos.size(); i++) {
             if (i == MAXIMO_SLACK) {
-                publicar(webhook, 'Y ' + (avisos.size() - MAXIMO_SLACK) + ' avisos más',
+                publicar('Y ' + (avisos.size() - MAXIMO_SLACK) + ' avisos más',
                     'En este lote hubo más avisos de los que se publican aquí: el resto está en la campana de Salesforce.',
                     dominio);
                 return;
             }
-            publicar(webhook, avisos[i].titulo, avisos[i].cuerpo, dominio + '/' + avisos[i].destinoId);
+            publicar(avisos[i].titulo, avisos[i].cuerpo, dominio + '/' + avisos[i].destinoId);
         }
     }
 
     /** El flujo de Workflow Builder espera exactamente estas tres variables de texto. */
-    private static void publicar(String webhook, String titulo, String mensaje, String enlace) {
+    private static void publicar(String titulo, String mensaje, String enlace) {
         HttpRequest peticion = new HttpRequest();
-        peticion.setEndpoint(webhook);
+        peticion.setEndpoint(SLACK);
         peticion.setMethod('POST');
         peticion.setHeader('Content-Type', 'application/json');
         peticion.setTimeout(10000);

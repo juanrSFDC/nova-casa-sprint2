@@ -8,7 +8,11 @@
         <apexClass>PlanAccionIntervencion</apexClass>
         <enabled>true</enabled>
     </classAccesses>
-    <description>Lo lleva el usuario de integración, que es quien corre los Flows de aviso y de plan: enviar los avisos (Send Custom Notifications) y escribir el plan de acción que propone Einstein en Plan_Accion__c. No abre más datos.</description>
+    <description>Lo lleva el usuario de integración, que corre los Flows de aviso y de plan: enviar los avisos (Send Custom Notifications) y publicarlos en Slack (principal Slack_Nova_Casa-Avisos), y escribir el plan de Einstein en Plan_Accion__c.</description>
+    <externalCredentialPrincipalAccesses>
+        <enabled>true</enabled>
+        <externalCredentialPrincipal>Slack_Nova_Casa-Avisos</externalCredentialPrincipal>
+    </externalCredentialPrincipalAccesses>
     <fieldPermissions>
         <editable>false</editable>
         <field>Case.Causa_Raiz__c</field>
@@ -21,6 +25,15 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Nova Casa · Avisos</label>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>UserExternalCredential</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
     <userPermissions>
         <enabled>true</enabled>
         <name>SendCustomNotifications</name>
