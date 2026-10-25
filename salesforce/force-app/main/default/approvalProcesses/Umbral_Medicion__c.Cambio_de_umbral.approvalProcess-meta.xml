@@ -24,13 +24,17 @@
                 <name>gerente@novacasa.sprint2</name>
                 <type>user</type>
             </approver>
-            <whenMultipleApprovers>FirstResponse</whenMultipleApprovers>
+            <approver>
+                <name>gerente.caribe@novacasa.sprint2</name>
+                <type>user</type>
+            </approver>
+            <whenMultipleApprovers>Unanimous</whenMultipleApprovers>
         </assignedApprover>
-        <description>El gerente regional decide sobre cada cambio de límite que propone coordinación.</description>
+        <description>Los dos gerentes regionales (Andina y Caribe) deciden sobre cada cambio de límite que propone coordinación. Unanimidad: el cambio se aprueba solo cuando aprueban los dos; si uno rechaza, se rechaza (E-19, 25-oct).</description>
         <label>Aprobación de gerencia</label>
         <name>Aprobacion_gerencia</name>
     </approvalStep>
-    <description>US-204 (extra). Un cambio de límite propuesto por coordinación solo se aplica cuando el gerente lo aprueba. El envío lo hace UmbralMedicionTrigger al guardarse la propuesta; quién puede proponer lo decide la seguridad de campo de los campos propuestos, no este proceso. El administrador cambia los límites vigentes directamente, sin pasar por aquí.</description>
+    <description>US-204 (extra). Un cambio de límite propuesto por coordinación solo se aplica cuando lo aprueban los dos gerentes regionales, Andina y Caribe (unanimidad desde E-19, 25-oct: un umbral rige en los dos edificios). El envío lo hace UmbralMedicionTrigger al guardarse la propuesta; quién puede proponer lo decide la seguridad de campo de los campos propuestos, no este proceso. El administrador cambia los límites vigentes directamente, sin pasar por aquí.</description>
     <enableMobileDeviceAccess>false</enableMobileDeviceAccess>
     <entryCriteria>
         <formula>AND(

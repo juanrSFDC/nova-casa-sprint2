@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Role xmlns="http://soap.sforce.com/2006/04/metadata">
+    <caseAccessLevel>None</caseAccessLevel>
+    <description>E-19. Raíz propia: su acceso viene de sus reglas y grupo, no de la jerarquía.</description>
+    <mayForecastManagerShare>false</mayForecastManagerShare>
+    <name>Coordinador de mantenimiento</name>
+    <opportunityAccessLevel>None</opportunityAccessLevel>
+</Role>

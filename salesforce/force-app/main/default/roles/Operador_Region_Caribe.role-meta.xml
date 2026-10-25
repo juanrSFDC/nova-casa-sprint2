@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Role xmlns="http://soap.sforce.com/2006/04/metadata">
+    <caseAccessLevel>None</caseAccessLevel>
+    <description>E-19. Operadores de Barranquilla; su gerente está encima.</description>
+    <mayForecastManagerShare>false</mayForecastManagerShare>
+    <name>Operador región Caribe</name>
+    <opportunityAccessLevel>None</opportunityAccessLevel>
+    <parentRole>Gerente_Region_Caribe</parentRole>
+</Role>

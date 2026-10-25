@@ -2,15 +2,19 @@
  * US-204 · «Una persona autorizada puede modificarlos mediante el mecanismo administrativo elegido».
  *
  * El mecanismo es la pestaña y la vista de Umbral_Medicion__c; la autorización, una propuesta que
- * aprueba el gerente (proceso Cambio_de_umbral). Aquí se comprueba con usuarios de acceso mínimo, en
- * modo usuario, que el coordinador propone sin tocar el límite vigente, que la propuesta le llega al
- * gerente y solo se aplica al aprobarla, que el coordinador no cambia lo vigente ni crea ni borra
+ * aprueban los dos gerentes regionales por unanimidad (proceso Cambio_de_umbral; E-19, 25-oct: un
+ * umbral rige en Bogotá y en Barranquilla). Aquí se comprueba con usuarios de acceso mínimo, en modo
+ * usuario, que el coordinador propone sin tocar el límite vigente, que la propuesta les llega a los dos
+ * gerentes, que con una sola aprobación sigue el vigente, que solo se aplica cuando aprueban los dos y
+ * que basta un rechazo para rechazarla; que el coordinador no cambia lo vigente ni crea ni borra
  * umbrales, que el administrador sí cambia el límite directo y que el operador solo los lee.
+ * Los gerentes son los usuarios reales de la org (el proceso los nombra por su username).
  */
 @isTest
 private class UmbralAutorizacionUS204Test {
 
-    private static final String GERENTE = 'gerente@novacasa.sprint2';
+    private static final String GERENTE_ANDINA = 'gerente@novacasa.sprint2';
+    private static final String GERENTE_CARIBE = 'gerente.caribe@novacasa.sprint2';
     private static final String MOTIVO = 'La bomba nueva trabaja a mas presion';
 
     private static User usuarioCon(String permissionSet, String alias, String grupo) {
@@ -81,10 +85,23 @@ private class UmbralAutorizacionUS204Test {
         }
     }
 
+    private static List<ProcessInstanceWorkitem> pendientes(Id umbralId) {
+        return [SELECT Id, ActorId FROM ProcessInstanceWorkitem WHERE ProcessInstance.TargetObjectId = :umbralId];
+    }
+
+    /**
+     * Resuelve la solicitud pendiente de quien decide: cada gerente tiene la suya. El coordinador, que
+     * no es aprobador, la retira ('Removed') con cualquiera de ellas.
+     */
     private static void resolver(User quien, Id umbralId, String accion) {
-        ProcessInstanceWorkitem pendiente = [
-            SELECT Id FROM ProcessInstanceWorkitem WHERE ProcessInstance.TargetObjectId = :umbralId LIMIT 1
-        ];
+        List<ProcessInstanceWorkitem> abiertas = pendientes(umbralId);
+        Assert.isFalse(abiertas.isEmpty(), 'Hay una solicitud pendiente que resolver: ' + accion);
+        ProcessInstanceWorkitem pendiente = abiertas[0];
+        for (ProcessInstanceWorkitem abierta : abiertas) {
+            if (abierta.ActorId == quien.Id) {
+                pendiente = abierta;
+            }
+        }
         Approval.ProcessWorkitemRequest decision = new Approval.ProcessWorkitemRequest();
         decision.setWorkitemId(pendiente.Id);
         decision.setAction(accion);
@@ -93,8 +110,12 @@ private class UmbralAutorizacionUS204Test {
         }
     }
 
-    private static User gerente() {
-        return [SELECT Id FROM User WHERE Username = :GERENTE LIMIT 1];
+    private static User gerenteAndina() {
+        return [SELECT Id FROM User WHERE Username = :GERENTE_ANDINA LIMIT 1];
+    }
+
+    private static User gerenteCaribe() {
+        return [SELECT Id FROM User WHERE Username = :GERENTE_CARIBE LIMIT 1];
     }
 
     private static String severidadDe(Decimal presion) {
@@ -113,14 +134,17 @@ private class UmbralAutorizacionUS204Test {
         Test.stopTest();
 
         Umbral_Medicion__c leido = leer(umbral.Id);
-        Assert.isTrue(leido.Valor_Critico__c == 5, 'Mientras el gerente no decide, sigue el límite vigente');
+        Assert.isTrue(leido.Valor_Critico__c == 5, 'Mientras los gerentes no deciden, sigue el límite vigente');
         Assert.isTrue(leido.Valor_Critico_Propuesto__c == 4.5, 'La propuesta queda guardada aparte');
         Assert.areEqual(UmbralMedicionTriggerHandler.PROPUESTA_PENDIENTE, leido.Estado_Propuesta__c,
             'Se envió sola al guardarla: el coordinador no tiene que pulsar nada más');
-        ProcessInstanceWorkitem pendiente = [
-            SELECT ActorId FROM ProcessInstanceWorkitem WHERE ProcessInstance.TargetObjectId = :umbral.Id
-        ];
-        Assert.areEqual(gerente().Id, pendiente.ActorId, 'La solicitud le llega al gerente');
+        Set<Id> aprobadores = new Set<Id>();
+        for (ProcessInstanceWorkitem pendiente : pendientes(umbral.Id)) {
+            aprobadores.add(pendiente.ActorId);
+        }
+        Assert.areEqual(new Set<Id>{ gerenteAndina().Id, gerenteCaribe().Id }, aprobadores,
+            'La solicitud les llega a los dos gerentes regionales, una a cada uno');
+        Assert.areEqual(2, pendientes(umbral.Id).size(), 'Una solicitud por gerente, ninguna más');
         Assert.areEqual('WATER_PUMP|WATER_PRESSURE|ARRIBA', leido.Clave_Umbral__c,
             'La clave la sigue derivando el trigger');
     }
@@ -133,12 +157,13 @@ private class UmbralAutorizacionUS204Test {
 
         Test.startTest();
         proponerCritico(coordina, umbral.Id, 4.5, MOTIVO);
-        resolver(gerente(), umbral.Id, 'Approve');
+        resolver(gerenteAndina(), umbral.Id, 'Approve');
+        resolver(gerenteCaribe(), umbral.Id, 'Approve');
         Test.stopTest();
 
         Umbral_Medicion__c leido = leer(umbral.Id);
         Assert.areEqual(ClasificacionResultado.SEVERIDAD_ADVERTENCIA, antes, '4,7 bar con el crítico en 5 es advertencia');
-        Assert.isTrue(leido.Valor_Critico__c == 4.5, 'Al aprobarse, el límite propuesto pasa a ser el vigente');
+        Assert.isTrue(leido.Valor_Critico__c == 4.5, 'Al aprobarlo los dos, el límite propuesto pasa a ser el vigente');
         Assert.isTrue(leido.Valor_Advertencia__c == 4, 'Lo que no se propuso se queda como estaba');
         Assert.isNull(leido.Valor_Critico_Propuesto__c, 'La propuesta se vacía');
         Assert.isNull(leido.Motivo_Cambio__c, 'El motivo queda en el historial de aprobación, no en el registro');
@@ -148,22 +173,45 @@ private class UmbralAutorizacionUS204Test {
     }
 
     @isTest
+    static void conUnaSolaAprobacionSigueElLimiteVigente() {
+        User coordina = coordinador();
+        Umbral_Medicion__c umbral = umbralDe(coordina);
+        User caribe = gerenteCaribe();
+
+        Test.startTest();
+        proponerCritico(coordina, umbral.Id, 4.5, MOTIVO);
+        resolver(gerenteAndina(), umbral.Id, 'Approve');
+        Test.stopTest();
+
+        Umbral_Medicion__c leido = leer(umbral.Id);
+        List<ProcessInstanceWorkitem> abiertas = pendientes(umbral.Id);
+        Assert.isTrue(leido.Valor_Critico__c == 5, 'Con un solo gerente a favor, el límite vigente no cambia');
+        Assert.areEqual(UmbralMedicionTriggerHandler.PROPUESTA_PENDIENTE, leido.Estado_Propuesta__c,
+            'La propuesta sigue pendiente: falta el otro gerente');
+        Assert.areEqual(1, abiertas.size(), 'Queda una sola solicitud abierta');
+        Assert.areEqual(caribe.Id, abiertas[0].ActorId, 'La que queda es la del gerente que no ha decidido');
+        Assert.areEqual(ClasificacionResultado.SEVERIDAD_ADVERTENCIA, severidadDe(4.7),
+            'La siguiente señal se sigue clasificando con el límite vigente');
+    }
+
+    @isTest
     static void alRechazarseSigueElVigenteYAlCorregirLaPropuestaSeReenvia() {
         User coordina = coordinador();
         Umbral_Medicion__c umbral = umbralDe(coordina);
 
         Test.startTest();
         proponerCritico(coordina, umbral.Id, 4.5, MOTIVO);
-        resolver(gerente(), umbral.Id, 'Reject');
+        resolver(gerenteAndina(), umbral.Id, 'Approve');
+        resolver(gerenteCaribe(), umbral.Id, 'Reject');
         Umbral_Medicion__c rechazado = leer(umbral.Id);
         proponerCritico(coordina, umbral.Id, 4.8, 'Mejor un margen mas corto');
         Test.stopTest();
 
-        Assert.isTrue(rechazado.Valor_Critico__c == 5, 'Rechazada, el límite vigente no cambia');
+        Assert.isTrue(rechazado.Valor_Critico__c == 5, 'Basta que un gerente la rechace: el límite vigente no cambia');
         Assert.isTrue(rechazado.Valor_Critico_Propuesto__c == 4.5, 'La propuesta queda a la vista para corregirla');
         Assert.areEqual(UmbralMedicionTriggerHandler.PROPUESTA_RECHAZADA, rechazado.Estado_Propuesta__c, 'Queda como rechazada');
         Assert.areEqual(UmbralMedicionTriggerHandler.PROPUESTA_PENDIENTE, leer(umbral.Id).Estado_Propuesta__c,
-            'Al corregirla vuelve a llegarle al gerente');
+            'Al corregirla vuelve a llegarles a los gerentes');
     }
 
     @isTest
@@ -211,7 +259,7 @@ private class UmbralAutorizacionUS204Test {
         Assert.isTrue(incoherente != null && incoherente.contains('incoherente'),
             'Un crítico por debajo de la advertencia no se guarda: ' + incoherente);
         Assert.areEqual(0, [SELECT COUNT() FROM ProcessInstance WHERE TargetObjectId = :umbral.Id],
-            'Al gerente no le llega nada');
+            'A los gerentes no les llega nada');
     }
 
     @isTest

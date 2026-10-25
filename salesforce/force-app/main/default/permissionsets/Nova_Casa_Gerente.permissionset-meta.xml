@@ -8,7 +8,7 @@
         <apexClass>MonitoreoActivosController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
-    <description>Gerente regional de operaciones (extra del 19-oct): ve todos los edificios en solo lectura, abre «Mis activos» y el dashboard regional, y aprueba los cambios de umbral. Mismos campos que el operador, con View All y sin editar nada.</description>
+    <description>Gerente regional (E-19): solo lectura y sin Ver todo; ve los edificios y activos de su región por la jerarquía de roles, lee todos los umbrales y aprueba con el otro gerente, por unanimidad, los cambios de umbral. Abre «Mis activos» y el dashboard.</description>
     <fieldPermissions>
         <editable>false</editable>
         <field>Asset.Edificio_Externo__c</field>
@@ -261,6 +261,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>false</editable>
+        <field>Location.Region__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>Umbral_Medicion__c.Activo__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -339,7 +344,7 @@
         <modifyAllRecords>false</modifyAllRecords>
         <object>Account</object>
         <viewAllFields>false</viewAllFields>
-        <viewAllRecords>true</viewAllRecords>
+        <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <objectPermissions>
         <allowCreate>false</allowCreate>
@@ -349,7 +354,7 @@
         <modifyAllRecords>false</modifyAllRecords>
         <object>Asset</object>
         <viewAllFields>false</viewAllFields>
-        <viewAllRecords>true</viewAllRecords>
+        <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <objectPermissions>
         <allowCreate>false</allowCreate>
@@ -359,7 +364,7 @@
         <modifyAllRecords>false</modifyAllRecords>
         <object>Case</object>
         <viewAllFields>false</viewAllFields>
-        <viewAllRecords>true</viewAllRecords>
+        <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <objectPermissions>
         <allowCreate>false</allowCreate>
@@ -369,7 +374,7 @@
         <modifyAllRecords>false</modifyAllRecords>
         <object>Contact</object>
         <viewAllFields>false</viewAllFields>
-        <viewAllRecords>true</viewAllRecords>
+        <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <objectPermissions>
         <allowCreate>false</allowCreate>
@@ -379,7 +384,7 @@
         <modifyAllRecords>false</modifyAllRecords>
         <object>Estado_Medicion__c</object>
         <viewAllFields>false</viewAllFields>
-        <viewAllRecords>true</viewAllRecords>
+        <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <objectPermissions>
         <allowCreate>false</allowCreate>
@@ -389,7 +394,7 @@
         <modifyAllRecords>false</modifyAllRecords>
         <object>Lectura_Sensor__c</object>
         <viewAllFields>false</viewAllFields>
-        <viewAllRecords>true</viewAllRecords>
+        <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <objectPermissions>
         <allowCreate>false</allowCreate>
@@ -399,7 +404,7 @@
         <modifyAllRecords>false</modifyAllRecords>
         <object>Location</object>
         <viewAllFields>false</viewAllFields>
-        <viewAllRecords>true</viewAllRecords>
+        <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <objectPermissions>
         <allowCreate>false</allowCreate>
@@ -409,7 +414,7 @@
         <modifyAllRecords>false</modifyAllRecords>
         <object>Umbral_Medicion__c</object>
         <viewAllFields>false</viewAllFields>
-        <viewAllRecords>true</viewAllRecords>
+        <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <tabSettings>
         <tab>Mis_activos</tab>

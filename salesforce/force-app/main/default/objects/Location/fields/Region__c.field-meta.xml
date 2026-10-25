@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Region__c</fullName>
+    <description>Región del edificio (E-19, gerente regional). Es un dato: el acceso del gerente lo da la jerarquía de roles (cada gerente está sobre los operadores de su región), no este campo. Lo escribe el administrador.</description>
+    <inlineHelpText>Región de operación del edificio: Andina (Bogotá) o Caribe (Barranquilla).</inlineHelpText>
+    <label>Región</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>ANDINA</fullName>
+                <default>false</default>
+                <label>Andina</label>
+            </value>
+            <value>
+                <fullName>CARIBE</fullName>
+                <default>false</default>
+                <label>Caribe</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

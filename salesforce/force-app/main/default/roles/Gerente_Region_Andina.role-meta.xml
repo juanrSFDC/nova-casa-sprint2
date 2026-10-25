@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Role xmlns="http://soap.sforce.com/2006/04/metadata">
+    <caseAccessLevel>None</caseAccessLevel>
+    <description>E-19. Gerente de Bogotá: hereda lo compartido con Operadores BOG.</description>
+    <mayForecastManagerShare>false</mayForecastManagerShare>
+    <name>Gerente región Andina</name>
+    <opportunityAccessLevel>None</opportunityAccessLevel>
+</Role>

@@ -335,6 +335,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>false</editable>
+        <field>Location.Region__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>Umbral_Medicion__c.Activo__c</field>
         <readable>true</readable>
     </fieldPermissions>

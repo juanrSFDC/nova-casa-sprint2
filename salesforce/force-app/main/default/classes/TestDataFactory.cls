@@ -15,6 +15,7 @@ public with sharing class TestDataFactory {
 
     private static final String PERM_SET_INGESTA = 'Nova_Casa_Ingesta';
     private static final String PERM_SET_OPERADOR = 'Nova_Casa_Operador';
+    private static final String PERM_SET_GERENTE = 'Nova_Casa_Gerente';
     private static final String PERFIL_MINIMO = 'Minimum Access - Salesforce';
 
     /**
@@ -418,6 +419,35 @@ public with sharing class TestDataFactory {
         );
         insert usuario;
         PermissionSet permiso = [SELECT Id FROM PermissionSet WHERE Name = :PERM_SET_OPERADOR LIMIT 1];
+        insert new PermissionSetAssignment(AssigneeId = usuario.Id, PermissionSetId = permiso.Id);
+        return usuario;
+    }
+
+    /**
+     * Un usuario de pruebas con el perfil de acceso mínimo y SOLO el Permission Set Nova_Casa_Gerente
+     * (E-19), sin rol: el llamador le pone el rol de su región si la prueba mide la jerarquía. Falla ruidoso
+     * si el perfil o el permission set no existen en la org. Es DML de objetos de setup: envolver en
+     * System.runAs(usuario actual) si hay DML de negocio en la misma transacción.
+     *
+     * @return El usuario insertado con el Permission Set asignado
+     */
+    public static User crearUsuarioGerente() {
+        Profile perfil = [SELECT Id FROM Profile WHERE Name = :PERFIL_MINIMO LIMIT 1];
+        String sufijo = String.valueOf(DateTime.now().getTime()) + String.valueOf(Math.round(Math.random() * 100000));
+        User usuario = new User(
+            FirstName = 'Gerente',
+            LastName = 'Prueba',
+            Email = 'gerente.prueba@novacasa.test.invalid',
+            Username = 'gerente.' + sufijo + '@novacasa.test.invalid',
+            Alias = 'gertest',
+            ProfileId = perfil.Id,
+            TimeZoneSidKey = 'America/Bogota',
+            LocaleSidKey = 'es_CO',
+            EmailEncodingKey = 'UTF-8',
+            LanguageLocaleKey = 'es'
+        );
+        insert usuario;
+        PermissionSet permiso = [SELECT Id FROM PermissionSet WHERE Name = :PERM_SET_GERENTE LIMIT 1];
         insert new PermissionSetAssignment(AssigneeId = usuario.Id, PermissionSetId = permiso.Id);
         return usuario;
     }

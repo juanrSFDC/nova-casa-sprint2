@@ -66,6 +66,7 @@
         <members>RegistroProcesamientoUS209Test</members>
         <members>SeguridadMisActivosTest</members>
         <members>SeguridadOperadorTest</members>
+        <members>SeguridadGerenteTest</members>
         <members>SenalSensorDomain</members>
         <members>SenalSensorDomainTest</members>
         <members>SenalSensorService</members>
@@ -151,6 +152,7 @@
         <members>Umbral_Medicion__c.Valor_Invalido_Propuesto__c</members>
         <members>Case.Causa_Raiz__c</members>
         <members>Case.Plan_Accion__c</members>
+        <members>Location.Region__c</members>
         <name>CustomField</name>
     </types>
     <types>
@@ -208,6 +210,14 @@
         <members>Operadores_BOG</members>
         <members>Gerencia_Regional</members>
         <name>Group</name>
+    </types>
+    <types>
+        <members>Gerente_Region_Andina</members>
+        <members>Operador_Region_Andina</members>
+        <members>Gerente_Region_Caribe</members>
+        <members>Operador_Region_Caribe</members>
+        <members>Coordinador_Mantenimiento</members>
+        <name>Role</name>
     </types>
     <types>
         <members>Asset.Asset_BOG_Operadores</members>
