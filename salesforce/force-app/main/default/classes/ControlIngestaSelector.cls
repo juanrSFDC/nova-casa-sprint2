@@ -70,4 +70,37 @@ public inherited sharing class ControlIngestaSelector {
         }
         return porFuente;
     }
+
+    /**
+     * Trae, bloqueados, los registros que revisa la vigilancia del silencio (E-07). Sin ids: todas las
+     * fuentes habilitadas con Minutos_Silencio__c (el horario). Con ids: esos registros tal cual (el
+     * botón), y el servicio decide si se vigilan. FOR UPDATE: si el botón y el horario coinciden, el
+     * segundo espera al primero y ve el episodio ya abierto, así nunca hay dos trazas por episodio.
+     *
+     * @param ids Los Control_Ingesta__c a revisar, o null para todas las fuentes vigiladas
+     * @return Los registros con sus campos de vigilancia (vacío si no hay ninguno)
+     * @example
+     * List<Control_Ingesta__c> vigiladas = new ControlIngestaSelector().paraVigilancia(null);
+     */
+    public List<Control_Ingesta__c> paraVigilancia(Set<Id> ids) {
+        if (ids == null) {
+            return [
+                SELECT Id, Name, Fuente__c, Habilitada__c, Minutos_Silencio__c, En_Silencio_Desde__c
+                FROM Control_Ingesta__c
+                WHERE Habilitada__c = true AND Minutos_Silencio__c != null
+                WITH USER_MODE
+                FOR UPDATE
+            ];
+        }
+        if (ids.isEmpty()) {
+            return new List<Control_Ingesta__c>();
+        }
+        return [
+            SELECT Id, Name, Fuente__c, Habilitada__c, Minutos_Silencio__c, En_Silencio_Desde__c
+            FROM Control_Ingesta__c
+            WHERE Id IN :ids
+            WITH USER_MODE
+            FOR UPDATE
+        ];
+    }
 }

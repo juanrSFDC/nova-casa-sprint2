@@ -10,6 +10,10 @@
         <enabled>true</enabled>
         <name>Reprocesar_Trazas</name>
     </customPermissions>
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>Revisar_Silencio</name>
+    </customPermissions>
     <fieldPermissions>
         <editable>true</editable>
         <field>Case.Causa_Raiz__c</field>
@@ -547,12 +551,22 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Control_Ingesta__c.En_Silencio_Desde__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Control_Ingesta__c.Escenario__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
         <field>Control_Ingesta__c.Habilitada__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Control_Ingesta__c.Minutos_Silencio__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <actionCalls>
+        <name>Revisar</name>
+        <label>Revisar silencio</label>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <actionName>SilencioProveedorAction</actionName>
+        <actionType>apex</actionType>
+        <connector>
+            <targetReference>Resultado</targetReference>
+        </connector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>recordId</name>
+            <value>
+                <elementReference>recordId</elementReference>
+            </value>
+        </inputParameters>
+        <outputParameters>
+            <assignToReference>mensaje</assignToReference>
+            <name>mensaje</name>
+        </outputParameters>
+        <storeOutputAutomatically>false</storeOutputAutomatically>
+    </actionCalls>
+    <description>Botón «Revisar silencio ahora» del registro de control (Control_Ingesta__c): revisa en el momento si la fuente lleva más de sus Minutos de silencio sin entregar señales (SilencioProveedorAction) y muestra el mensaje del servidor. Abre o cierra el episodio igual que el horario (E-07). Solo el administrador tiene el permiso Revisar_Silencio.</description>
+    <environments>Default</environments>
+    <interviewLabel>Revisar silencio {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Revisar silencio ahora</label>
+    <processType>Flow</processType>
+    <screens>
+        <name>Resultado</name>
+        <label>Silencio del proveedor</label>
+        <locationX>176</locationX>
+        <locationY>278</locationY>
+        <allowBack>false</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <fields>
+            <name>Mensaje_revision</name>
+            <fieldText>&lt;p&gt;{!mensaje}&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+        </fields>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Revisar</targetReference>
+        </connector>
+    </start>
+    <status>Active</status>
+    <variables>
+        <name>mensaje</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>recordId</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

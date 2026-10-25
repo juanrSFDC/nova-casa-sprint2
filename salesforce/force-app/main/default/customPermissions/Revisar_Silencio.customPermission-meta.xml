@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Permite revisar a mano, desde el registro de control, si una fuente está en silencio (E-07). Solo el perfil de administrador lo tiene; la acción lo comprueba en el servidor antes de leer nada.</description>
+    <isLicensed>false</isLicensed>
+    <label>Revisar silencio del proveedor</label>
+</CustomPermission>

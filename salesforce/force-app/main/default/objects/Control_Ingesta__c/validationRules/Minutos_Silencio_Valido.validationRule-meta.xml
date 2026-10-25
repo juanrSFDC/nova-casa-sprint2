@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Minutos_Silencio_Valido</fullName>
+    <active>true</active>
+    <errorConditionFormula>NOT(ISBLANK(Minutos_Silencio__c)) &amp;&amp; (Minutos_Silencio__c &lt; 1 || Minutos_Silencio__c &gt; 1440)</errorConditionFormula>
+    <errorDisplayField>Minutos_Silencio__c</errorDisplayField>
+    <errorMessage>Los minutos de silencio van de 1 a 1440 (un día). Déjalo vacío para no vigilar la fuente.</errorMessage>
+</ValidationRule>

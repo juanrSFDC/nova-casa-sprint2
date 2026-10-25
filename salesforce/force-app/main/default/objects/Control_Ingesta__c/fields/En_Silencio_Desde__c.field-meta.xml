@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>En_Silencio_Desde__c</fullName>
+    <description>E-07: lleno mientras hay un episodio de silencio abierto; guarda cuándo llegó la última señal antes del silencio. Lo escribe la vigilancia del silencio y se vacía cuando las señales vuelven.</description>
+    <inlineHelpText>Cuándo llegó la última señal antes del silencio actual. Vacío: la fuente no está en silencio.</inlineHelpText>
+    <label>En silencio desde</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

@@ -173,6 +173,36 @@ private class RegistroProcesamientoServiceTest {
         Assert.areEqual(4000, guardada.Detalle__c.length(), 'El detalle se recorta al máximo del campo (4000)');
     }
 
+    // ─── registrarSilencios (E-07) ──────────────────────────────────────────
+
+    @isTest
+    static void registrarSilencios_noHaceDml_cuandoListaVacia() {
+        Test.startTest();
+        Integer dmlAntes = Limits.getDmlStatements();
+        List<Registro_Procesamiento__c> vacia =
+            RegistroProcesamientoService.registrarSilencios(new List<RegistroProcesamientoService.Silencio>(), AHORA);
+        List<Registro_Procesamiento__c> nula = RegistroProcesamientoService.registrarSilencios(null, AHORA);
+        Integer dml = Limits.getDmlStatements() - dmlAntes;
+        Test.stopTest();
+
+        Assert.isTrue(vacia.isEmpty() && nula.isEmpty(), 'Sin silencios no hay trazas');
+        Assert.areEqual(0, dml, 'Sin silencios no se escribe');
+    }
+
+    @isTest
+    static void registrarSilencios_truncaDetalle_a4000() {
+        Test.startTest();
+        RegistroProcesamientoService.registrarSilencios(new List<RegistroProcesamientoService.Silencio>{
+            new RegistroProcesamientoService.Silencio('nova-casa-portatil', 'x'.rightPad(4100, 'x'))
+        }, AHORA);
+        Test.stopTest();
+
+        Registro_Procesamiento__c guardada = [SELECT Detalle__c, Motivo__c, Reintentable__c FROM Registro_Procesamiento__c LIMIT 1];
+        Assert.areEqual(4000, guardada.Detalle__c.length(), 'El detalle se recorta al máximo del campo (4000)');
+        Assert.areEqual('SILENCIO_PROVEEDOR', guardada.Motivo__c, 'Motivo del silencio');
+        Assert.isFalse(guardada.Reintentable__c, 'Un silencio no se reprocesa');
+    }
+
     // ─── registrarEventosNoPublicados (201.5) ───────────────────────────────
 
     @isTest

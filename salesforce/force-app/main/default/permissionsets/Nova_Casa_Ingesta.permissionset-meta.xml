@@ -473,6 +473,11 @@
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
+        <editable>true</editable>
+        <field>Control_Ingesta__c.En_Silencio_Desde__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
         <editable>false</editable>
         <field>Control_Ingesta__c.Escenario__c</field>
         <readable>true</readable>
@@ -480,6 +485,11 @@
     <fieldPermissions>
         <editable>false</editable>
         <field>Control_Ingesta__c.Habilitada__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Control_Ingesta__c.Minutos_Silencio__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

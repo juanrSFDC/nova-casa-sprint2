@@ -107,6 +107,13 @@
         <members>HechosPlanAccion</members>
         <members>PlanAccionIntervencion</members>
         <members>PlanAccionIntervencionTest</members>
+        <members>SilencioProveedorService</members>
+        <members>SilencioProveedorServiceTest</members>
+        <members>SilencioProveedorAction</members>
+        <members>SilencioProveedorActionTest</members>
+        <members>SilencioProveedorSchedulable</members>
+        <members>SilencioProveedorSchedulableTest</members>
+        <members>SensorPortatilTest</members>
         <name>ApexClass</name>
     </types>
     <types>
@@ -125,11 +132,13 @@
         <members>Nova_Casa_Aviso_Tendencia</members>
         <members>Reprocesar_Traza</members>
         <members>Nova_Casa_Plan_Intervencion</members>
+        <members>Revisar_Silencio</members>
         <name>Flow</name>
     </types>
     <types>
         <members>Control_Ingesta__c.Ingerir_Ahora</members>
         <members>Registro_Procesamiento__c.Reprocesar</members>
+        <members>Control_Ingesta__c.Revisar_Silencio</members>
         <name>QuickAction</name>
     </types>
     <types>
@@ -154,6 +163,8 @@
         <members>Case.Plan_Accion__c</members>
         <members>Location.Region__c</members>
         <members>Integracion_Slack__c.Activo__c</members>
+        <members>Control_Ingesta__c.Minutos_Silencio__c</members>
+        <members>Control_Ingesta__c.En_Silencio_Desde__c</members>
         <name>CustomField</name>
     </types>
     <types>
@@ -268,6 +279,7 @@
     </types>
     <types>
         <members>Reprocesar_Trazas</members>
+        <members>Revisar_Silencio</members>
         <name>CustomPermission</name>
     </types>
     <types>

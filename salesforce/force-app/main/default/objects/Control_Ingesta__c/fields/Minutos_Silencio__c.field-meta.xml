@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Minutos_Silencio__c</fullName>
+    <description>E-07: minutos sin señales a partir de los cuales la fuente se da por callada, de 1 a 1440. Vacío: la fuente no se vigila.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Si la fuente pasa más de estos minutos sin entregar señales, se deja una traza y se avisa a coordinación. Vacío: no se vigila.</inlineHelpText>
+    <label>Minutos de silencio</label>
+    <precision>4</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

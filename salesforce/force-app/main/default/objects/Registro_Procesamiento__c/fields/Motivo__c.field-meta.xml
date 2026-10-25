@@ -59,6 +59,11 @@
                 <default>false</default>
                 <label>TIPO_MENSAJE_DESCONOCIDO</label>
             </value>
+            <value>
+                <fullName>SILENCIO_PROVEEDOR</fullName>
+                <default>false</default>
+                <label>SILENCIO_PROVEEDOR</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

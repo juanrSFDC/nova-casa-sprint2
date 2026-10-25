@@ -15,6 +15,8 @@
  * de ingesta queda null (no hay señal validada). El saneado de Detalle__c nunca deja tokens ni stack.
  * Desde E-06 los fallos reintentables del suscriptor guardan la carga de su señal (Carga_Evento__c) y
  * marcarReprocesadas deja constancia de quién reprocesó cada traza desde la pantalla.
+ * Desde E-07 (25-oct) registra también el silencio del proveedor (registrarSilencios): una traza por
+ * episodio, sin Recibido_En__c, para que nunca cuente como una señal recibida.
  *
  * @example
  * RegistroProcesamientoService.registrarFalloIngesta('nova-casa-simulator', excepcion, Datetime.now());
@@ -30,6 +32,7 @@ public with sharing class RegistroProcesamientoService {
     private static final String RESULTADO_ATRASADA = 'Atrasada';
     private static final String MOTIVO_SIN_IDENTIDAD = 'SIN_IDENTIDAD';
     private static final String MOTIVO_COLISION_CLAVE = 'COLISION_CLAVE';
+    private static final String MOTIVO_SILENCIO_PROVEEDOR = 'SILENCIO_PROVEEDOR';
     private static final String DETALLE_DUPLICADA = 'Lectura duplicada: misma clave y mismo contenido que una ya guardada; no se vuelve a guardar.';
     private static final String DETALLE_CONFLICTO = 'Colisión de clave: misma Clave_Mensaje__c con contenido distinto al ya guardado; no se guarda ni se elige.';
     private static final String DETALLE_PROCESADA_GANADORA = 'Procesada: la lectura se guardó y fijó el estado actual del activo.';
@@ -135,6 +138,51 @@ public with sharing class RegistroProcesamientoService {
                 Referencia__c = evento.Clave_Mensaje__c,
                 Id_Entrega__c = evento.Id_Entrega__c,
                 Detalle__c = DETALLE_NO_PUBLICADO,
+                Procesado_En__c = ahora
+            ));
+        }
+        Database.insert(trazas, AccessLevel.USER_MODE);
+        return trazas;
+    }
+
+    /** Una fuente que se acaba de callar (E-07): la arma SilencioProveedorService. */
+    public class Silencio {
+        public String fuente;
+        public String detalle;
+
+        public Silencio(String fuente, String detalle) {
+            this.fuente = fuente;
+            this.detalle = detalle;
+        }
+    }
+
+    /**
+     * Registra en UNA sola inserción el silencio de las fuentes que se acaban de callar (E-07): una traza
+     * por episodio, Fallo_Tecnico escrito por Ingesta, NO reintentable (no hay nada que relanzar: falta el
+     * proveedor) y con Motivo__c = SILENCIO_PROVEEDOR. La referencia tiene la forma de las trazas de
+     * ingesta (INGESTA|fuente|fecha ISO), así el reproceso la reconoce y responde que no es reintentable.
+     * Sin Clave_Mensaje__c ni Recibido_En__c: una traza de silencio nunca cuenta como señal recibida.
+     * Una lista vacía no escribe nada.
+     *
+     * @param silencios Las fuentes calladas con su detalle ya redactado (sin datos técnicos)
+     * @param ahora El momento de la revisión (parámetro para poder probarlo con hora fija)
+     * @return Las trazas insertadas (vacío si no había silencios)
+     * @example
+     * RegistroProcesamientoService.registrarSilencios(silencios, Datetime.now());
+     */
+    public static List<Registro_Procesamiento__c> registrarSilencios(List<Silencio> silencios, Datetime ahora) {
+        List<Registro_Procesamiento__c> trazas = new List<Registro_Procesamiento__c>();
+        if (silencios == null || silencios.isEmpty()) {
+            return trazas;
+        }
+        for (Silencio silencio : silencios) {
+            trazas.add(new Registro_Procesamiento__c(
+                Resultado__c = RESULTADO_FALLO_TECNICO,
+                Escrito_Por__c = ESCRITO_POR_INGESTA,
+                Reintentable__c = false,
+                Motivo__c = MOTIVO_SILENCIO_PROVEEDOR,
+                Referencia__c = PREFIJO_REFERENCIA + '|' + silencio.fuente + '|' + ahora.formatGmt(FORMATO_ISO),
+                Detalle__c = truncar(silencio.detalle, MAX_DETALLE),
                 Procesado_En__c = ahora
             ));
         }
