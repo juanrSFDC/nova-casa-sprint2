@@ -4,7 +4,17 @@
         <apexClass>HechosDiagnosticoActivo</apexClass>
         <enabled>true</enabled>
     </classAccesses>
-    <description>Extra E-18: deja que la plantilla Narrar_Diagnostico_Activo lea los hechos del activo con HechosDiagnosticoActivo. Va con el permission set estándar Prompt Template User, que es el que permite ejecutar plantillas.</description>
+    <description>Extras de IA: deja que la plantilla Narrar_Diagnostico_Activo lea los hechos del activo y que se vean el plan de acción (IA) y la causa raíz de las intervenciones. Va con el permission set estándar Prompt Template User.</description>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Causa_Raiz__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Plan_Accion__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
-    <label>Nova Casa · Narración del diagnóstico</label>
+    <label>Nova Casa · IA (narración y plan de acción)</label>
 </PermissionSet>

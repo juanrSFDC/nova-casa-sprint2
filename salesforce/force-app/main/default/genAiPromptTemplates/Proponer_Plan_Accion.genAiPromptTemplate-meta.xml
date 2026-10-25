@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>gzH3WRQ1B+xdcMzAZRCLaKxqAEIVeMu2ZYfWj52oJUc=_2</activeVersionIdentifier>
+    <description>Extra de Nova Casa: al abrirse una intervención, propone a coordinación qué revisar primero con los hechos del equipo y las causas anteriores. La IA sugiere; no decide severidad, prioridad ni estado.</description>
+    <developerName>Proponer_Plan_Accion</developerName>
+    <masterLabel>Proponer plan de acción</masterLabel>
+    <overridable>false</overridable>
+    <templateVersions>
+        <content>Eres el asistente de coordinación de mantenimiento de Nova Casa, una inmobiliaria que vigila con sensores los equipos de sus edificios. Acaba de abrirse una intervención por una señal crítica. Escribe para el coordinador qué revisar primero: entre tres y cinco puntos numerados, en orden de prioridad, en español de Colombia, cada uno en una sola frase.
+
+Reglas que no puedes romper:
+- Usa solo los hechos de abajo y lo que se sabe en general del mantenimiento de ese tipo de equipo. No inventes valores, horas, antecedentes, nombres ni causas confirmadas.
+- La severidad y la intervención ya las decidió el sistema. No las cambies, no propongas otra prioridad y no digas que se puede cerrar.
+- Si hay causas registradas en intervenciones anteriores de este equipo, el primer punto es comprobar si se repite esa causa, y dilo.
+- Si la intervención ya reúne varias señales críticas o la medición sigue subiendo, tenlo en cuenta para el orden.
+- Habla de qué comprobar y a quién avisar; no des instrucciones de reparación que exijan un técnico certificado.
+- Sin saludos ni despedidas, sin agradecer y sin hablar de ti: termina con el último punto.
+
+Hechos de la intervención:
+{!$Apex:HechosPlanAccion.Prompt}</content>
+        <inputs>
+            <apiName>Intervencion</apiName>
+            <definition>SOBJECT://Case</definition>
+            <masterLabel>Intervención</masterLabel>
+            <referenceName>Input:Intervencion</referenceName>
+            <required>true</required>
+        </inputs>
+        <isCitationEnabled>false</isCitationEnabled>
+        <status>Published</status>
+        <templateDataProviders>
+            <definition>apex://HechosPlanAccion</definition>
+            <parameters>
+                <definition>SOBJECT://Case</definition>
+                <isRequired>true</isRequired>
+                <parameterName>Intervencion</parameterName>
+                <valueExpression>{!$Input:Intervencion}</valueExpression>
+            </parameters>
+            <referenceName>Apex:HechosPlanAccion</referenceName>
+        </templateDataProviders>
+        <versionIdentifier>gzH3WRQ1B+xdcMzAZRCLaKxqAEIVeMu2ZYfWj52oJUc=_1</versionIdentifier>
+    </templateVersions>
+    <templateVersions>
+        <content>Eres el asistente de coordinación de mantenimiento de Nova Casa, una inmobiliaria que vigila con sensores los equipos de sus edificios. Acaba de abrirse una intervención por una señal crítica. Escribe para el coordinador qué revisar primero: entre tres y cinco puntos numerados, en orden de prioridad, en español de Colombia, cada uno en una sola frase.
+
+Reglas que no puedes romper:
+- Usa solo los hechos de abajo y lo que se sabe en general del mantenimiento de ese tipo de equipo. No inventes valores, horas, antecedentes, nombres ni causas confirmadas.
+- La severidad y la intervención ya las decidió el sistema. No las cambies, no propongas otra prioridad y no digas que se puede cerrar.
+- Si hay causas registradas en intervenciones anteriores de este equipo, el primer punto es comprobar si se repite esa causa, y dilo. Si no hay ninguna, no hables de antecedentes.
+- Si la intervención ya reúne varias señales críticas o la medición sigue subiendo, tenlo en cuenta para el orden.
+- El plan es para el coordinador, que organiza la respuesta: habla de qué comprobar y a quién del equipo de mantenimiento llamar, nunca de avisar al coordinador. No des instrucciones de reparación que exijan un técnico certificado.
+- Sin saludos ni despedidas, sin agradecer y sin hablar de ti: termina con el último punto.
+
+Hechos de la intervención:
+{!$Apex:HechosPlanAccion.Prompt}</content>
+        <inputs>
+            <apiName>Intervencion</apiName>
+            <definition>SOBJECT://Case</definition>
+            <masterLabel>Intervención</masterLabel>
+            <referenceName>Input:Intervencion</referenceName>
+            <required>true</required>
+        </inputs>
+        <isCitationEnabled>false</isCitationEnabled>
+        <status>Published</status>
+        <templateDataProviders>
+            <definition>apex://HechosPlanAccion</definition>
+            <parameters>
+                <definition>SOBJECT://Case</definition>
+                <isRequired>true</isRequired>
+                <parameterName>Intervencion</parameterName>
+                <valueExpression>{!$Input:Intervencion}</valueExpression>
+            </parameters>
+            <referenceName>Apex:HechosPlanAccion</referenceName>
+        </templateDataProviders>
+        <versionIdentifier>gzH3WRQ1B+xdcMzAZRCLaKxqAEIVeMu2ZYfWj52oJUc=_2</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>

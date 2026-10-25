@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <name>Proponer_plan_de_accion</name>
+        <label>Proponer plan de acción</label>
+        <locationX>308</locationX>
+        <locationY>276</locationY>
+        <actionName>PlanAccionIntervencion</actionName>
+        <actionType>apex</actionType>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>casoId</name>
+            <value>
+                <elementReference>$Record.Id</elementReference>
+            </value>
+        </inputParameters>
+        <nameSegment>PlanAccionIntervencion</nameSegment>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </actionCalls>
+    <apiVersion>67.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
+    <description>Cuando se crea un caso de intervención (lleva Clave_Senal__c), Einstein propone qué revisar primero y lo deja en Plan_Accion__c (plantilla Proponer_Plan_Accion). Va por su propia ruta asíncrona, aparte del Flow del aviso: el aviso no espera a Einstein y, si el plan falla, la intervención y el aviso no cambian. La lógica está en la clase PlanAccionIntervencion.</description>
+    <environments>Default</environments>
+    <interviewLabel>Nova Casa · Plan de acción {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Nova Casa · Plan de acción de la intervención</label>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <filterFormula>NOT(ISBLANK({!$Record.Clave_Senal__c}))</filterFormula>
+        <object>Case</object>
+        <recordTriggerType>Create</recordTriggerType>
+        <scheduledPaths>
+            <connector>
+                <targetReference>Proponer_plan_de_accion</targetReference>
+            </connector>
+            <pathType>AsyncAfterCommit</pathType>
+        </scheduledPaths>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Active</status>
+</Flow>

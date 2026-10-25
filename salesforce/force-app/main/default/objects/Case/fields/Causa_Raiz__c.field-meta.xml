@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Causa_Raiz__c</fullName>
+    <description>Qué falló y cómo se resolvió, escrito por coordinación al cerrar la intervención. El plan de acción de las intervenciones siguientes del mismo equipo y la misma medición lo usa como antecedente.</description>
+    <inlineHelpText>Al cerrar, cuenta qué falló y cómo se resolvió. Las próximas intervenciones de este equipo lo tendrán en cuenta en su plan de acción.</inlineHelpText>
+    <label>Causa raíz y solución</label>
+    <length>4000</length>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>4</visibleLines>
+</CustomField>

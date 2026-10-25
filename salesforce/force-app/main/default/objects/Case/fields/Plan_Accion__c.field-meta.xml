@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Plan_Accion__c</fullName>
+    <description>Qué revisar primero, propuesto por Einstein al abrirse la intervención (plantilla Proponer_Plan_Accion, Flow Nova_Casa_Plan_Intervencion). Es una sugerencia para coordinación: no cambia el estado, la prioridad ni la severidad, que decide el procesamiento. En blanco si Einstein no respondió.</description>
+    <inlineHelpText>Sugerencia de Einstein con los datos del equipo y las causas de intervenciones anteriores. La severidad y la prioridad las decide el sistema, no la IA.</inlineHelpText>
+    <label>Plan de acción sugerido (IA)</label>
+    <length>10000</length>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>8</visibleLines>
+</CustomField>

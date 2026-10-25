@@ -12,6 +12,16 @@
     </customPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Case.Causa_Raiz__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Plan_Accion__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Umbral_Medicion__c.Estado_Propuesta__c</field>
         <readable>true</readable>
     </fieldPermissions>

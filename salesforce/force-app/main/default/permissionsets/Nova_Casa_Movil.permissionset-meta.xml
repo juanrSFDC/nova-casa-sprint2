@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Deja entrar con la app móvil de Salesforce, que necesita API Enabled (artículo 000387054 de la ayuda de Salesforce). Es para la operadora que recibe en su teléfono el aviso de intervención. No abre ningún dato: sigue viendo solo lo de su edificio.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>Nova Casa · App móvil</label>
+    <userPermissions>
+        <enabled>true</enabled>
+        <name>ApiEnabled</name>
+    </userPermissions>
+</PermissionSet>

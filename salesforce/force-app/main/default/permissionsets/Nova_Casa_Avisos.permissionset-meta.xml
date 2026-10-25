@@ -1,6 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>Permite enviar los avisos del edificio (Send Custom Notifications). Lo lleva el usuario de integración porque los Flows de aviso corren como quien guarda la intervención o el estado, y en el procesamiento ese es él. No da acceso a ningún dato.</description>
+    <classAccesses>
+        <apexClass>HechosPlanAccion</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>PlanAccionIntervencion</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <description>Lo lleva el usuario de integración, que es quien corre los Flows de aviso y de plan: enviar los avisos (Send Custom Notifications) y escribir el plan de acción que propone Einstein en Plan_Accion__c. No abre más datos.</description>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Causa_Raiz__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Plan_Accion__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Nova Casa · Avisos</label>
     <userPermissions>

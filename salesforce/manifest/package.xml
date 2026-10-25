@@ -103,6 +103,9 @@
         <members>DiagnosticoActivoServiceTest</members>
         <members>HechosDiagnosticoActivo</members>
         <members>TextoNovaCasa</members>
+        <members>HechosPlanAccion</members>
+        <members>PlanAccionIntervencion</members>
+        <members>PlanAccionIntervencionTest</members>
         <name>ApexClass</name>
     </types>
     <types>
@@ -120,6 +123,7 @@
         <members>Nova_Casa_Aviso_Intervencion</members>
         <members>Nova_Casa_Aviso_Tendencia</members>
         <members>Reprocesar_Traza</members>
+        <members>Nova_Casa_Plan_Intervencion</members>
         <name>Flow</name>
     </types>
     <types>
@@ -145,6 +149,8 @@
         <members>Umbral_Medicion__c.Valor_Advertencia_Propuesto__c</members>
         <members>Umbral_Medicion__c.Valor_Critico_Propuesto__c</members>
         <members>Umbral_Medicion__c.Valor_Invalido_Propuesto__c</members>
+        <members>Case.Causa_Raiz__c</members>
+        <members>Case.Plan_Accion__c</members>
         <name>CustomField</name>
     </types>
     <types>
@@ -188,6 +194,7 @@
         <members>Nova_Casa_Avisos</members>
         <members>Nova_Casa_Gerente</members>
         <members>Nova_Casa_Narracion</members>
+        <members>Nova_Casa_Movil</members>
         <name>PermissionSet</name>
     </types>
     <types>
@@ -256,6 +263,7 @@
     </types>
     <types>
         <members>Narrar_Diagnostico_Activo</members>
+        <members>Proponer_Plan_Accion</members>
         <name>GenAiPromptTemplate</name>
     </types>
     <version>67.0</version>
