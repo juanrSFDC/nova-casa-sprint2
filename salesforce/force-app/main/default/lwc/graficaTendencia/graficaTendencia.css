@@ -1,0 +1,144 @@
+/* Colores con los global styling hooks de SLDS; el valor después de la coma es el mismo hex por si el tema no los define. */
+.zona-carga {
+    position: relative;
+    min-height: 4rem;
+}
+
+.aviso {
+    color: var(--slds-g-color-warning-base-40, #825101);
+    font-size: 0.75rem;
+}
+
+.serie + .serie {
+    border-top: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+    padding-top: 0.75rem;
+}
+
+.nota {
+    border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+    border-radius: 0.25rem;
+    padding: 0.75rem;
+    line-height: 1.5;
+}
+
+.tendencia {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.5rem;
+}
+
+.tendencia dd {
+    font-weight: 600;
+}
+
+.lienzo {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 22rem;
+    overflow: visible;
+}
+
+.rejilla {
+    stroke: var(--slds-g-color-neutral-base-90, #e5e5e5);
+    stroke-width: 1;
+}
+
+.eje {
+    stroke: var(--slds-g-color-neutral-base-60, #939393);
+    stroke-width: 1;
+}
+
+.eje-texto {
+    fill: var(--slds-g-color-neutral-base-30, #444444);
+    font-size: 11px;
+}
+
+.trazo {
+    fill: none;
+    stroke: var(--slds-g-color-neutral-base-60, #939393);
+    stroke-width: 1.5;
+}
+
+.umbral {
+    fill: none;
+}
+
+.umbral_advertencia {
+    stroke: var(--slds-g-color-warning-base-60, #dd7a01);
+    stroke-width: 1.5;
+}
+
+.umbral_critico {
+    stroke: var(--slds-g-color-error-base-40, #ba0517);
+    stroke-width: 2;
+}
+
+.umbral-texto {
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* El texto va un tono más oscuro que la línea para llegar al contraste 4,5:1. */
+.umbral-texto_advertencia {
+    fill: var(--slds-g-color-warning-base-40, #825101);
+}
+
+.umbral-texto_critico {
+    fill: var(--slds-g-color-error-base-40, #ba0517);
+}
+
+.proyeccion {
+    fill: none;
+    stroke: var(--slds-g-color-neutral-base-30, #444444);
+    stroke-width: 2;
+    stroke-dasharray: 5 4;
+}
+
+.punto {
+    fill: var(--color-punto);
+    stroke: var(--slds-g-color-neutral-base-100, #ffffff);
+    stroke-width: 1;
+}
+
+.punto_normal {
+    --color-punto: var(--slds-g-color-success-base-50, #2e844a);
+}
+
+.punto_advertencia {
+    --color-punto: var(--slds-g-color-warning-base-60, #dd7a01);
+}
+
+.punto_critico {
+    --color-punto: var(--slds-g-color-error-base-40, #ba0517);
+}
+
+.punto_sin-umbral {
+    --color-punto: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+/* Atrasada: hueca. Es evidencia y no movió el estado. */
+.punto_atrasada {
+    fill: var(--slds-g-color-neutral-base-100, #ffffff);
+    stroke: var(--color-punto);
+    stroke-width: 2;
+}
+
+.leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    font-size: 0.75rem;
+}
+
+.leyenda-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.leyenda-icono {
+    width: 1rem;
+    height: 1rem;
+    overflow: visible;
+}

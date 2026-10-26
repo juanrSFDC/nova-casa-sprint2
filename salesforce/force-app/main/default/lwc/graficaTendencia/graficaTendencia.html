@@ -1,0 +1,220 @@
+<template>
+    <lightning-card title="Tendencia de las lecturas" icon-name="standard:dashboard">
+        <div slot="actions">
+            <lightning-button
+                label="Actualizar"
+                icon-name="utility:refresh"
+                onclick={actualizar}
+                disabled={pidiendo}
+                data-id="actualizar"
+            ></lightning-button>
+        </div>
+
+        <div class="slds-p-horizontal_medium">
+            <template lwc:if={cargando}>
+                <div class="zona-carga" data-id="cargando">
+                    <lightning-spinner alternative-text="Cargando la gráfica" size="small"></lightning-spinner>
+                </div>
+            </template>
+
+            <template lwc:elseif={hayError}>
+                <div class="slds-p-around_medium slds-text-align_center" data-id="error" role="alert">
+                    <h3 class="slds-text-heading_small">No se pudo cargar la gráfica</h3>
+                    <p class="slds-m-top_x-small">{mensajeError}</p>
+                    <lightning-button
+                        class="slds-m-top_small"
+                        label="Reintentar"
+                        onclick={reintentar}
+                        data-id="reintentar"
+                    ></lightning-button>
+                </div>
+            </template>
+
+            <template lwc:elseif={sinLecturas}>
+                <div class="slds-p-around_medium slds-text-align_center" data-id="vacio">
+                    <p class="slds-text-heading_small">Este activo todavía no tiene lecturas</p>
+                    <p class="slds-m-top_x-small slds-text-color_weak">
+                        La gráfica aparece con la primera lectura guardada; esta ficha se actualiza sola cada 30 s.
+                    </p>
+                </div>
+            </template>
+
+            <template lwc:else>
+                <p class="slds-text-body_small slds-text-color_weak" data-id="actualizado">{textoActualizado}</p>
+                <template lwc:if={avisoActualizacion}>
+                    <p class="aviso slds-m-top_xx-small" role="status" data-id="aviso">{avisoActualizacion}</p>
+                </template>
+
+                <template for:each={series} for:item="serie">
+                    <section key={serie.clave} class="serie slds-m-top_small" data-id="serie" data-medicion={serie.clave}>
+                        <h3 class="slds-text-heading_small">{serie.titulo}</h3>
+
+                        <template lwc:if={serie.noNumerica}>
+                            <div class="nota slds-m-top_x-small" data-id="no-numerica">
+                                <p>{serie.mensajeNoNumerica}</p>
+                                <p class="slds-text-color_weak">{serie.estadoNoNumerica}</p>
+                            </div>
+                        </template>
+
+                        <template lwc:elseif={serie.sinPuntos}>
+                            <div class="nota slds-m-top_x-small" data-id="serie-vacia">
+                                <p>Esta medición todavía no tiene lecturas.</p>
+                            </div>
+                        </template>
+
+                        <template lwc:else>
+                            <p class="slds-text-body_small slds-text-color_weak">{serie.rango}</p>
+                            <template lwc:if={serie.recortada}>
+                                <p class="slds-text-body_small slds-text-color_weak" data-id="recortada">
+                                    Hay más lecturas en esa ventana: se muestran las 50 más recientes.
+                                </p>
+                            </template>
+
+                            <dl class="tendencia slds-m-top_x-small" data-id="tendencia">
+                                <div class="dato">
+                                    <dt class="slds-text-title">Tendencia</dt>
+                                    <dd data-id="tendencia-estado">{serie.tendencia.etiqueta}</dd>
+                                </div>
+                                <template lwc:if={serie.tendencia.ritmoTexto}>
+                                    <div class="dato">
+                                        <dt class="slds-text-title">Ritmo</dt>
+                                        <dd data-id="tendencia-ritmo">{serie.tendencia.ritmoTexto}</dd>
+                                    </div>
+                                </template>
+                                <template lwc:if={serie.tendencia.minutosTexto}>
+                                    <div class="dato">
+                                        <dt class="slds-text-title">Crítico en</dt>
+                                        <dd data-id="tendencia-minutos">{serie.tendencia.minutosTexto}</dd>
+                                    </div>
+                                </template>
+                            </dl>
+                            <p class="slds-text-body_small slds-text-color_weak">{serie.tendencia.explicacion}</p>
+
+                            <svg
+                                class="lienzo slds-m-top_x-small"
+                                viewBox="0 0 640 260"
+                                role="img"
+                                aria-label={serie.ariaLabel}
+                                data-id="grafica"
+                            >
+                                <template for:each={serie.marcasY} for:item="marca">
+                                    <g key={marca.clave}>
+                                        <line class="rejilla" x1={marca.x1} x2={marca.x2} y1={marca.y} y2={marca.y}></line>
+                                        <text class="eje-texto" x={marca.xTexto} y={marca.yTexto} text-anchor="end">
+                                            {marca.texto}
+                                        </text>
+                                    </g>
+                                </template>
+                                <template for:each={serie.marcasX} for:item="marca">
+                                    <g key={marca.clave}>
+                                        <line class="rejilla" x1={marca.x} x2={marca.x} y1={marca.y1} y2={marca.y2}></line>
+                                        <text class="eje-texto" x={marca.x} y={marca.yTexto} text-anchor="middle">
+                                            {marca.texto}
+                                        </text>
+                                    </g>
+                                </template>
+                                <line class="eje" x1={serie.ejes.x0} x2={serie.ejes.x0} y1={serie.ejes.y0} y2={serie.ejes.y1}></line>
+                                <line class="eje" x1={serie.ejes.x0} x2={serie.ejes.x1} y1={serie.ejes.y1} y2={serie.ejes.y1}></line>
+
+                                <template for:each={serie.lineas} for:item="linea">
+                                    <g key={linea.clave}>
+                                        <line class={linea.clase} x1={linea.x1} x2={linea.x2} y1={linea.y} y2={linea.y}></line>
+                                        <text class={linea.claseTexto} x={linea.xTexto} y={linea.yTexto}>{linea.texto}</text>
+                                    </g>
+                                </template>
+
+                                <template lwc:if={serie.polilinea}>
+                                    <polyline class="trazo" points={serie.polilinea}></polyline>
+                                </template>
+                                <template lwc:if={serie.proyeccion}>
+                                    <line
+                                        class="proyeccion"
+                                        x1={serie.proyeccion.x1}
+                                        y1={serie.proyeccion.y1}
+                                        x2={serie.proyeccion.x2}
+                                        y2={serie.proyeccion.y2}
+                                    ></line>
+                                </template>
+
+                                <template for:each={serie.puntos} for:item="punto">
+                                    <path key={punto.clave} class={punto.clase} d={punto.d}>
+                                        <title>{punto.descripcion}</title>
+                                    </path>
+                                </template>
+                            </svg>
+
+                            <ul class="leyenda slds-m-top_xx-small" aria-label="Leyenda de la gráfica">
+                                <template for:each={leyenda} for:item="item">
+                                    <li key={item.clave} class="leyenda-item">
+                                        <svg class="leyenda-icono" viewBox="0 0 16 16" aria-hidden="true">
+                                            <path class={item.clase} d={item.d}></path>
+                                        </svg>
+                                        <span>{item.etiqueta}</span>
+                                    </li>
+                                </template>
+                                <li class="leyenda-item">
+                                    <svg class="leyenda-icono" viewBox="0 0 16 16" aria-hidden="true">
+                                        <line class="umbral umbral_advertencia" x1="1" x2="15" y1="8" y2="8"></line>
+                                    </svg>
+                                    <span>Advertencia</span>
+                                </li>
+                                <li class="leyenda-item">
+                                    <svg class="leyenda-icono" viewBox="0 0 16 16" aria-hidden="true">
+                                        <line class="umbral umbral_critico" x1="1" x2="15" y1="8" y2="8"></line>
+                                    </svg>
+                                    <span>Crítico</span>
+                                </li>
+                                <li class="leyenda-item">
+                                    <svg class="leyenda-icono" viewBox="0 0 16 16" aria-hidden="true">
+                                        <line class="proyeccion" x1="1" x2="15" y1="8" y2="8"></line>
+                                    </svg>
+                                    <span>Discontinua: hacia dónde va a este ritmo</span>
+                                </li>
+                            </ul>
+                            <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                                El color de cada punto es la severidad que se selló al procesar la lectura; las líneas son
+                                el umbral vigente.
+                            </p>
+
+                            <button
+                                class="slds-button slds-button_neutral slds-m-top_x-small"
+                                aria-expanded={serie.expandida}
+                                aria-controls={serie.idTabla}
+                                data-clave={serie.clave}
+                                data-id="alternar-tabla"
+                                onclick={alternarTabla}
+                            >
+                                {serie.textoBotonTabla}
+                            </button>
+                            <div id={serie.idTabla} class="slds-m-top_x-small">
+                                <template lwc:if={serie.tablaAbierta}>
+                                    <table class="slds-table slds-table_bordered slds-table_cell-buffer" data-id="tabla">
+                                        <caption class="slds-assistive-text">Lecturas de {serie.titulo}</caption>
+                                        <thead>
+                                            <tr class="slds-line-height_reset">
+                                                <th scope="col"><div class="slds-truncate">Fecha y hora</div></th>
+                                                <th scope="col"><div class="slds-truncate">Valor</div></th>
+                                                <th scope="col"><div class="slds-truncate">Severidad sellada</div></th>
+                                                <th scope="col"><div class="slds-truncate">Atrasada</div></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template for:each={serie.puntos} for:item="punto">
+                                                <tr key={punto.clave}>
+                                                    <td>{punto.hora}</td>
+                                                    <td>{punto.valorTexto}</td>
+                                                    <td>{punto.severidadTexto}</td>
+                                                    <td>{punto.atrasadaTexto}</td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </template>
+                            </div>
+                        </template>
+                    </section>
+                </template>
+            </template>
+        </div>
+    </lightning-card>
+</template>
