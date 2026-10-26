@@ -57,6 +57,8 @@
         <members>IntervencionServiceTest</members>
         <members>LecturaSensorSelector</members>
         <members>LecturaSensorSelectorTest</members>
+        <members>MapaEdificiosController</members>
+        <members>MapaEdificiosControllerTest</members>
         <members>MonitoreoActivosController</members>
         <members>MonitoreoActivosControllerTest</members>
         <members>ProcesamientoConexionTest</members>
@@ -170,6 +172,7 @@
     </types>
     <types>
         <members>Control_Ingesta__c</members>
+        <members>Mapa_de_edificios</members>
         <members>Mis_activos</members>
         <members>Registro_Procesamiento__c</members>
         <members>Umbral_Medicion__c</members>
@@ -251,6 +254,7 @@
     <types>
         <members>graficaTendencia</members>
         <members>ingerirAhora</members>
+        <members>mapaEdificios</members>
         <members>misActivos</members>
         <members>reprocesarTraza</members>
         <members>revisarSilencioAhora</members>
@@ -258,6 +262,7 @@
     </types>
     <types>
         <members>Activo_Nova_Casa</members>
+        <members>Mapa_de_edificios</members>
         <name>FlexiPage</name>
     </types>
     <types>

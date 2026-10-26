@@ -9,5 +9,6 @@
     <tabs>standard-Case</tabs>
     <tabs>Control_Ingesta__c</tabs>
     <tabs>Registro_Procesamiento__c</tabs>
+    <tabs>Mapa_de_edificios</tabs>
     <uiType>Lightning</uiType>
 </CustomApplication>

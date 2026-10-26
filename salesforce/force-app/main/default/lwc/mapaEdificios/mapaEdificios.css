@@ -1,0 +1,135 @@
+/* Colores con los global styling hooks de SLDS; el valor después de la coma es el mismo hex por si el tema no los define. */
+.zona-carga {
+    position: relative;
+    min-height: 4rem;
+}
+
+.aviso {
+    color: var(--slds-g-color-warning-base-40, #825101);
+    font-size: 0.75rem;
+}
+
+.nota {
+    border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+    border-radius: 0.25rem;
+    padding: 0.75rem;
+    line-height: 1.5;
+}
+
+.leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    font-size: 0.75rem;
+}
+
+.leyenda-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.punto-leyenda {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+}
+
+.punto-leyenda_critico {
+    background: var(--slds-g-color-error-base-40, #ba0517);
+}
+
+.punto-leyenda_advertencia {
+    background: var(--slds-g-color-warning-base-60, #dd7a01);
+}
+
+.punto-leyenda_normal {
+    background: var(--slds-g-color-success-base-50, #2e844a);
+}
+
+.punto-leyenda_sin-datos {
+    background: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.lista {
+    max-height: 32rem;
+    overflow-y: auto;
+}
+
+.edificio {
+    border: 1px solid var(--slds-g-color-border-base-1, #c9c9c9);
+    border-left-width: 0.25rem;
+    border-radius: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    line-height: 1.5;
+}
+
+.edificio + .edificio {
+    margin-top: 0.5rem;
+}
+
+.edificio_critico {
+    border-left-color: var(--slds-g-color-error-base-40, #ba0517);
+}
+
+.edificio_advertencia {
+    border-left-color: var(--slds-g-color-warning-base-60, #dd7a01);
+}
+
+.edificio_normal {
+    border-left-color: var(--slds-g-color-success-base-50, #2e844a);
+}
+
+.edificio_sin-datos {
+    border-left-color: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.edificio_seleccionado {
+    background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+    box-shadow: 0 0 0 2px var(--slds-g-color-neutral-base-30, #444444);
+}
+
+.cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem 0.5rem;
+}
+
+.nombre {
+    font-weight: 700;
+}
+
+.insignia {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid currentColor;
+    border-radius: 1rem;
+    padding: 0 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    --slds-c-icon-color-foreground-default: currentColor;
+}
+
+.insignia_critico {
+    color: var(--slds-g-color-error-base-40, #ba0517);
+}
+
+.insignia_advertencia {
+    color: var(--slds-g-color-warning-base-40, #825101);
+}
+
+.insignia_normal {
+    color: var(--slds-g-color-success-base-50, #2e844a);
+}
+
+.insignia_sin-datos {
+    color: var(--slds-g-color-neutral-base-30, #444444);
+}
+
+.criticos {
+    list-style: disc;
+    padding-left: 1.25rem;
+}

@@ -1,0 +1,154 @@
+<template>
+    <lightning-card title="Mapa de edificios" icon-name="standard:location">
+        <div slot="actions">
+            <lightning-button
+                label="Actualizar"
+                icon-name="utility:refresh"
+                onclick={actualizar}
+                disabled={pidiendo}
+                data-id="actualizar"
+            ></lightning-button>
+        </div>
+
+        <div class="slds-p-horizontal_medium">
+            <template lwc:if={cargando}>
+                <div class="zona-carga" data-id="cargando">
+                    <lightning-spinner alternative-text="Cargando el mapa" size="small"></lightning-spinner>
+                </div>
+            </template>
+
+            <template lwc:elseif={hayError}>
+                <div class="slds-p-around_medium slds-text-align_center" data-id="error" role="alert">
+                    <h3 class="slds-text-heading_small">No se pudo cargar el mapa</h3>
+                    <p class="slds-m-top_x-small">{mensajeError}</p>
+                    <lightning-button
+                        class="slds-m-top_small"
+                        label="Reintentar"
+                        onclick={reintentar}
+                        data-id="reintentar"
+                    ></lightning-button>
+                </div>
+            </template>
+
+            <template lwc:elseif={sinEdificios}>
+                <div class="slds-p-around_medium slds-text-align_center" data-id="vacio">
+                    <p class="slds-text-heading_small">Todavía no ves ningún edificio</p>
+                    <p class="slds-m-top_x-small slds-text-color_weak">
+                        Los edificios aparecen aquí cuando se comparten contigo, por tu región o por tu grupo. Esta
+                        página se actualiza sola cada 30 s.
+                    </p>
+                </div>
+            </template>
+
+            <template lwc:else>
+                <p class="slds-text-body_small slds-text-color_weak" data-id="actualizado">{textoActualizado}</p>
+                <template lwc:if={avisoActualizacion}>
+                    <p class="aviso slds-m-top_xx-small" role="status" data-id="aviso">{avisoActualizacion}</p>
+                </template>
+                <p class="slds-m-top_xx-small" data-id="resumen">{textoResumen}</p>
+
+                <lightning-layout multiple-rows>
+                    <lightning-layout-item size="12" large-device-size="8" padding="around-small">
+                        <template lwc:if={hayMarcadores}>
+                            <lightning-map
+                                map-markers={marcadores}
+                                list-view="hidden"
+                                selected-marker-value={seleccionado}
+                                onmarkerselect={alSeleccionarMarcador}
+                                data-id="mapa"
+                            ></lightning-map>
+                        </template>
+                        <template lwc:else>
+                            <div class="nota" data-id="sin-marcadores">
+                                <p>Ninguno de tus edificios tiene coordenadas todavía: no hay nada que poner en el mapa.</p>
+                                <p class="slds-text-color_weak">La lista de la derecha tiene toda la información.</p>
+                            </div>
+                        </template>
+
+                        <ul class="leyenda slds-m-top_x-small" aria-label="Colores de los marcadores">
+                            <template for:each={leyenda} for:item="item">
+                                <li key={item.clave} class="leyenda-item">
+                                    <span class={item.clase} aria-hidden="true"></span>
+                                    <span>{item.etiqueta}</span>
+                                </li>
+                            </template>
+                        </ul>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                            Cada marcador toma el color del peor activo del edificio. Al pulsarlo se ven sus conteos.
+                        </p>
+                        <template lwc:if={textoSinCoordenadas}>
+                            <p class="slds-text-body_small slds-m-top_xx-small" data-id="sin-coordenadas">
+                                {textoSinCoordenadas}
+                            </p>
+                        </template>
+                        <template lwc:if={textoConteoParcial}>
+                            <p class="aviso slds-m-top_xx-small" data-id="conteo-parcial">{textoConteoParcial}</p>
+                        </template>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item size="12" large-device-size="4" padding="around-small">
+                        <h3 class="slds-text-heading_small">Edificios</h3>
+                        <ul class="lista slds-m-top_x-small" aria-label="Edificios, del peor al mejor" data-id="lista">
+                            <template for:each={edificios} for:item="e">
+                                <li key={e.id} class={e.clase} aria-current={e.ariaActual} data-id="edificio">
+                                    <div class="cabecera">
+                                        <h4 class="nombre">{e.nombre}</h4>
+                                        <span class={e.severidadClase} data-id="severidad">
+                                            <lightning-icon
+                                                icon-name={e.severidadIcono}
+                                                size="xx-small"
+                                                class="slds-m-right_xx-small"
+                                            ></lightning-icon>
+                                            {e.severidadEtiqueta}
+                                        </span>
+                                    </div>
+                                    <p class="slds-text-body_small slds-text-color_weak">{e.lugar}</p>
+                                    <p class="slds-m-top_xx-small" data-id="conteos">
+                                        {e.total}<template lwc:if={e.conteos}>: {e.conteos}</template>
+                                    </p>
+
+                                    <template lwc:if={e.hayCriticos}>
+                                        <p class="slds-m-top_xx-small"><strong>En crítico:</strong></p>
+                                        <ul class="criticos" data-id="criticos">
+                                            <template for:each={e.criticos} for:item="a">
+                                                <li key={a.id}>
+                                                    <lightning-button
+                                                        variant="base"
+                                                        label={a.nombre}
+                                                        title={a.titulo}
+                                                        data-registro={a.id}
+                                                        onclick={abrirActivo}
+                                                    ></lightning-button>
+                                                    <span class="slds-text-body_small slds-text-color_weak"> · {a.tipo}</span>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                        <template lwc:if={e.restoCriticos}>
+                                            <p class="slds-text-body_small">{e.restoCriticos}</p>
+                                        </template>
+                                    </template>
+
+                                    <template lwc:if={e.tieneCoordenadas}>
+                                        <lightning-button
+                                            class="slds-m-top_xx-small"
+                                            variant="base"
+                                            label="Ver en el mapa"
+                                            title={e.textoVerEnMapa}
+                                            data-registro={e.id}
+                                            onclick={verEnMapa}
+                                        ></lightning-button>
+                                    </template>
+                                    <template lwc:else>
+                                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                                            Sin coordenadas: no aparece en el mapa.
+                                        </p>
+                                    </template>
+                                </li>
+                            </template>
+                        </ul>
+                    </lightning-layout-item>
+                </lightning-layout>
+            </template>
+        </div>
+    </lightning-card>
+</template>

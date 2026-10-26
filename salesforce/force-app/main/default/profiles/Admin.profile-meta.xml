@@ -311,6 +311,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Location.Location</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Location.Region__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -611,6 +616,10 @@
     </fieldPermissions>
     <tabVisibilities>
         <tab>Control_Ingesta__c</tab>
+        <visibility>DefaultOn</visibility>
+    </tabVisibilities>
+    <tabVisibilities>
+        <tab>Mapa_de_edificios</tab>
         <visibility>DefaultOn</visibility>
     </tabVisibilities>
     <tabVisibilities>

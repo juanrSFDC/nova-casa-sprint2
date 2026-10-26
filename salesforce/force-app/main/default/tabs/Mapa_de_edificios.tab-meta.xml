@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Mapa de edificios (E-24): marcador por edificio con su peor severidad, para el gerente regional, el coordinador y el administrador.</description>
+    <flexiPage>Mapa_de_edificios</flexiPage>
+    <label>Mapa de edificios</label>
+    <motif>Custom78: Map</motif>
+</CustomTab>
