@@ -84,6 +84,7 @@ private class SilencioProveedorActionTest {
 
         Assert.areEqual(1, respuestas.size(), 'Una respuesta por solicitud');
         Assert.areEqual(SilencioProveedorAction.MSG_SIN_PERMISO, respuestas[0].mensaje);
+        Assert.isFalse(respuestas[0].exito, 'Sin el permiso no hay revisión');
         Assert.areEqual(0, consultas, 'Sin el permiso no se lee nada');
         Assert.areEqual(0, trazasDeSilencio(), 'Sin traza');
         Assert.areEqual(0, SilencioProveedorService.enviados.size(), 'Sin aviso');
@@ -103,9 +104,11 @@ private class SilencioProveedorActionTest {
             Test.stopTest();
         }
 
-        Assert.isTrue(respuestas[0].mensaje.startsWith('La fuente callada no entrega señales desde las '),
+        // La lectura es de hace 10 minutos: pasada la medianoche el servicio dice «desde el dd/MM a las…».
+        Assert.isTrue(respuestas[0].mensaje.startsWith('La fuente callada no entrega señales desde '),
             'Devuelve el mensaje del servicio: ' + respuestas[0].mensaje);
         Assert.isTrue(respuestas[0].mensaje.endsWith(': se dejó una traza y se avisó a coordinación.'), respuestas[0].mensaje);
+        Assert.isTrue(respuestas[0].exito, 'Con el permiso, la revisión se hizo');
         Assert.areEqual(1, trazasDeSilencio(), 'Una traza, solo de la fuente del botón');
         Assert.areEqual(1, SilencioProveedorService.enviados.size(), 'Un aviso');
         Assert.isNotNull([SELECT En_Silencio_Desde__c FROM Control_Ingesta__c WHERE Fuente__c = 'callada'].En_Silencio_Desde__c,
@@ -130,6 +133,8 @@ private class SilencioProveedorActionTest {
         Assert.areEqual('La fuente sin-vigilar no se vigila: está deshabilitada o no tiene Minutos de silencio.',
             respuestas[0].mensaje);
         Assert.areEqual(SilencioProveedorAction.MSG_SIN_REGISTRO, respuestas[1].mensaje, 'Sin registro, lo dice');
+        Assert.isTrue(respuestas[0].exito, 'Un registro no vigilado también se revisó');
+        Assert.isFalse(respuestas[1].exito, 'Sin registro no hay revisión');
         Assert.areEqual(0, trazasDeSilencio(), 'Sin traza');
         Assert.areEqual(0, SilencioProveedorService.enviados.size(), 'Sin aviso');
     }

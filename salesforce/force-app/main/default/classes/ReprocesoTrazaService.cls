@@ -3,7 +3,7 @@
  * que aún no se reprocesó, y la traza original queda marcada con cuándo, quién y qué se hizo.
  *
  * Responsable: Juan Rozo · E-06.
- * La llama: ReprocesoTrazaAction (Flow Reprocesar_Traza, botón «Reprocesar» de Registro_Procesamiento__c).
+ * La llama: ReprocesoTrazaAction (botón sin ventana «Reprocesar» de Registro_Procesamiento__c, vía AccionesAdministradorController).
  * Contrato: docs/entrega-discovery-sprint2.md §3.1 (la traza completa y la vista del administrador).
  *
  * Tres caminos, según quién escribió la traza:

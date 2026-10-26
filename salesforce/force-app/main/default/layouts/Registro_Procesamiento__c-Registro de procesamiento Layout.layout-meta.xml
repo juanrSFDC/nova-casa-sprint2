@@ -147,7 +147,7 @@
     <platformActionList>
         <actionListContext>Record</actionListContext>
         <platformActionListItems>
-            <actionName>Registro_Procesamiento__c.Reprocesar</actionName>
+            <actionName>Registro_Procesamiento__c.Reprocesar_Ahora</actionName>
             <actionType>QuickAction</actionType>
             <sortOrder>0</sortOrder>
         </platformActionListItems>

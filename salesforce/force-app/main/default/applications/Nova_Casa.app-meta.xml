@@ -7,5 +7,7 @@
     <tabs>Mis_activos</tabs>
     <tabs>Umbral_Medicion__c</tabs>
     <tabs>standard-Case</tabs>
+    <tabs>Control_Ingesta__c</tabs>
+    <tabs>Registro_Procesamiento__c</tabs>
     <uiType>Lightning</uiType>
 </CustomApplication>

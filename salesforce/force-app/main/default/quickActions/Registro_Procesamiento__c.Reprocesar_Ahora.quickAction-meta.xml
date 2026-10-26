@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<QuickAction xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionSubtype>Action</actionSubtype>
+    <description>Botón sin ventana: relanza el fallo técnico reintentable de la traza (permiso Reprocesar_Trazas).</description>
+    <label>Reprocesar</label>
+    <lightningWebComponent>reprocesarTraza</lightningWebComponent>
+    <optionsCreateFeedItem>false</optionsCreateFeedItem>
+    <type>LightningWebComponent</type>
+</QuickAction>

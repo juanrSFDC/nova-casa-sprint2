@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CompactLayout xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Resumen_Ingesta</fullName>
+    <fields>Name</fields>
+    <fields>Habilitada__c</fields>
+    <fields>Escenario__c</fields>
+    <fields>Ultimo_Resultado__c</fields>
+    <fields>Ultima_Ejecucion__c</fields>
+    <label>Resumen de la ingesta</label>
+</CompactLayout>

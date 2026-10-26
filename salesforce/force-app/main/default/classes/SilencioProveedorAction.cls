@@ -1,9 +1,10 @@
 /**
- * Acción invocable «Revisar silencio ahora»: desde el Screen Flow del botón, revisa en el momento el
- * silencio de la fuente del registro y devuelve un mensaje de cara al usuario (extra E-07, 25-oct).
+ * Acción invocable «Revisar silencio ahora»: revisa en el momento el silencio de la fuente del registro
+ * y devuelve si se pudo revisar y un mensaje de cara al usuario (extra E-07, 25-oct).
  *
  * Responsable: Juan Rozo · E-07.
- * La llama: el Flow Revisar_Silencio (Quick Action en Control_Ingesta__c).
+ * La llama: AccionesAdministradorController, desde el botón sin ventana «Revisar silencio ahora»
+ * (acción LWC Control_Ingesta__c.Revisar_Silencio_Ahora, 25-oct). Sigue siendo invocable.
  *
  * Corre como quien pulsa el botón. Antes de leer nada comprueba el permiso personalizado
  * Revisar_Silencio (solo el perfil de administrador lo tiene): sin él no consulta, no escribe y no
@@ -23,8 +24,10 @@ public with sharing class SilencioProveedorAction {
         public Id recordId;
     }
 
-    /** Salida: el mensaje que ve el usuario en la pantalla del Flow. */
+    /** Salida: si se revisó y el mensaje que ve el usuario. */
     public class Respuesta {
+        @InvocableVariable(label='Éxito')
+        public Boolean exito;
         @InvocableVariable(label='Mensaje')
         public String mensaje;
     }
@@ -45,7 +48,7 @@ public with sharing class SilencioProveedorAction {
         }
         if (!FeatureManagement.checkPermission(PERMISO)) {
             for (Integer i = 0; i < solicitudes.size(); i++) {
-                respuestas.add(respuesta(MSG_SIN_PERMISO));
+                respuestas.add(respuesta(false, MSG_SIN_PERMISO));
             }
             return respuestas;
         }
@@ -71,14 +74,20 @@ public with sharing class SilencioProveedorAction {
         }
         for (Solicitud solicitud : solicitudes) {
             Id recordId = solicitud == null ? null : solicitud.recordId;
-            respuestas.add(respuesta(fallo != null ? fallo
-                : (mensajes.containsKey(recordId) ? mensajes.get(recordId) : MSG_SIN_REGISTRO)));
+            if (fallo != null) {
+                respuestas.add(respuesta(false, fallo));
+            } else if (mensajes.containsKey(recordId)) {
+                respuestas.add(respuesta(true, mensajes.get(recordId)));
+            } else {
+                respuestas.add(respuesta(false, MSG_SIN_REGISTRO));
+            }
         }
         return respuestas;
     }
 
-    private static Respuesta respuesta(String mensaje) {
+    private static Respuesta respuesta(Boolean exito, String mensaje) {
         Respuesta respuesta = new Respuesta();
+        respuesta.exito = exito;
         respuesta.mensaje = mensaje;
         return respuesta;
     }

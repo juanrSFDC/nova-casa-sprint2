@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<QuickAction xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionSubtype>Action</actionSubtype>
+    <description>Botón sin ventana: revisa en el momento el silencio de la fuente (permiso Revisar_Silencio).</description>
+    <label>Revisar silencio ahora</label>
+    <lightningWebComponent>revisarSilencioAhora</lightningWebComponent>
+    <optionsCreateFeedItem>false</optionsCreateFeedItem>
+    <type>LightningWebComponent</type>
+</QuickAction>

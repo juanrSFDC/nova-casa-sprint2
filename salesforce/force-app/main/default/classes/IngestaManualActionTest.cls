@@ -55,6 +55,7 @@ private class IngestaManualActionTest {
 
         Assert.areEqual(1, respuestas.size(), 'Una respuesta por solicitud');
         Assert.isTrue(respuestas[0].mensaje.startsWith('Ingesta en curso'), 'Devuelve el mensaje de cortesía al usuario');
+        Assert.isTrue(respuestas[0].exito, 'Con la configuración encontrada, la acción dice que encoló');
     }
 
     @isTest

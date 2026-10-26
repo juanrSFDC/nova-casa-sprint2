@@ -114,6 +114,8 @@
         <members>SilencioProveedorSchedulable</members>
         <members>SilencioProveedorSchedulableTest</members>
         <members>SensorPortatilTest</members>
+        <members>AccionesAdministradorController</members>
+        <members>AccionesAdministradorControllerTest</members>
         <name>ApexClass</name>
     </types>
     <types>
@@ -127,18 +129,15 @@
     </types>
     <types>
         <members>Control_Ingesta_Vaciar_Cursor</members>
-        <members>Ingerir_Ahora</members>
         <members>Nova_Casa_Aviso_Intervencion</members>
         <members>Nova_Casa_Aviso_Tendencia</members>
-        <members>Reprocesar_Traza</members>
         <members>Nova_Casa_Plan_Intervencion</members>
-        <members>Revisar_Silencio</members>
         <name>Flow</name>
     </types>
     <types>
-        <members>Control_Ingesta__c.Ingerir_Ahora</members>
-        <members>Registro_Procesamiento__c.Reprocesar</members>
-        <members>Control_Ingesta__c.Revisar_Silencio</members>
+        <members>Control_Ingesta__c.Ingerir</members>
+        <members>Control_Ingesta__c.Revisar_Silencio_Ahora</members>
+        <members>Registro_Procesamiento__c.Reprocesar_Ahora</members>
         <name>QuickAction</name>
     </types>
     <types>
@@ -194,6 +193,10 @@
         <name>Layout</name>
     </types>
     <types>
+        <members>Control_Ingesta__c.Resumen_Ingesta</members>
+        <name>CompactLayout</name>
+    </types>
+    <types>
         <members>Simulador_Nova_Casa_Token</members>
         <members>Slack_Nova_Casa</members>
         <name>ExternalCredential</name>
@@ -244,7 +247,10 @@
         <name>SharingCriteriaRule</name>
     </types>
     <types>
+        <members>ingerirAhora</members>
         <members>misActivos</members>
+        <members>reprocesarTraza</members>
+        <members>revisarSilencioAhora</members>
         <name>LightningComponentBundle</name>
     </types>
     <types>

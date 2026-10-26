@@ -1,9 +1,10 @@
 /**
- * Acción invocable «Reprocesar»: desde el Screen Flow del botón de la traza, relanza el fallo técnico
- * reintentable de ese Registro_Procesamiento__c y devuelve el mensaje de cara al usuario (E-06, US-209).
+ * Acción invocable «Reprocesar»: relanza el fallo técnico reintentable de ese Registro_Procesamiento__c
+ * y devuelve el mensaje de cara al usuario (E-06, US-209).
  *
  * Responsable: Juan Rozo · E-06.
- * La llama: el Flow Reprocesar_Traza (Quick Action Registro_Procesamiento__c.Reprocesar).
+ * La llama: AccionesAdministradorController, desde el botón sin ventana «Reprocesar» de la traza
+ * (acción LWC Registro_Procesamiento__c.Reprocesar_Ahora, 25-oct). Sigue siendo invocable.
  *
  * Corre como quien la ejecuta; el permiso (Reprocesar_Trazas) y las reglas los decide
  * ReprocesoTrazaService en el servidor. Ante un error inesperado no expone detalle técnico.
@@ -19,7 +20,7 @@ public with sharing class ReprocesoTrazaAction {
         public Id recordId;
     }
 
-    /** Salida: si salió bien y el mensaje que ve el usuario en la pantalla del Flow. */
+    /** Salida: si salió bien y el mensaje que ve el usuario. */
     public class Respuesta {
         @InvocableVariable(label='Éxito')
         public Boolean exito;

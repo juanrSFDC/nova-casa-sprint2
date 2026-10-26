@@ -1,9 +1,10 @@
 /**
- * Acción invocable «Ingerir ahora»: desde el Screen Flow del botón, encola la ingesta de la fuente
- * del registro y devuelve un mensaje de cara al usuario (US-201, tarea 201.5).
+ * Acción invocable «Ingerir ahora»: encola la ingesta de la fuente del registro y devuelve si se
+ * encoló y un mensaje de cara al usuario (US-201, tarea 201.5).
  *
  * Responsable: Juan Rozo · tarea 201.5.
- * La llama: el Flow Ingerir_Ahora (Quick Action en Control_Ingesta__c).
+ * La llama: AccionesAdministradorController, desde el botón sin ventana «Ingerir ahora» (acción LWC
+ * Control_Ingesta__c.Ingerir, 25-oct). Sigue siendo invocable para que un Flow pueda usarla.
  *
  * Corre como quien la ejecuta (hoy, el administrador). No expone detalle técnico.
  */
@@ -15,8 +16,10 @@ public with sharing class IngestaManualAction {
         public Id recordId;
     }
 
-    /** Salida: el mensaje que ve el usuario en la pantalla del Flow. */
+    /** Salida: si se encoló la ingesta y el mensaje que ve el usuario. */
     public class Respuesta {
+        @InvocableVariable(label='Éxito')
+        public Boolean exito;
         @InvocableVariable(label='Mensaje')
         public String mensaje;
     }
@@ -48,8 +51,10 @@ public with sharing class IngestaManualAction {
             Control_Ingesta__c config = solicitud == null ? null : configs.get(solicitud.recordId);
             if (config != null && String.isNotBlank(config.Fuente__c)) {
                 System.enqueueJob(new IngestaQueueable(config.Fuente__c));
+                respuesta.exito = true;
                 respuesta.mensaje = 'Ingesta en curso: revisa Último resultado en unos segundos.';
             } else {
+                respuesta.exito = false;
                 respuesta.mensaje = 'No se pudo iniciar la ingesta: revisa la configuración de la fuente.';
             }
             respuestas.add(respuesta);
