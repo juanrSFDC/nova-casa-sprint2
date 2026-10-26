@@ -135,6 +135,14 @@
         <fields>Valor_Advertencia__c</fields>
         <fields>Valor_Critico__c</fields>
     </miniLayout>
+    <platformActionList>
+        <actionListContext>Record</actionListContext>
+        <platformActionListItems>
+            <actionName>Edit</actionName>
+            <actionType>StandardButton</actionType>
+            <sortOrder>0</sortOrder>
+        </platformActionListItems>
+    </platformActionList>
     <relatedLists>
         <fields>CreatedDate</fields>
         <fields>StepStatus</fields>
