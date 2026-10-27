@@ -31,6 +31,8 @@ public with sharing class GraficaTendenciaController {
     @TestVisible private static final Integer MAXIMO_PUNTOS = 50;
     /** Tope de lecturas por llamada, para todas las mediciones juntas; si se alcanza, consultaParcial. */
     @TestVisible private static final Integer MAXIMO_LECTURAS_CONSULTA = 2000;
+    /** La clave única del umbral (tipo|medición|dirección) deja como mucho dos por medición: el tope solo acota. */
+    private static final Integer MAXIMO_UMBRALES = 100;
     /** Sin estados no hay de dónde sacar la ventana: se traen las más recientes, hasta el tope. */
     private static final Datetime SIN_COTA = Datetime.newInstanceGmt(1970, 1, 1);
     /** La conectividad de la cámara es un latido, no una magnitud: no tiene gráfica. */
@@ -41,28 +43,52 @@ public with sharing class GraficaTendenciaController {
     @TestVisible private static final String ERROR_SIN_ACCESO = 'No tienes acceso a este activo o ya no existe.';
 
     /**
+     * Punto de inyección SOLO para pruebas (false en producción): hace que construir falle, para probar que
+     * la llamada lo convierte en ERROR_CARGA sin enseñar el detalle. Sin él no hay forma de que falle: solo
+     * arma la respuesta en memoria con lo que trajeron las consultas.
+     */
+    @TestVisible private static Boolean forzarFalloAlConstruir = false;
+
+    /**
+     * Devuelve la gráfica del activo: una serie por medición, con sus lecturas de la ventana, las líneas de
+     * sus umbrales y su tendencia, todo lo que quien abre la ficha puede ver.
+     *
      * @param activoId Id del Asset de la ficha
      * @return Las series del activo; sin series si no tiene medición esperada, estados ni lecturas
+     * @throws AuraHandledException ERROR_SIN_ACCESO si el Id es nulo, no es de un activo o el usuario no ve
+     *         el activo; ERROR_CARGA si falla una consulta (p. ej., le falta permiso sobre un objeto o campo)
+     *         o falla el armado de la respuesta
+     * @example
+     *   GraficaTendenciaController.Grafica g = GraficaTendenciaController.obtenerGrafica(activoId);
      */
     @AuraEnabled
     public static Grafica obtenerGrafica(Id activoId) {
         Asset activo;
+        List<Lectura_Sensor__c> lecturas;
+        List<Umbral_Medicion__c> umbrales;
         try {
             activo = consultarActivo(activoId);
-        } catch (Exception e) {
-            System.debug(LoggingLevel.WARN, 'GraficaTendenciaController · ' + e.getTypeName() + ' · ' + e.getMessage());
-            throw nuevoError(ERROR_CARGA);
+            if (activo != null) {
+                lecturas = consultarLecturas(activo.Id, inicioVentanaMasAntigua(activo.Estados_Medicion__r));
+                umbrales = consultarUmbrales(activo);
+            }
+        } catch (QueryException e) {
+            throw falloDeCarga(e);
         }
         if (activo == null) {
             throw nuevoError(ERROR_SIN_ACCESO);
         }
         try {
-            List<Lectura_Sensor__c> lecturas = consultarLecturas(activo.Id, inicioVentanaMasAntigua(activo.Estados_Medicion__r));
-            return construir(activo, activo.Estados_Medicion__r, lecturas, consultarUmbrales(activo));
+            return construir(activo, activo.Estados_Medicion__r, lecturas, umbrales);
         } catch (Exception e) {
-            System.debug(LoggingLevel.WARN, 'GraficaTendenciaController · ' + e.getTypeName() + ' · ' + e.getMessage());
-            throw nuevoError(ERROR_CARGA);
+            throw falloDeCarga(e);
         }
+    }
+
+    /** Deja el detalle en el log y al usuario solo ERROR_CARGA. */
+    private static AuraHandledException falloDeCarga(Exception e) {
+        System.debug(LoggingLevel.WARN, 'GraficaTendenciaController · ' + e.getTypeName() + ' · ' + e.getMessage());
+        return nuevoError(ERROR_CARGA);
     }
 
     private static AuraHandledException nuevoError(String mensaje) {
@@ -75,15 +101,16 @@ public with sharing class GraficaTendenciaController {
         if (activoId == null || activoId.getSObjectType() != Asset.SObjectType) {
             return null;
         }
-        String soql = 'SELECT Id, Name, Tipo_Activo__c, Medicion_Esperada__c, Unidad_Esperada__c'
-            + ', (SELECT Tipo_Medicion__c, Ultimo_Valor__c, Unidad__c, Ocurrido_En__c, Severidad__c,'
-            + '   Tendencia_Estado__c, Tendencia_Ritmo__c, Tendencia_Minutos_Critico__c'
-            + '   FROM Estados_Medicion__r)'
-            + ' FROM Asset WHERE Id = :activoId LIMIT 1';
-        List<Asset> activos = Database.queryWithBinds(
-            soql,
-            new Map<String, Object>{ 'activoId' => activoId },
-            AccessLevel.USER_MODE);
+        List<Asset> activos = [
+            SELECT Id, Name, Tipo_Activo__c, Medicion_Esperada__c, Unidad_Esperada__c,
+                (SELECT Tipo_Medicion__c, Ultimo_Valor__c, Unidad__c, Ocurrido_En__c, Severidad__c,
+                    Tendencia_Estado__c, Tendencia_Ritmo__c, Tendencia_Minutos_Critico__c
+                 FROM Estados_Medicion__r)
+            FROM Asset
+            WHERE Id = :activoId
+            WITH USER_MODE
+            LIMIT 1
+        ];
         return activos.isEmpty() ? null : activos[0];
     }
 
@@ -100,27 +127,28 @@ public with sharing class GraficaTendenciaController {
 
     /** De la más reciente a la más antigua; a igual Ocurrido_En__c, por Id, para que el corte sea estable. */
     private static List<Lectura_Sensor__c> consultarLecturas(Id activoId, Datetime desde) {
-        String soql = 'SELECT Id, Tipo_Medicion__c, Valor__c, Unidad__c, Ocurrido_En__c, Severidad_Sellada__c, Atrasada__c'
-            + ' FROM Lectura_Sensor__c'
-            + ' WHERE Activo__c = :activoId AND Valor__c != null AND Ocurrido_En__c >= :desde'
-            + ' ORDER BY Ocurrido_En__c DESC, Id DESC LIMIT :maximoLecturas';
-        return Database.queryWithBinds(
-            soql,
-            new Map<String, Object>{ 'activoId' => activoId, 'desde' => desde, 'maximoLecturas' => MAXIMO_LECTURAS_CONSULTA },
-            AccessLevel.USER_MODE);
+        return [
+            SELECT Id, Tipo_Medicion__c, Valor__c, Unidad__c, Ocurrido_En__c, Severidad_Sellada__c, Atrasada__c
+            FROM Lectura_Sensor__c
+            WHERE Activo__c = :activoId AND Valor__c != null AND Ocurrido_En__c >= :desde
+            WITH USER_MODE
+            ORDER BY Ocurrido_En__c DESC, Id DESC
+            LIMIT :MAXIMO_LECTURAS_CONSULTA
+        ];
     }
 
     private static List<Umbral_Medicion__c> consultarUmbrales(Asset activo) {
         if (String.isBlank(activo.Tipo_Activo__c)) {
             return new List<Umbral_Medicion__c>();
         }
-        String soql = 'SELECT Tipo_Medicion__c, Operador_Comparacion__c, Valor_Advertencia__c, Valor_Critico__c, Unidad__c'
-            + ' FROM Umbral_Medicion__c WHERE Activo__c = true AND Tipo_Activo__c = :tipoActivo'
-            + ' ORDER BY Clave_Umbral__c';
-        return Database.queryWithBinds(
-            soql,
-            new Map<String, Object>{ 'tipoActivo' => activo.Tipo_Activo__c },
-            AccessLevel.USER_MODE);
+        return [
+            SELECT Tipo_Medicion__c, Operador_Comparacion__c, Valor_Advertencia__c, Valor_Critico__c, Unidad__c
+            FROM Umbral_Medicion__c
+            WHERE Activo__c = true AND Tipo_Activo__c = :activo.Tipo_Activo__c
+            WITH USER_MODE
+            ORDER BY Clave_Umbral__c
+            LIMIT :MAXIMO_UMBRALES
+        ];
     }
 
     @TestVisible
@@ -130,6 +158,9 @@ public with sharing class GraficaTendenciaController {
         List<Lectura_Sensor__c> lecturasDelActivo,
         List<Umbral_Medicion__c> umbrales
     ) {
+        if (forzarFalloAlConstruir) {
+            throw new FalloForzadoException('Fallo forzado por la prueba.');
+        }
         Map<String, Estado_Medicion__c> estados = new Map<String, Estado_Medicion__c>();
         for (Estado_Medicion__c estado : estadosDelActivo) {
             estados.put(estado.Tipo_Medicion__c, estado);
@@ -348,4 +379,6 @@ public with sharing class GraficaTendenciaController {
         @AuraEnabled public Decimal ultimoValor;
         @AuraEnabled public Datetime ocurridoEn;
     }
+
+    private class FalloForzadoException extends Exception {}
 }

@@ -40,27 +40,55 @@ public with sharing class MapaEdificiosController {
     @TestVisible private static final String ERROR_CARGA = 'No se pudo cargar el mapa de edificios.';
 
     /**
+     * Punto de inyección SOLO para pruebas (false en producción): hace que construir falle, para probar que
+     * la llamada lo convierte en ERROR_CARGA sin enseñar el detalle. Sin él no hay forma de que falle: solo
+     * arma la respuesta en memoria con lo que trajeron las consultas.
+     */
+    @TestVisible private static Boolean forzarFalloAlConstruir = false;
+
+    /**
+     * Devuelve los edificios que ve el usuario, cada uno con sus conteos por severidad, sus activos en
+     * crítico y el color de su peor activo.
+     *
      * @return Los edificios visibles, del peor al mejor y por nombre; sin edificios si no ve ninguno
+     * @throws AuraHandledException ERROR_CARGA si falla una consulta (p. ej., le falta permiso sobre un objeto
+     *         o campo) o falla el armado de la respuesta
+     * @example
+     *   MapaEdificiosController.Mapa m = MapaEdificiosController.obtenerMapa();
      */
     @AuraEnabled
     public static Mapa obtenerMapa() {
+        List<Schema.Location> edificios;
+        List<Asset> activos;
         try {
-            List<Schema.Location> edificios = consultarEdificios();
-            return construir(edificios, consultarActivos(edificios));
+            edificios = consultarEdificios();
+            activos = consultarActivos(edificios);
+        } catch (QueryException e) {
+            throw falloDeCarga(e);
+        }
+        try {
+            return construir(edificios, activos);
         } catch (Exception e) {
-            System.debug(LoggingLevel.WARN, 'MapaEdificiosController · ' + e.getTypeName() + ' · ' + e.getMessage());
-            AuraHandledException error = new AuraHandledException(ERROR_CARGA);
-            error.setMessage(ERROR_CARGA);
-            throw error;
+            throw falloDeCarga(e);
         }
     }
 
+    /** Deja el detalle en el log y al usuario solo ERROR_CARGA. */
+    private static AuraHandledException falloDeCarga(Exception e) {
+        System.debug(LoggingLevel.WARN, 'MapaEdificiosController · ' + e.getTypeName() + ' · ' + e.getMessage());
+        AuraHandledException error = new AuraHandledException(ERROR_CARGA);
+        error.setMessage(ERROR_CARGA);
+        return error;
+    }
+
     private static List<Schema.Location> consultarEdificios() {
-        return Database.queryWithBinds(
-            'SELECT Id, Name, Id_Externo__c, Region__c, Ciudad__c, Latitude, Longitude'
-                + ' FROM Location ORDER BY Name LIMIT :maximoEdificios',
-            new Map<String, Object>{ 'maximoEdificios' => MAXIMO_EDIFICIOS },
-            AccessLevel.USER_MODE);
+        return [
+            SELECT Id, Name, Id_Externo__c, Region__c, Ciudad__c, Latitude, Longitude
+            FROM Location
+            WITH USER_MODE
+            ORDER BY Name
+            LIMIT :MAXIMO_EDIFICIOS
+        ];
     }
 
     /** Los peores primero: si se llega al tope, lo que queda fuera no cambia el color de ningún edificio. */
@@ -74,16 +102,21 @@ public with sharing class MapaEdificiosController {
         if (codigos.isEmpty()) {
             return new List<Asset>();
         }
-        return Database.queryWithBinds(
-            'SELECT Id, Name, Edificio_Externo__c, Tipo_Activo__c, Severidad_Actual__c, Severidad_Etiqueta__c'
-                + ' FROM Asset WHERE Edificio_Externo__c IN :codigos'
-                + ' ORDER BY Severidad_Actual__c DESC NULLS LAST, Name LIMIT :maximoActivos',
-            new Map<String, Object>{ 'codigos' => codigos, 'maximoActivos' => MAXIMO_ACTIVOS },
-            AccessLevel.USER_MODE);
+        return [
+            SELECT Id, Name, Edificio_Externo__c, Tipo_Activo__c, Severidad_Actual__c, Severidad_Etiqueta__c
+            FROM Asset
+            WHERE Edificio_Externo__c IN :codigos
+            WITH USER_MODE
+            ORDER BY Severidad_Actual__c DESC NULLS LAST, Name
+            LIMIT :MAXIMO_ACTIVOS
+        ];
     }
 
     @TestVisible
     private static Mapa construir(List<Schema.Location> edificios, List<Asset> activos) {
+        if (forzarFalloAlConstruir) {
+            throw new FalloForzadoException('Fallo forzado por la prueba.');
+        }
         Map<String, String> regiones = new Map<String, String>();
         for (Schema.PicklistEntry valor : Schema.Location.Region__c.getDescribe().getPicklistValues()) {
             regiones.put(valor.getValue(), valor.getLabel());
@@ -195,6 +228,12 @@ public with sharing class MapaEdificiosController {
         @AuraEnabled public List<ActivoCritico> activosCriticos = new List<ActivoCritico>();
         private Integer nivel;
 
+        /**
+         * Orden del mapa: del peor al mejor y, a igual severidad, por nombre sin distinguir mayúsculas.
+         *
+         * @param otro Otro Edificio de la misma lista
+         * @return Negativo si este va antes, positivo si va después y 0 si da igual
+         */
         public Integer compareTo(Object otro) {
             Edificio o = (Edificio) otro;
             if (nivel != o.nivel) {
@@ -209,4 +248,6 @@ public with sharing class MapaEdificiosController {
         @AuraEnabled public String nombre;
         @AuraEnabled public String tipoActivo;
     }
+
+    private class FalloForzadoException extends Exception {}
 }
