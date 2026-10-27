@@ -16,6 +16,7 @@ public with sharing class TestDataFactory {
     private static final String PERM_SET_INGESTA = 'Nova_Casa_Ingesta';
     private static final String PERM_SET_OPERADOR = 'Nova_Casa_Operador';
     private static final String PERM_SET_GERENTE = 'Nova_Casa_Gerente';
+    private static final String PERM_SET_COORDINADOR = 'Nova_Casa_Coordinador';
     private static final String PERFIL_MINIMO = 'Minimum Access - Salesforce';
 
     /**
@@ -449,6 +450,62 @@ public with sharing class TestDataFactory {
         insert usuario;
         PermissionSet permiso = [SELECT Id FROM PermissionSet WHERE Name = :PERM_SET_GERENTE LIMIT 1];
         insert new PermissionSetAssignment(AssigneeId = usuario.Id, PermissionSetId = permiso.Id);
+        return usuario;
+    }
+
+    /**
+     * Un usuario de pruebas con el perfil de acceso mínimo y SOLO el Permission Set Nova_Casa_Coordinador
+     * (E-24), sin rol ni grupo: el llamador lo mete en el grupo que haga de Coordinadores si la prueba mide la
+     * compartición. Falla ruidoso si el perfil o el permission set no existen en la org. Es DML de objetos de
+     * setup: envolver en System.runAs(usuario actual) si hay DML de negocio en la misma transacción.
+     *
+     * @return El usuario insertado con el Permission Set asignado
+     */
+    public static User crearUsuarioCoordinador() {
+        Profile perfil = [SELECT Id FROM Profile WHERE Name = :PERFIL_MINIMO LIMIT 1];
+        String sufijo = String.valueOf(DateTime.now().getTime()) + String.valueOf(Math.round(Math.random() * 100000));
+        User usuario = new User(
+            FirstName = 'Coordinador',
+            LastName = 'Prueba',
+            Email = 'coordinador.prueba@novacasa.test.invalid',
+            Username = 'coordinador.' + sufijo + '@novacasa.test.invalid',
+            Alias = 'coortest',
+            ProfileId = perfil.Id,
+            TimeZoneSidKey = 'America/Bogota',
+            LocaleSidKey = 'es_CO',
+            EmailEncodingKey = 'UTF-8',
+            LanguageLocaleKey = 'es'
+        );
+        insert usuario;
+        PermissionSet permiso = [SELECT Id FROM PermissionSet WHERE Name = :PERM_SET_COORDINADOR LIMIT 1];
+        insert new PermissionSetAssignment(AssigneeId = usuario.Id, PermissionSetId = permiso.Id);
+        return usuario;
+    }
+
+    /**
+     * Un usuario de pruebas con el perfil de acceso mínimo y NINGÚN Permission Set, para probar que sin
+     * permisos de Nova Casa una pantalla devuelve su error genérico y no enseña datos. Falla ruidoso si el
+     * perfil no existe en la org. Es DML de objetos de setup: envolver en System.runAs(usuario actual) si hay
+     * DML de negocio en la misma transacción.
+     *
+     * @return El usuario insertado, sin Permission Set
+     */
+    public static User crearUsuarioSinPermisos() {
+        Profile perfil = [SELECT Id FROM Profile WHERE Name = :PERFIL_MINIMO LIMIT 1];
+        String sufijo = String.valueOf(DateTime.now().getTime()) + String.valueOf(Math.round(Math.random() * 100000));
+        User usuario = new User(
+            FirstName = 'Sin',
+            LastName = 'Permisos',
+            Email = 'sinpermisos.prueba@novacasa.test.invalid',
+            Username = 'sinpermisos.' + sufijo + '@novacasa.test.invalid',
+            Alias = 'sinptest',
+            ProfileId = perfil.Id,
+            TimeZoneSidKey = 'America/Bogota',
+            LocaleSidKey = 'es_CO',
+            EmailEncodingKey = 'UTF-8',
+            LanguageLocaleKey = 'es'
+        );
+        insert usuario;
         return usuario;
     }
 }

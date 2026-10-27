@@ -39,6 +39,11 @@ public with sharing class GraficaTendenciaController {
     @TestVisible private static final Set<String> MEDICIONES_NO_NUMERICAS = new Set<String>{ 'CAMERA_CONNECTIVITY' };
     private static final Set<String> OPERADORES_ARRIBA = new Set<String>{ 'MAYOR_QUE', 'MAYOR_O_IGUAL' };
     private static final Set<String> OPERADORES_ABAJO = new Set<String>{ 'MENOR_QUE', 'MENOR_O_IGUAL' };
+    /** Dirección y nivel de cada línea, tal como los lee el LWC graficaTendencia. */
+    @TestVisible private static final String ARRIBA = 'ARRIBA';
+    @TestVisible private static final String ABAJO = 'ABAJO';
+    @TestVisible private static final String ADVERTENCIA = 'Advertencia';
+    @TestVisible private static final String CRITICO = 'Critico';
     @TestVisible private static final String ERROR_CARGA = 'No se pudo cargar la gráfica de tendencia.';
     @TestVisible private static final String ERROR_SIN_ACCESO = 'No tienes acceso a este activo o ya no existe.';
 
@@ -295,14 +300,14 @@ public with sharing class GraficaTendenciaController {
         }
         for (Umbral_Medicion__c umbral : umbrales) {
             String direccion = OPERADORES_ARRIBA.contains(umbral.Operador_Comparacion__c)
-                ? 'ARRIBA'
-                : (OPERADORES_ABAJO.contains(umbral.Operador_Comparacion__c) ? 'ABAJO' : null);
+                ? ARRIBA
+                : (OPERADORES_ABAJO.contains(umbral.Operador_Comparacion__c) ? ABAJO : null);
             Boolean otraUnidad = String.isNotBlank(umbral.Unidad__c) && String.isNotBlank(unidad) && umbral.Unidad__c != unidad;
             if (direccion == null || otraUnidad) {
                 continue;
             }
-            agregarLinea(lineas, 'Advertencia', direccion, umbral.Operador_Comparacion__c, umbral.Valor_Advertencia__c);
-            agregarLinea(lineas, 'Critico', direccion, umbral.Operador_Comparacion__c, umbral.Valor_Critico__c);
+            agregarLinea(lineas, ADVERTENCIA, direccion, umbral.Operador_Comparacion__c, umbral.Valor_Advertencia__c);
+            agregarLinea(lineas, CRITICO, direccion, umbral.Operador_Comparacion__c, umbral.Valor_Critico__c);
         }
         return lineas;
     }
