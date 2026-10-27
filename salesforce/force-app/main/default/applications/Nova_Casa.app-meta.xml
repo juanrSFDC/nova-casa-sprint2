@@ -32,6 +32,22 @@
         <type>Flexipage</type>
         <profile>Minimum Access - Salesforce</profile>
     </profileActionOverrides>
+    <profileActionOverrides>
+        <actionName>View</actionName>
+        <content>Activo_Nova_Casa</content>
+        <formFactor>Large</formFactor>
+        <pageOrSobjectType>Asset</pageOrSobjectType>
+        <type>Flexipage</type>
+        <profile>Admin</profile>
+    </profileActionOverrides>
+    <profileActionOverrides>
+        <actionName>View</actionName>
+        <content>Activo_Nova_Casa</content>
+        <formFactor>Large</formFactor>
+        <pageOrSobjectType>Asset</pageOrSobjectType>
+        <type>Flexipage</type>
+        <profile>Minimum Access - Salesforce</profile>
+    </profileActionOverrides>
     <tabs>Mis_activos</tabs>
     <tabs>Umbral_Medicion__c</tabs>
     <tabs>standard-Case</tabs>
