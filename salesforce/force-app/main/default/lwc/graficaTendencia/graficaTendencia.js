@@ -148,6 +148,44 @@ export function ritmoLegible(ritmo, unidad) {
 }
 
 /**
+ * El valor del crítico de una dirección entre las líneas del umbral.
+ * @param {object[]} lineas Líneas del umbral del controlador
+ * @param {string} direccion ARRIBA o ABAJO
+ * @returns {number|null}
+ */
+function criticoDe(lineas, direccion) {
+    const linea = (lineas || []).find((l) => l.nivel === "Critico" && l.direccion === direccion);
+    return linea ? Number(linea.valor) : null;
+}
+
+/**
+ * Si la medición está en crítico y la tendencia la va sacando (D-7, desde el 27-oct), los minutos que
+ * faltan para volver a cruzar el crítico a este ritmo. El procesamiento no los guarda: su campo de
+ * minutos cuenta hasta el crítico.
+ * @param {object} tendencia Tendencia del controlador
+ * @param {object[]} lineas Líneas del umbral
+ * @returns {number|null} null si no está saliendo del crítico
+ */
+export function minutosParaSalir(tendencia, lineas) {
+    if (
+        !tendencia ||
+        tendencia.estado !== "Se_Aleja_Del_Critico" ||
+        tendencia.severidad !== "Critico" ||
+        !tendencia.ritmo ||
+        tendencia.ultimoValor === null ||
+        tendencia.ultimoValor === undefined
+    ) {
+        return null;
+    }
+    const critico = criticoDe(lineas, tendencia.ritmo < 0 ? "ARRIBA" : "ABAJO");
+    if (critico === null) {
+        return null;
+    }
+    const minutos = Math.ceil((critico - Number(tendencia.ultimoValor)) / tendencia.ritmo);
+    return minutos >= 0 ? minutos : null;
+}
+
+/**
  * Marcas «redondas» del eje de valores y el dominio ajustado a ellas.
  * @param {number} minimo
  * @param {number} maximo
@@ -193,12 +231,13 @@ export function marcasTiempo(desde, hasta) {
 
 /**
  * La proyección corta de la tendencia: desde la última lectura a tiempo, al ritmo del estado, durante
- * 30 minutos o hasta el crítico si llega antes. Sin ritmo no hay proyección.
+ * 30 minutos o hasta cruzar el crítico (al llegar o al salir) si ocurre antes. Sin ritmo no hay proyección.
  * @param {object[]} puntos Puntos de la serie con t (ms), valor y atrasada
  * @param {object} tendencia Tendencia del controlador
+ * @param {object[]} lineas Líneas del umbral
  * @returns {{desde: {t: number, valor: number}, hasta: {t: number, valor: number}}|null}
  */
-export function proyeccionDe(puntos, tendencia) {
+export function proyeccionDe(puntos, tendencia, lineas) {
     if (!tendencia || tendencia.ritmo === null || tendencia.ritmo === undefined) {
         return null;
     }
@@ -208,8 +247,11 @@ export function proyeccionDe(puntos, tendencia) {
     }
     const ultimo = aTiempo[aTiempo.length - 1];
     let horizonte = HORIZONTE_PROYECCION_MIN;
+    const salida = minutosParaSalir(tendencia, lineas);
     if (tendencia.estado === "Calculada" && tendencia.minutosCritico > 0) {
         horizonte = Math.min(tendencia.minutosCritico, HORIZONTE_PROYECCION_MIN);
+    } else if (salida > 0) {
+        horizonte = Math.min(salida, HORIZONTE_PROYECCION_MIN);
     }
     return {
         desde: { t: ultimo.t, valor: ultimo.valor },
@@ -271,23 +313,36 @@ function frasesUmbral(lineas, unidad) {
     return `${texto.charAt(0).toUpperCase()}${texto.slice(1)}.`;
 }
 
-function tendenciaVista(tendencia, unidad) {
+function tendenciaVista(tendencia, unidad, lineas) {
     if (!tendencia || !tendencia.estado) {
-        return { ...SIN_TENDENCIA, ritmoTexto: null, minutosTexto: null };
+        return { ...SIN_TENDENCIA, ritmoTexto: null, minutosTexto: null, salidaTexto: null };
     }
     const base = TENDENCIAS[tendencia.estado] || { etiqueta: tendencia.estado, explicacion: "" };
     const conRitmo = tendencia.ritmo !== null && tendencia.ritmo !== undefined;
     const conMinutos =
         tendencia.estado === "Calculada" && tendencia.minutosCritico !== null && tendencia.minutosCritico !== undefined;
+    const salida = minutosParaSalir(tendencia, lineas);
+    let etiqueta = base.etiqueta;
     let explicacion = base.explicacion;
     if (conMinutos) {
-        explicacion = `A este ritmo cruzaría el crítico en ${tiempoHastaCritico(tendencia.minutosCritico)}. Es una tendencia, no una predicción.`;
+        const lado = tendencia.ritmo < 0 ? "ABAJO" : "ARRIBA";
+        const critico = criticoDe(lineas, lado);
+        const cual =
+            critico === null
+                ? "el crítico"
+                : `el crítico de ${lado === "ARRIBA" ? "arriba" : "abajo"} (${conUnidad(critico, unidad)})`;
+        explicacion = `A este ritmo cruzaría ${cual} en ${tiempoHastaCritico(tendencia.minutosCritico)}. Es una tendencia, no una predicción.`;
+    } else if (salida !== null) {
+        const critico = criticoDe(lineas, tendencia.ritmo < 0 ? "ARRIBA" : "ABAJO");
+        etiqueta = "Saliendo del crítico";
+        explicacion = `Sigue en crítico, pero va saliendo: a este ritmo vuelve a cruzar ${conUnidad(critico, unidad)} en ${tiempoHastaCritico(salida)}. Es una tendencia, no una predicción.`;
     }
     return {
-        etiqueta: base.etiqueta,
+        etiqueta,
         explicacion,
         ritmoTexto: conRitmo ? ritmoLegible(tendencia.ritmo, unidad) : null,
-        minutosTexto: conMinutos ? tiempoHastaCritico(tendencia.minutosCritico) : null
+        minutosTexto: conMinutos ? tiempoHastaCritico(tendencia.minutosCritico) : null,
+        salidaTexto: salida !== null ? tiempoHastaCritico(salida) : null
     };
 }
 
@@ -306,7 +361,7 @@ export function vistaSerie(serie, tablaAbierta) {
         noNumerica: serie.numerica === false,
         sinPuntos: serie.numerica !== false && (!serie.puntos || serie.puntos.length === 0),
         tieneLecturas: serie.tieneLecturas === true,
-        tendencia: tendenciaVista(serie.tendencia, serie.unidad),
+        tendencia: tendenciaVista(serie.tendencia, serie.unidad, serie.lineas),
         recortada: serie.recortada === true,
         tablaAbierta,
         idTabla: `datos-${serie.medicion}`,
@@ -327,7 +382,7 @@ export function vistaSerie(serie, tablaAbierta) {
 
     const puntos = serie.puntos.map((p) => ({ ...p, t: new Date(p.ocurridoEn).getTime(), valor: Number(p.valor) }));
     const lineas = (serie.lineas || []).map((l) => ({ ...l, valor: Number(l.valor) }));
-    const proyeccion = proyeccionDe(puntos, serie.tendencia);
+    const proyeccion = proyeccionDe(puntos, serie.tendencia, lineas);
 
     const tiempos = puntos.map((p) => p.t);
     let t0 = Math.min(...tiempos);
@@ -430,7 +485,8 @@ export function vistaSerie(serie, tablaAbierta) {
         frasesUmbral(lineas, serie.unidad),
         `Tendencia: ${vista.tendencia.etiqueta.toLowerCase()}.`,
         vista.tendencia.ritmoTexto ? `Ritmo: ${vista.tendencia.ritmoTexto}.` : "",
-        vista.tendencia.minutosTexto ? `Crítico en ${vista.tendencia.minutosTexto}.` : ""
+        vista.tendencia.minutosTexto ? `Crítico en ${vista.tendencia.minutosTexto}.` : "",
+        vista.tendencia.salidaTexto ? `Sale del crítico en ${vista.tendencia.salidaTexto}.` : ""
     ]
         .filter((f) => f)
         .join(" ");

@@ -87,6 +87,12 @@
                                         <dd data-id="tendencia-minutos">{serie.tendencia.minutosTexto}</dd>
                                     </div>
                                 </template>
+                                <template lwc:if={serie.tendencia.salidaTexto}>
+                                    <div class="dato">
+                                        <dt class="slds-text-title">Sale del crítico en</dt>
+                                        <dd data-id="tendencia-salida">{serie.tendencia.salidaTexto}</dd>
+                                    </div>
+                                </template>
                             </dl>
                             <p class="slds-text-body_small slds-text-color_weak">{serie.tendencia.explicacion}</p>
 

@@ -135,6 +135,53 @@ private class TendenciaCalculoTest {
     }
 
     @isTest
+    static void ganadoraCritica_bajandoPorArriba_seAlejaDelCriticoConRitmo() {
+        // 40 → 37,5 °C en 25 min, con el crítico por arriba en 35: sigue en crítico, pero va saliendo.
+        TendenciaCalculo.Resultado r = TendenciaCalculo.calcular(
+            entrada(serie(40, -0.5, 5, 6), 35, 15, ClasificacionResultado.SEVERIDAD_CRITICO));
+
+        Assert.areEqual(TendenciaCalculo.Estado.SE_ALEJA_DEL_CRITICO, r.estado, 'Va saliendo del crítico de arriba');
+        Assert.areEqual(-0.1000, r.ritmo, 'Guarda el ritmo con su signo: −0,5 cada 5 minutos');
+        Assert.isNull(r.minutos, 'Sin minutos: el campo cuenta hasta el crítico, no para salir');
+    }
+
+    @isTest
+    static void ganadoraCritica_subiendoPorAbajo_seAlejaDelCritico() {
+        // Presión baja que se recupera: 1,0 → 1,2 bar con el crítico por abajo en 1,5.
+        TendenciaCalculo.Resultado r = TendenciaCalculo.calcular(
+            entrada(serie(1.0, 0.04, 5, 6), 5, 1.5, ClasificacionResultado.SEVERIDAD_CRITICO));
+
+        Assert.areEqual(TendenciaCalculo.Estado.SE_ALEJA_DEL_CRITICO, r.estado, 'Va saliendo del crítico de abajo');
+        Assert.areEqual(0.0080, r.ritmo, 'Sube: 0,04 cada 5 minutos = 0,0080 por minuto');
+    }
+
+    @isTest
+    static void ganadoraCritica_bajandoSinRectaClara_sigueYaEnCritico() {
+        List<Decimal> valores = new List<Decimal>{ 40, 36, 41, 36, 40, 37 };
+        List<TendenciaCalculo.Punto> puntos = new List<TendenciaCalculo.Punto>();
+        for (Integer k = 0; k < valores.size(); k++) {
+            puntos.add(new TendenciaCalculo.Punto(GANADORA.addMinutes(-5 * (valores.size() - 1 - k)), valores[k]));
+        }
+
+        TendenciaCalculo.Resultado r = TendenciaCalculo.calcular(
+            entrada(puntos, 35, 15, ClasificacionResultado.SEVERIDAD_CRITICO));
+
+        Assert.areEqual(TendenciaCalculo.Estado.YA_EN_CRITICO, r.estado,
+            'Con lecturas dispersas (R² < 0,7) no se anuncia una salida del crítico');
+        Assert.isTrue(r.r2 < TendenciaCalculo.R2_MINIMO, 'El R² queda como diagnóstico');
+        Assert.isNull(r.ritmo, 'Ya en crítico no guarda ritmo');
+    }
+
+    @isTest
+    static void ganadoraCritica_empeorando_sigueYaEnCritico() {
+        TendenciaCalculo.Resultado r = TendenciaCalculo.calcular(
+            entrada(serie(36, 0.5, 5, 6), 35, 15, ClasificacionResultado.SEVERIDAD_CRITICO));
+
+        Assert.areEqual(TendenciaCalculo.Estado.YA_EN_CRITICO, r.estado, 'Si sigue subiendo por encima del crítico, Ya en crítico');
+        Assert.isNull(r.ritmo, 'Ya en crítico no guarda ritmo');
+    }
+
+    @isTest
     static void todasConLaMismaFecha_sinTendenciaClara() {
         List<TendenciaCalculo.Punto> puntos = new List<TendenciaCalculo.Punto>();
         for (Integer i = 0; i < 10; i++) {

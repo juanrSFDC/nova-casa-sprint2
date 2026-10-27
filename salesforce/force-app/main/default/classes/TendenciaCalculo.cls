@@ -11,7 +11,9 @@
  *  1. Puntos con fecha y valor dentro de [ganadora − 3 h, ganadora]; los 10 más recientes; menos de 5 →
  *     POCAS_LECTURAS.
  *  2. Sin crítico por arriba ni por abajo → SIN_UMBRAL.
- *  3. La ganadora ya es Critico → YA_EN_CRITICO.
+ *  3. La ganadora ya es Critico: si la recta es confiable (reglas 4 y 5) y la va sacando del crítico
+ *     (por encima del de arriba y bajando, o por debajo del de abajo y subiendo) → SE_ALEJA_DEL_CRITICO
+ *     con su ritmo y sin minutos; si no → YA_EN_CRITICO (desde el 27-oct; antes, siempre YA_EN_CRITICO).
  *  4. x = minutos desde el primer punto. Todas las x iguales → SIN_TENDENCIA_CLARA; todos los valores
  *     iguales → ESTABLE (ritmo 0).
  *  5. R² < 0,7 → SIN_TENDENCIA_CLARA.
@@ -153,7 +155,7 @@ public with sharing class TendenciaCalculo {
             return conEstado(resultado, Estado.SIN_UMBRAL);
         }
         if (ClasificacionResultado.SEVERIDAD_CRITICO.equals(entrada.severidadSellada)) {
-            return conEstado(resultado, Estado.YA_EN_CRITICO);
+            return enCritico(resultado, usados, entrada);
         }
         return ajustar(resultado, usados, entrada);
     }
@@ -181,6 +183,54 @@ public with sharing class TendenciaCalculo {
 
     /** Reglas 4 a 7 sobre los puntos usados (de la más reciente a la más antigua). */
     private static Resultado ajustar(Resultado resultado, List<Punto> usados, Entrada entrada) {
+        Recta recta = rectaDe(usados);
+        if (recta.sinTiempo) {
+            return conEstado(resultado, Estado.SIN_TENDENCIA_CLARA);
+        }
+        if (recta.plana) {
+            return estable(resultado);
+        }
+        resultado.r2 = recta.r2;
+        if (recta.r2 < R2_MINIMO) {
+            return conEstado(resultado, Estado.SIN_TENDENCIA_CLARA);
+        }
+        Decimal ultimoValor = entrada.ultimoValor ?? usados[0].valor;
+        return conRitmo(resultado, recta.pendiente, ultimoValor, entrada);
+    }
+
+    /**
+     * Regla 3: la ganadora ya es crítica. Sin minutos, porque Tendencia_Minutos_Critico__c cuenta hasta
+     * el crítico; cuánto falta para salir lo calcula la pantalla con el ritmo y el crítico.
+     */
+    private static Resultado enCritico(Resultado resultado, List<Punto> usados, Entrada entrada) {
+        Recta recta = rectaDe(usados);
+        if (recta.sinTiempo || recta.plana) {
+            return conEstado(resultado, Estado.YA_EN_CRITICO);
+        }
+        resultado.r2 = recta.r2;
+        Decimal ritmo = recta.pendiente.setScale(ESCALA_RITMO, RoundingMode.HALF_UP);
+        Decimal ultimoValor = entrada.ultimoValor ?? usados[0].valor;
+        Boolean salePorArriba = entrada.criticoArriba != null && ultimoValor >= entrada.criticoArriba && ritmo < 0;
+        Boolean salePorAbajo = entrada.criticoAbajo != null && ultimoValor <= entrada.criticoAbajo && ritmo > 0;
+        if (recta.r2 < R2_MINIMO || !(salePorArriba || salePorAbajo) || ritmo.abs() > RITMO_MAXIMO) {
+            return conEstado(resultado, Estado.YA_EN_CRITICO);
+        }
+        resultado.ritmo = ritmo;
+        return conEstado(resultado, Estado.SE_ALEJA_DEL_CRITICO);
+    }
+
+    /** La recta de mínimos cuadrados de los puntos usados, con x en minutos desde el más antiguo. */
+    private class Recta {
+        /** Todas las x iguales: no hay pendiente. */
+        public Boolean sinTiempo = false;
+        /** Todos los valores iguales: pendiente 0 y R² indefinido. */
+        public Boolean plana = false;
+        public Decimal r2;
+        public Decimal pendiente;
+    }
+
+    private static Recta rectaDe(List<Punto> usados) {
+        Recta recta = new Recta();
         Long origen = usados[usados.size() - 1].ocurridoEn.getTime();
         List<Decimal> xs = new List<Decimal>();
         Decimal sumaX = 0;
@@ -206,19 +256,17 @@ public with sharing class TendenciaCalculo {
             syy += dy * dy;
         }
         if (sxx == 0) {
-            return conEstado(resultado, Estado.SIN_TENDENCIA_CLARA);
+            recta.sinTiempo = true;
+            return recta;
         }
         if (syy == 0) {
-            return estable(resultado);
+            recta.plana = true;
+            return recta;
         }
-        resultado.r2 = (sxy * sxy).divide(sxx * syy, ESCALA_CALCULO, RoundingMode.HALF_UP)
+        recta.r2 = (sxy * sxy).divide(sxx * syy, ESCALA_CALCULO, RoundingMode.HALF_UP)
             .setScale(ESCALA_RITMO, RoundingMode.HALF_UP);
-        if (resultado.r2 < R2_MINIMO) {
-            return conEstado(resultado, Estado.SIN_TENDENCIA_CLARA);
-        }
-        Decimal pendiente = sxy.divide(sxx, ESCALA_CALCULO, RoundingMode.HALF_UP);
-        Decimal ultimoValor = entrada.ultimoValor ?? usados[0].valor;
-        return conRitmo(resultado, pendiente, ultimoValor, entrada);
+        recta.pendiente = sxy.divide(sxx, ESCALA_CALCULO, RoundingMode.HALF_UP);
+        return recta;
     }
 
     /** Reglas 6 y 7: ritmo, dirección del crítico y minutos. */
