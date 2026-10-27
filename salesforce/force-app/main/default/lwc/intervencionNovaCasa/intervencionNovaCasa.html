@@ -1,0 +1,138 @@
+<template>
+    <template lwc:if={cargando}>
+        <article class="panel">
+            <header class="cabecera">
+                <img class="logo" src={logo} alt="Nova Casa" />
+                <div class="titulos">
+                    <h2 class="titulo">Intervención</h2>
+                    <p class="subtitulo">Cargando la intervención…</p>
+                </div>
+            </header>
+            <div class="cuerpo" data-id="cargando" role="status">
+                <span class="slds-assistive-text">Cargando la intervención</span>
+                <div class="momentos">
+                    <div class="esqueleto esqueleto-momento"></div>
+                    <div class="esqueleto esqueleto-momento"></div>
+                    <div class="esqueleto esqueleto-momento"></div>
+                </div>
+                <div class="esqueleto esqueleto-bloque"></div>
+            </div>
+        </article>
+    </template>
+
+    <template lwc:if={mostrarError}>
+        <article class="panel">
+            <div class="vacio" data-id="error" role="alert">
+                <p>{mensajeError}</p>
+                <lightning-button class="slds-m-top_small" variant="brand" label="Reintentar" onclick={reintentar}></lightning-button>
+            </div>
+        </article>
+    </template>
+
+    <template lwc:if={mostrar}>
+        <article class="panel">
+            <header class="cabecera">
+                <img class="logo" src={logo} alt="Nova Casa" />
+                <div class="titulos">
+                    <h2 class="titulo" data-id="titulo">{titulo}</h2>
+                    <p class="subtitulo" data-id="subtitulo">{subtitulo}</p>
+                </div>
+                <span class={claseEstado} data-id="estado">{estado}</span>
+            </header>
+
+            <div class="cuerpo">
+                <template lwc:if={aviso}>
+                    <p class="aviso" data-id="aviso">
+                        <lightning-icon icon-name="utility:info" size="xx-small"></lightning-icon>
+                        <span>{aviso}</span>
+                    </p>
+                </template>
+
+                <ul class="momentos">
+                    <template for:each={tarjetas} for:item="t">
+                        <li key={t.clave} class={t.clase} data-id="momento" data-momento={t.clave}>
+                            <p class="titulo-momento">{t.titulo}</p>
+                            <template lwc:if={t.vacia}>
+                                <p class="sin-dato">Sin dato</p>
+                            </template>
+                            <template lwc:else>
+                                <p class="valor-momento" data-id="valor">{t.valor}</p>
+                                <span class={t.claseEtiqueta} data-id="etiqueta">
+                                    <lightning-icon icon-name={t.icono} size="xx-small"></lightning-icon>
+                                    <span>{t.etiqueta}</span>
+                                </span>
+                                <p class="cuando">{t.cuando} · {t.hace}</p>
+                                <template lwc:if={t.rumbo}>
+                                    <p class="rumbo" data-id="rumbo">{t.rumbo}</p>
+                                </template>
+                                <template lwc:if={t.nota}>
+                                    <p class="nota-limites" data-id="nota-limites">{t.nota}</p>
+                                </template>
+                            </template>
+                        </li>
+                    </template>
+                </ul>
+
+                <div class="columnas">
+                    <section class="seccion" aria-labelledby="titulo-plan">
+                        <h3 class="titulo-seccion" id="titulo-plan">Qué revisar primero</h3>
+                        <template lwc:if={hayPlan}>
+                            <div class="plan" data-id="plan">
+                                <template for:each={lineasDelPlan} for:item="linea">
+                                    <p key={linea.clave} class="linea-plan">{linea.texto}</p>
+                                </template>
+                                <p class="nota-plan">
+                                    <lightning-icon icon-name="utility:einstein" size="xx-small"></lightning-icon>
+                                    <span>Lo sugiere Einstein con los datos del equipo y las causas anteriores; la decisión es de coordinación.</span>
+                                </p>
+                            </div>
+                        </template>
+                        <template lwc:else>
+                            <p class="sin-dato" data-id="sin-plan">Todavía no hay un plan sugerido para esta intervención.</p>
+                        </template>
+
+                        <template lwc:if={cierre}>
+                            <div class={cierre.clase} data-id="cierre">
+                                <p class="titulo-cierre">{cierre.titulo}</p>
+                                <p class="texto-cierre">{cierre.texto}</p>
+                            </div>
+                        </template>
+
+                        <lightning-button
+                            class="slds-m-top_small"
+                            label="Ver equipo"
+                            icon-name="utility:asset_object"
+                            onclick={verEquipo}
+                            data-id="ver-equipo"
+                        ></lightning-button>
+                    </section>
+
+                    <section class="seccion" aria-labelledby="titulo-senales">
+                        <h3 class="titulo-seccion" id="titulo-senales">{tituloSenales}</h3>
+                        <template lwc:if={haySenales}>
+                            <ol class="senales">
+                                <template for:each={senales} for:item="s">
+                                    <li key={s.id} class="senal" data-id="senal">
+                                        <span class={s.clasePunto} aria-hidden="true"></span>
+                                        <span class="hora-senal">{s.cuando}</span>
+                                        <span class="valor-senal">{s.valorTexto}</span>
+                                        <span class={s.claseEtiqueta}>{s.etiqueta}</span>
+                                        <template lwc:if={s.laAbrio}>
+                                            <span class="marca marca-abierta" data-id="la-abrio">la abrió</span>
+                                        </template>
+                                        <template lwc:if={s.atrasada}>
+                                            <span class="marca marca-vieja" title="Llegó después de otras más nuevas: solo cuenta como evidencia">atrasada</span>
+                                        </template>
+                                    </li>
+                                </template>
+                            </ol>
+                        </template>
+                        <template lwc:else>
+                            <p class="sin-dato" data-id="sin-senales">No hay señales enlazadas que puedas ver.</p>
+                        </template>
+                    </section>
+                </div>
+            </div>
+        </article>
+    </template>
+</template>

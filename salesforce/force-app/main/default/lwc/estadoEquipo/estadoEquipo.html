@@ -1,0 +1,178 @@
+<template>
+    <article class="panel">
+        <header class="cabecera">
+            <img class="logo" src={logo} alt="Nova Casa" />
+            <div class="titulos">
+                <h2 class="titulo">Estado del equipo</h2>
+                <p class="subtitulo" data-id="actualizado">{textoActualizado}</p>
+            </div>
+        </header>
+
+        <div class="cuerpo">
+            <template lwc:if={cargando}>
+                <div data-id="cargando" role="status">
+                    <span class="slds-assistive-text">Cargando el estado del equipo</span>
+                    <div class="esqueleto esqueleto-titulo"></div>
+                    <div class="esqueleto esqueleto-medicion"></div>
+                    <div class="esqueleto esqueleto-barra"></div>
+                </div>
+            </template>
+
+            <template lwc:if={mostrarError}>
+                <div class="vacio" data-id="error" role="alert">
+                    <p>{mensajeError}</p>
+                    <lightning-button
+                        class="slds-m-top_small"
+                        variant="brand"
+                        label="Reintentar"
+                        onclick={reintentar}
+                        data-id="reintentar"
+                    ></lightning-button>
+                </div>
+            </template>
+
+            <template lwc:if={mostrarEstado}>
+                <div class="resumen-equipo">
+                    <span class={claseEtiquetaEquipo} data-id="severidad-equipo">
+                        <lightning-icon icon-name={presentacion.icono} size="x-small"></lightning-icon>
+                        <span>{presentacion.etiqueta}</span>
+                    </span>
+                    <div class="identidad">
+                        <h3 class="nombre-equipo" data-id="nombre">{equipo.nombre}</h3>
+                        <p class="detalle-equipo" data-id="detalle">{descripcionEquipo}</p>
+                        <p class="detalle-equipo" data-id="edificio">{equipo.edificio}</p>
+                    </div>
+                    <lightning-button
+                        class="boton-explicar"
+                        variant="base"
+                        label="Explicar"
+                        icon-name="utility:einstein"
+                        title="Diagnóstico del equipo en un párrafo"
+                        onclick={explicar}
+                        data-id="explicar"
+                    ></lightning-button>
+                </div>
+
+                <template lwc:if={mostrarDiagnostico}>
+                    <section class="diagnostico" data-id="diagnostico" aria-live="polite">
+                        <div class="cabecera-diagnostico">
+                            <h4 class="titulo-diagnostico">Diagnóstico de {equipo.nombre}</h4>
+                            <lightning-button-icon
+                                icon-name="utility:close"
+                                variant="bare"
+                                alternative-text="Cerrar el diagnóstico"
+                                onclick={cerrarDiagnostico}
+                                data-id="cerrar-diagnostico"
+                            ></lightning-button-icon>
+                        </div>
+                        <template lwc:if={narrando}>
+                            <div class="narrando" data-id="narrando" role="status">
+                                <lightning-spinner alternative-text="Preparando el diagnóstico" size="small"></lightning-spinner>
+                            </div>
+                        </template>
+                        <template lwc:elseif={errorNarracion}>
+                            <p class="slds-m-top_x-small" role="alert" data-id="error-diagnostico">{errorNarracion}</p>
+                        </template>
+                        <template lwc:else>
+                            <p class="slds-m-top_x-small" data-id="texto-diagnostico">{textoDiagnostico}</p>
+                            <p class="nota-diagnostico" data-id="nota-diagnostico">{notaDiagnostico}</p>
+                        </template>
+                    </section>
+                </template>
+
+                <section class="seccion" aria-labelledby="titulo-mediciones">
+                    <h4 class="titulo-seccion" id="titulo-mediciones">Cómo está cada medición</h4>
+                    <template lwc:if={sinLecturas}>
+                        <p class="sin-lecturas" data-id="sin-lecturas">
+                            Todavía no ha llegado ninguna lectura de este equipo: no hay nada que evaluar.
+                        </p>
+                    </template>
+                    <template for:each={mediciones} for:item="medicion">
+                        <div key={medicion.clave} class={medicion.clase} data-id="medicion" data-medicion={medicion.clave}>
+                            <div class="fila-medicion">
+                                <span class="nombre-medicion">{medicion.nombre}</span>
+                                <span class="valor-medicion" data-id="valor">{medicion.valor}</span>
+                                <span class={medicion.claseEtiqueta} data-id="etiqueta">
+                                    <lightning-icon icon-name={medicion.icono} size="xx-small"></lightning-icon>
+                                    <span>{medicion.etiqueta}</span>
+                                </span>
+                                <span class="antiguedad">{medicion.antiguedad}</span>
+                                <template lwc:if={medicion.datoViejo}>
+                                    <span class="marca marca-vieja" title="La última lectura tiene más de 30 minutos" data-id="dato-viejo">Dato viejo</span>
+                                </template>
+                            </div>
+                            <template lwc:if={medicion.tendencia}>
+                                <p class="linea" data-id="tendencia">
+                                    <lightning-icon icon-name={medicion.tendencia.icono} size="xx-small"></lightning-icon>
+                                    <span>{medicion.tendencia.texto}</span>
+                                </p>
+                            </template>
+                            <template lwc:if={medicion.nota}>
+                                <p class="nota-limites" data-id="nota-limites">
+                                    <lightning-icon icon-name="utility:info" size="xx-small"></lightning-icon>
+                                    <span>{medicion.nota}</span>
+                                </p>
+                            </template>
+                            <template lwc:if={medicion.barra}>
+                                <div class="barra-limites" data-id="barra">
+                                    <div class="marcador" style={medicion.barra.estiloMarcador} aria-hidden="true">
+                                        <span class="marcador-valor">{medicion.valor}</span>
+                                        <span class="marcador-punta"></span>
+                                    </div>
+                                    <ol class="zonas">
+                                        <template for:each={medicion.barra.zonas} for:item="zona">
+                                            <li key={zona.clave} class={zona.clase} data-id="zona" data-zona={zona.clave}>
+                                                <span class="zona-etiqueta">{zona.etiqueta}</span>
+                                                <span class="zona-rango">{zona.rango}</span>
+                                            </li>
+                                        </template>
+                                    </ol>
+                                    <p class="leyenda" data-id="leyenda">{medicion.barra.leyenda}</p>
+                                </div>
+                            </template>
+                            <template lwc:else>
+                                <p class="sin-limites" data-id="sin-limites">
+                                    Esta medición no tiene umbral: no hay límites con los que compararla.
+                                </p>
+                            </template>
+                        </div>
+                    </template>
+                </section>
+
+                <section class="seccion" aria-labelledby="titulo-intervencion">
+                    <h4 class="titulo-seccion" id="titulo-intervencion">Intervención abierta</h4>
+                    <template lwc:if={intervencion}>
+                        <div class="intervencion" data-id="intervencion">
+                            <p class="titulo-intervencion">{intervencion.titulo}</p>
+                            <p class="detalle-equipo" data-id="detalle-intervencion">{intervencion.detalle}</p>
+                            <template lwc:if={intervencion.plan}>
+                                <div class="plan" data-id="plan">
+                                    <p class="titulo-plan">
+                                        <lightning-icon icon-name="utility:einstein" size="xx-small"></lightning-icon>
+                                        <span>Plan sugerido por Einstein · la decisión es de coordinación</span>
+                                    </p>
+                                    <template for:each={intervencion.plan.lineas} for:item="linea">
+                                        <p key={linea.clave} class="linea-plan">{linea.texto}</p>
+                                    </template>
+                                    <template lwc:if={intervencion.plan.recortado}>
+                                        <p class="linea-plan recortado">…el resto, en la intervención.</p>
+                                    </template>
+                                </div>
+                            </template>
+                            <lightning-button
+                                class="slds-m-top_small"
+                                variant="brand"
+                                label="Abrir intervención"
+                                onclick={abrirIntervencion}
+                                data-id="abrir-intervencion"
+                            ></lightning-button>
+                        </div>
+                    </template>
+                    <template lwc:else>
+                        <p class="sin-intervencion" data-id="sin-intervencion">Este equipo no tiene ninguna intervención abierta.</p>
+                    </template>
+                </section>
+            </template>
+        </div>
+    </article>
+</template>

@@ -3,7 +3,7 @@
     <apiVersion>67.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Mis activos</masterLabel>
-    <description>Lista de equipos a cargo del operador, con filtro por edificio y severidad.</description>
+    <description>Equipos a cargo del operador en una lista vertical agrupada por lo que hay que hacer, con color por severidad y filtros por edificio y severidad.</description>
     <targets>
         <target>lightning__AppPage</target>
         <target>lightning__HomePage</target>

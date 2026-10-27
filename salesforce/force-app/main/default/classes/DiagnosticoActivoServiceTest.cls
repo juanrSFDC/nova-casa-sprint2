@@ -104,6 +104,29 @@ private class DiagnosticoActivoServiceTest {
         Assert.isTrue(hechos.contains('Intervención abierta ' + numero), hechos);
         Assert.isTrue(hechos.contains('con 2 señales críticas enlazadas'), 'Las señales que reúne la intervención: ' + hechos);
         Assert.isTrue(hechos.contains('Intervenciones cerradas: ninguna.'), hechos);
+        Assert.isFalse(hechos.contains('no coincide'), 'Si la severidad cuadra con los límites de hoy no se añade nada: ' + hechos);
+    }
+
+    @isTest
+    static void siLosLimitesCambiaronDespuesDeLaLecturaLoDiceEnVezDeContradecirse() {
+        Asset activo = bomba();
+        umbralBomba();
+        presion(activo.Id, 4.5, 'Critico', 3, 'Ya_En_Critico', null);
+
+        Test.startTest();
+        DiagnosticoActivoService.Diagnostico d = DiagnosticoActivoService.cargar(activo.Id);
+        String hechos = DiagnosticoActivoService.hechos(d);
+        String sinIa = DiagnosticoActivoService.sinIa(d);
+        Test.stopTest();
+
+        Assert.areEqual('Advertencia', DiagnosticoActivoService.severidadConLimitesDeHoy('WATER_PUMP', d.estados[0]),
+            '4,5 bar con advertencia en 4 y crítico en 5');
+        Assert.isTrue(hechos.contains('La severidad registrada (crítico) no coincide con los límites vigentes: con ellos, 4,5 bar sería advertencia.'),
+            hechos);
+        Assert.isTrue(hechos.contains('después de esa lectura (10:30); la severidad registrada es la que regía entonces.'),
+            'El umbral se guardó después de la lectura: ' + hechos);
+        Assert.isTrue(sinIa.contains('Con los límites de hoy, 4,5 bar sería advertencia: la severidad registrada es la que regía cuando llegó la lectura.'),
+            sinIa);
     }
 
     @isTest

@@ -87,7 +87,7 @@ public with sharing class DiagnosticoActivoService {
             }
             String tipoActivo = d.activo.Tipo_Activo__c;
             d.umbrales = [
-                SELECT Tipo_Medicion__c, Operador_Comparacion__c, Valor_Advertencia__c, Valor_Critico__c
+                SELECT Tipo_Medicion__c, Operador_Comparacion__c, Valor_Advertencia__c, Valor_Critico__c, LastModifiedDate
                 FROM Umbral_Medicion__c
                 WHERE Activo__c = true AND Tipo_Activo__c = :tipoActivo AND Tipo_Medicion__c = :principal
                 WITH USER_MODE
@@ -141,6 +141,16 @@ public with sharing class DiagnosticoActivoService {
             if (limites != null) {
                 lineas.add('Límites vigentes de ' + TextoNovaCasa.medicion(principal.Tipo_Medicion__c) + ': ' + limites + '.');
             }
+            String hoy = severidadConLimitesDeHoy(d.activo.Tipo_Activo__c, principal);
+            if (hoy != principal.Severidad__c) {
+                Datetime cambio = ultimoCambio(d.umbrales);
+                lineas.add('La severidad registrada (' + severidad(principal.Severidad__c) + ') no coincide con los límites vigentes: con ellos, '
+                    + TextoNovaCasa.valor(principal.Ultimo_Valor__c, principal.Unidad__c) + ' sería ' + severidad(hoy) + '.'
+                    + (cambio != null && principal.Ocurrido_En__c != null && cambio > principal.Ocurrido_En__c
+                        ? ' Los límites se modificaron ' + cuando(cambio) + ', después de esa lectura (' + hora(principal.Ocurrido_En__c)
+                            + '); la severidad registrada es la que regía entonces.'
+                        : ''));
+            }
             if (!d.lecturas.isEmpty()) {
                 List<String> valores = new List<String>();
                 for (Lectura_Sensor__c l : d.lecturas) {
@@ -190,6 +200,10 @@ public with sharing class DiagnosticoActivoService {
         } else {
             frases.add(equipo + ': ' + medicion + ' marca ' + valor + ' ' + cuando(p.Ocurrido_En__c) + ', pero no tiene umbral configurado, así que no se puede clasificar.');
         }
+        String hoy = severidadConLimitesDeHoy(d.activo.Tipo_Activo__c, p);
+        if (hoy != p.Severidad__c) {
+            frases.add('Con los límites de hoy, ' + valor + ' sería ' + severidad(hoy) + ': la severidad registrada es la que regía cuando llegó la lectura.');
+        }
         if (p.Tendencia_Estado__c == 'Calculada' && p.Tendencia_Minutos_Critico__c != null) {
             frases.add('A este ritmo, ' + medicion + ' cruzaría el crítico en unos ' + p.Tendencia_Minutos_Critico__c.intValue() + ' min.');
         } else if (p.Tendencia_Estado__c == 'Se_Aleja_Del_Critico') {
@@ -205,6 +219,34 @@ public with sharing class DiagnosticoActivoService {
                 : 'Tiene abierta la intervención ' + c.CaseNumber + '.');
         }
         return String.join(frases, ' ');
+    }
+
+    /**
+     * La severidad que le daría hoy ClasificacionService al último valor de una medición. La sellada
+     * es la que regía cuando llegó la lectura: si alguien cambió los límites después, no coinciden, y
+     * contar los límites de hoy junto a la severidad de entonces lleva a conclusiones falsas.
+     *
+     * @param tipoActivo Asset.Tipo_Activo__c
+     * @param e El estado de la medición
+     * @return Normal, Advertencia, Critico o Sin_Configurar
+     */
+    public static String severidadConLimitesDeHoy(String tipoActivo, Estado_Medicion__c e) {
+        if (e.Ultimo_Valor__c == null) {
+            return e.Severidad__c;
+        }
+        return ClasificacionService.clasificar(new List<ClasificacionSolicitud>{
+            new ClasificacionSolicitud(tipoActivo, e.Tipo_Medicion__c, e.Ultimo_Valor__c)
+        })[0].severidad;
+    }
+
+    private static Datetime ultimoCambio(List<Umbral_Medicion__c> umbrales) {
+        Datetime ultimo;
+        for (Umbral_Medicion__c u : umbrales) {
+            if (ultimo == null || u.LastModifiedDate > ultimo) {
+                ultimo = u.LastModifiedDate;
+            }
+        }
+        return ultimo;
     }
 
     private static String edificio(Diagnostico d) {

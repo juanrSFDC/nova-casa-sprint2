@@ -4,7 +4,7 @@
  * Responsable: Juan Flórez. Lo endurece Juan Rozo en 208.4 y lo prueba con Laura y el
  * Operador Barranquilla en 208.5.
  *
- * Una sola consulta, en modo usuario y con la compartición de quien abre la pantalla:
+ * Una consulta de activos, en modo usuario y con la compartición de quien abre la pantalla:
  * cada operador solo recibe los activos de sus edificios. No decide severidad: devuelve
  * la del activo (roll-up de US-206) y la medición que la provoca. Los filtros se aplican
  * sobre esa misma consulta para poder distinguir «no tienes activos» de «estos filtros
@@ -17,6 +17,10 @@
  * Extra E-18 (21-oct): narrarActivo redacta el diagnóstico de un activo con la plantilla de
  * Prompt Builder Narrar_Diagnostico_Activo; si Einstein no responde, devuelve el mismo
  * diagnóstico armado sin IA y lo dice.
+ *
+ * Lista vertical (26-oct): cada fila dice cuándo se abrió su intervención y cuántas señales
+ * críticas lleva (una segunda consulta, solo si hay intervenciones abiertas), y la respuesta
+ * trae los contadores por severidad del edificio elegido, que la pantalla usa como filtros.
  */
 public with sharing class MonitoreoActivosController {
 
@@ -64,7 +68,7 @@ public with sharing class MonitoreoActivosController {
             + ', (SELECT Tipo_Medicion__c, Ultimo_Valor__c, Unidad__c, Ocurrido_En__c, Severidad__c, Severidad_Nivel__c,'
             + '   Tendencia_Estado__c, Tendencia_Ritmo__c, Tendencia_Minutos_Critico__c'
             + '   FROM Estados_Medicion__r)'
-            + ', (SELECT Id, CaseNumber FROM Cases'
+            + ', (SELECT Id, CaseNumber, CreatedDate FROM Cases'
             + '   WHERE RecordType.DeveloperName = :tipo AND IsClosed = false'
             + '   ORDER BY CreatedDate DESC LIMIT 1)'
             + ' FROM Asset ORDER BY Name LIMIT :maximo';
@@ -81,6 +85,7 @@ public with sharing class MonitoreoActivosController {
         resultado.sinAsignacion = visibles.isEmpty();
         resultado.edificios = opcionesDe(visibles);
         resultado.filas = new List<ActivoFila>();
+        resultado.conteos = new Conteos();
 
         String edificio = String.isBlank(edificioExterno) ? null : edificioExterno.trim();
         String sev = String.isBlank(severidad) ? null : severidad.trim();
@@ -92,14 +97,43 @@ public with sharing class MonitoreoActivosController {
             if (edificio != null && !edificio.equalsIgnoreCase(activo.Edificio_Externo__c)) {
                 continue;
             }
+            resultado.conteos.sumar(fila.severidad);
             if (sev != null && !sev.equalsIgnoreCase(fila.severidad)) {
                 continue;
             }
             resultado.filas.add(fila);
         }
+        contarSenales(resultado.filas);
         resultado.filas.sort();
         resultado.resumen = resumir(todas, resultado.edificios.size());
         return resultado;
+    }
+
+    /**
+     * Cuántas señales críticas lleva cada intervención abierta de las filas que se muestran.
+     * Sin permiso sobre Lectura_Sensor__c.Intervencion__c la cuenta se omite: la tarjeta no
+     * dice un número que el usuario no podría comprobar.
+     */
+    private static void contarSenales(List<ActivoFila> filas) {
+        Map<Id, ActivoFila> porIntervencion = new Map<Id, ActivoFila>();
+        for (ActivoFila fila : filas) {
+            if (fila.intervencionId != null) {
+                porIntervencion.put(fila.intervencionId, fila);
+            }
+        }
+        if (porIntervencion.isEmpty()
+                || !Schema.SObjectType.Lectura_Sensor__c.isAccessible()
+                || !Schema.SObjectType.Lectura_Sensor__c.fields.Intervencion__c.isAccessible()) {
+            return;
+        }
+        List<AggregateResult> cuentas = Database.queryWithBinds(
+            'SELECT Intervencion__c caso, COUNT(Id) senales FROM Lectura_Sensor__c'
+                + ' WHERE Intervencion__c IN :casos GROUP BY Intervencion__c',
+            new Map<String, Object>{ 'casos' => porIntervencion.keySet() },
+            AccessLevel.USER_MODE);
+        for (AggregateResult cuenta : cuentas) {
+            porIntervencion.get((Id) cuenta.get('caso')).intervencionSenales = (Integer) cuenta.get('senales');
+        }
     }
 
     /**
@@ -111,20 +145,11 @@ public with sharing class MonitoreoActivosController {
     private static ResumenTurno resumir(List<ActivoFila> filas, Integer edificios) {
         ResumenTurno resumen = new ResumenTurno();
         resumen.edificios = edificios;
+        Conteos conteos = new Conteos();
         List<ActivoFila> ordenadas = filas.clone();
         ordenadas.sort();
         for (ActivoFila fila : ordenadas) {
-            if (fila.severidad == CRITICO) {
-                resumen.criticos++;
-            } else if (fila.severidad == ADVERTENCIA) {
-                resumen.advertencias++;
-            } else if (fila.severidad == NORMAL) {
-                resumen.normales++;
-            } else if (fila.severidad == SIN_CONFIGURAR) {
-                resumen.sinUmbral++;
-            } else {
-                resumen.sinDatos++;
-            }
+            conteos.sumar(fila.severidad);
             if (resumen.masUrgente == null && fila.nivel >= 2) {
                 resumen.masUrgente = fila;
             }
@@ -134,6 +159,11 @@ public with sharing class MonitoreoActivosController {
                 resumen.proximoAlCritico = fila;
             }
         }
+        resumen.criticos = conteos.criticos;
+        resumen.advertencias = conteos.advertencias;
+        resumen.normales = conteos.normales;
+        resumen.sinUmbral = conteos.sinUmbral;
+        resumen.sinDatos = conteos.sinDatos;
         return resumen;
     }
 
@@ -177,6 +207,7 @@ public with sharing class MonitoreoActivosController {
         if (abiertas != null && !abiertas.isEmpty()) {
             fila.intervencionId = abiertas[0].Id;
             fila.intervencionNumero = abiertas[0].CaseNumber;
+            fila.intervencionAbiertaEn = abiertas[0].CreatedDate;
         }
 
         Estado_Medicion__c culpable = medicionCulpable(activo.Estados_Medicion__r);
@@ -323,6 +354,30 @@ public with sharing class MonitoreoActivosController {
         @AuraEnabled public List<ActivoFila> filas;
         @AuraEnabled public List<OpcionEdificio> edificios;
         @AuraEnabled public ResumenTurno resumen;
+        @AuraEnabled public Conteos conteos;
+    }
+
+    /** Cuántos activos hay de cada severidad. En la respuesta, los del edificio elegido sin mirar la severidad. */
+    public class Conteos {
+        @AuraEnabled public Integer criticos = 0;
+        @AuraEnabled public Integer advertencias = 0;
+        @AuraEnabled public Integer normales = 0;
+        @AuraEnabled public Integer sinUmbral = 0;
+        @AuraEnabled public Integer sinDatos = 0;
+
+        public void sumar(String severidad) {
+            if (severidad == CRITICO) {
+                criticos++;
+            } else if (severidad == ADVERTENCIA) {
+                advertencias++;
+            } else if (severidad == NORMAL) {
+                normales++;
+            } else if (severidad == SIN_CONFIGURAR) {
+                sinUmbral++;
+            } else {
+                sinDatos++;
+            }
+        }
     }
 
     /** Cómo están los edificios del usuario al empezar el turno. La frase la arma el LWC. */
@@ -359,6 +414,8 @@ public with sharing class MonitoreoActivosController {
         @AuraEnabled public Datetime ocurridoEn;
         @AuraEnabled public Id intervencionId;
         @AuraEnabled public String intervencionNumero;
+        @AuraEnabled public Datetime intervencionAbiertaEn;
+        @AuraEnabled public Integer intervencionSenales;
         @AuraEnabled public String tendenciaEstado;
         @AuraEnabled public Integer tendenciaMinutos;
         @AuraEnabled public Decimal tendenciaRitmo;

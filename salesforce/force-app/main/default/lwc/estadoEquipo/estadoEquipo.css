@@ -1,0 +1,265 @@
+@import "c/novaCasaEstilos";
+
+.resumen-equipo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.5rem 0.75rem;
+}
+
+.etiqueta-grande {
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+}
+
+.identidad {
+    flex: 1 1 14rem;
+    min-width: 0;
+}
+
+.nombre-equipo {
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.detalle-equipo {
+    font-size: 0.8125rem;
+    color: var(--nc-texto-debil);
+}
+
+.boton-explicar {
+    flex-shrink: 0;
+}
+
+.diagnostico {
+    margin-top: 0.75rem;
+}
+
+.seccion {
+    margin-top: 1.25rem;
+}
+
+.titulo-seccion {
+    padding-bottom: 0.375rem;
+    border-bottom: 1px solid var(--nc-linea);
+}
+
+.sin-lecturas,
+.sin-intervencion {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--nc-texto-debil);
+}
+
+.medicion {
+    margin-top: 0.75rem;
+    padding: 0.625rem 0.75rem 0.75rem 0.875rem;
+    border: 1px solid var(--nc-linea);
+    border-left: 6px solid var(--nc-sin-datos);
+    border-radius: 0.375rem;
+}
+
+.medicion-critica {
+    border-left-color: var(--nc-critica);
+}
+
+.medicion-advertencia {
+    border-left-color: var(--nc-advertencia-franja);
+}
+
+.medicion-normal {
+    border-left-color: var(--nc-normal);
+}
+
+.medicion-sin-umbral {
+    border-left: 6px dashed var(--nc-pizarra);
+}
+
+.fila-medicion {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+}
+
+.nombre-medicion {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.valor-medicion {
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.antiguedad {
+    font-size: 0.8125rem;
+    color: var(--nc-texto-debil);
+}
+
+.linea,
+.nota-limites,
+.titulo-plan {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.375rem;
+    margin-top: 0.375rem;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    --slds-c-icon-color-foreground-default: var(--nc-pizarra);
+}
+
+.nota-limites {
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--nc-pizarra);
+    border-radius: 0.25rem;
+    background: var(--nc-tinte);
+    color: var(--nc-pizarra);
+}
+
+.barra-limites {
+    position: relative;
+    margin-top: 2rem;
+}
+
+.zonas {
+    display: flex;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.zona {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-width: 0;
+    padding: 0.375rem 0.25rem;
+    border-radius: 0.25rem;
+    text-align: center;
+    font-size: 0.6875rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.zona-critica {
+    background: #feded8;
+    color: #8e030f;
+}
+
+.zona-advertencia {
+    background: #fedfd0;
+    color: #5f3e02;
+}
+
+.zona-normal {
+    background: #cdefc4;
+    color: #194e31;
+}
+
+.zona-actual {
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
+    font-weight: 700;
+}
+
+.zona-etiqueta {
+    font-weight: 700;
+}
+
+.marcador {
+    position: absolute;
+    top: -1.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.marcador-valor {
+    padding: 0.0625rem 0.375rem;
+    border-radius: 0.25rem;
+    background: var(--nc-azul);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.marcador-punta {
+    width: 0;
+    height: 0;
+    border-top: 7px solid var(--nc-azul);
+    border-right: 6px solid transparent;
+    border-left: 6px solid transparent;
+}
+
+.leyenda {
+    margin-top: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--nc-texto-debil);
+}
+
+.sin-limites {
+    margin-top: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    border: 1px dashed var(--nc-pizarra);
+    border-radius: 0.25rem;
+    font-size: 0.8125rem;
+    color: var(--nc-pizarra);
+}
+
+.intervencion {
+    margin-top: 0.75rem;
+    padding: 0.625rem 0.75rem 0.75rem 0.875rem;
+    border: 1px solid var(--nc-linea);
+    border-left: 6px solid var(--nc-azul);
+    border-radius: 0.375rem;
+}
+
+.titulo-intervencion {
+    font-size: 0.9375rem;
+    font-weight: 700;
+}
+
+.plan {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.25rem;
+    background: var(--nc-tinte-suave);
+}
+
+.titulo-plan {
+    margin-top: 0;
+    font-weight: 600;
+    color: var(--nc-azul);
+}
+
+.linea-plan {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+}
+
+.recortado {
+    color: var(--nc-texto-debil);
+}
+
+.esqueleto-titulo {
+    height: 2.5rem;
+    width: 60%;
+}
+
+.esqueleto-medicion {
+    height: 4rem;
+    margin-top: 0.75rem;
+}
+
+.esqueleto-barra {
+    height: 2.25rem;
+    margin-top: 0.75rem;
+}

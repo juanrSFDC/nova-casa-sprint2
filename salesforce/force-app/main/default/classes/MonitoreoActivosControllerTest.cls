@@ -225,6 +225,59 @@ private class MonitoreoActivosControllerTest {
     }
 
     @isTest
+    static void cadaFilaDiceCuandoSeAbrioSuIntervencionYCuantasSenalesLleva() {
+        User ingesta = crearEnRunAs(false);
+        List<Schema.Location> edificios = TestDataFactory.createLocations(2, null, true);
+        Asset bomba = activo('Bomba', 'AST-T-PUMP', edificios[0], 'WATER_PUMP', 'WATER_PRESSURE', 'BAR');
+        activo('Sala', 'AST-T-ROOM', edificios[0], 'TECHNICAL_ROOM', 'TEMPERATURE', 'CELSIUS');
+        Asset camara = activo('Camara', 'AST-T-CAM', edificios[1], 'SECURITY_CAMERA', 'CAMERA_CONNECTIVITY', 'SECONDS');
+        estado(bomba, 'WATER_PRESSURE', 'BAR', ClasificacionResultado.SEVERIDAD_CRITICO, 3, Datetime.now());
+        estado(camara, 'CAMERA_CONNECTIVITY', 'SECONDS', ClasificacionResultado.SEVERIDAD_ADVERTENCIA, 2, Datetime.now());
+
+        List<Lectura_Sensor__c> senales = TestDataFactory.createLecturasSensor(2, new Map<SObjectField, Object>{
+            Lectura_Sensor__c.Activo__c => bomba.Id,
+            Lectura_Sensor__c.Tipo_Medicion__c => 'WATER_PRESSURE',
+            Lectura_Sensor__c.Unidad__c => 'BAR'
+        }, true);
+        Case abierta = new Case(
+            RecordTypeId = Case.SObjectType.getDescribe()
+                .getRecordTypeInfosByDeveloperName().get('Intervencion').getRecordTypeId(),
+            AssetId = bomba.Id,
+            Clave_Senal__c = 'prueba|lista',
+            Edificio_Externo__c = bomba.Edificio_Externo__c
+        );
+        System.runAs(ingesta) {
+            insert abierta;
+            update new List<Lectura_Sensor__c>{
+                new Lectura_Sensor__c(Id = senales[0].Id, Intervencion__c = abierta.Id),
+                new Lectura_Sensor__c(Id = senales[1].Id, Intervencion__c = abierta.Id)
+            };
+        }
+
+        Test.startTest();
+        MonitoreoActivosController.ListaActivosResultado todos = MonitoreoActivosController.listarActivos(null, null);
+        MonitoreoActivosController.ListaActivosResultado criticasDelPrimero =
+            MonitoreoActivosController.listarActivos(edificios[0].Id_Externo__c, 'Critico');
+        Test.stopTest();
+
+        MonitoreoActivosController.ActivoFila fila = todos.filas[0];
+        Assert.areEqual(bomba.Id, fila.id);
+        Assert.areEqual([SELECT CreatedDate FROM Case WHERE Id = :abierta.Id].CreatedDate, fila.intervencionAbiertaEn,
+            'Cuándo se abrió, para decir «abierta hace N min»');
+        Assert.areEqual(2, fila.intervencionSenales, 'Las dos señales críticas enlazadas a la intervención');
+        Assert.isNull(todos.filas[1].intervencionSenales, 'Sin intervención no hay señales que contar');
+
+        Assert.areEqual(1, todos.conteos.criticos);
+        Assert.areEqual(1, todos.conteos.advertencias);
+        Assert.areEqual(1, todos.conteos.sinDatos);
+        Assert.areEqual(1, criticasDelPrimero.filas.size());
+        Assert.areEqual(1, criticasDelPrimero.conteos.criticos, 'Los contadores son los del edificio elegido');
+        Assert.areEqual(0, criticasDelPrimero.conteos.advertencias, 'La advertencia es del otro edificio');
+        Assert.areEqual(1, criticasDelPrimero.conteos.sinDatos,
+            'Y no dependen del filtro de severidad: la sala sin lecturas sigue contando');
+    }
+
+    @isTest
     static void sinNadaUrgenteElResumenNoSenalaNingunActivo() {
         List<Schema.Location> edificios = TestDataFactory.createLocations(1, null, true);
         Asset medidor = activo('Medidor', 'AST-T-WATER', edificios[0], 'WATER_METER', 'WATER_CONSUMPTION', 'LITER_PER_15_MIN');

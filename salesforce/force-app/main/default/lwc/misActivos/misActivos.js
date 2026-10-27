@@ -1,98 +1,38 @@
 import { LightningElement, wire } from "lwc";
 import { NavigationMixin } from "lightning/navigation";
 import { refreshApex } from "@salesforce/apex";
+import LOGO from "@salesforce/resourceUrl/NovaCasaLogoBlanco";
 import listarActivos from "@salesforce/apex/MonitoreoActivosController.listarActivos";
 import narrarActivo from "@salesforce/apex/MonitoreoActivosController.narrarActivo";
+import {
+    PRESENTACION,
+    MEDICIONES,
+    MEDICIONES_EN_FRASE,
+    MINUTOS_DATO_VIEJO,
+    NOTA_CON_IA,
+    NOTA_SIN_IA,
+    MENSAJE_NARRACION_ERROR,
+    TENDENCIAS,
+    antiguedadDe,
+    esViejo,
+    medicionLegible,
+    tendenciaLegible,
+    tiempoHastaCritico
+} from "c/novaCasaFormato";
 
-// La severidad llega del servidor (roll-up de US-206). Aquí solo se traduce a texto y
-// forma: cada nivel tiene un icono distinto para que no dependa solo del color.
-// «Sin configurar» = tiene lecturas pero ninguna medición con umbral; «Sin datos» = no tiene lecturas.
-export const PRESENTACION = {
-    Critico: { etiqueta: "Crítica", icono: "utility:error" },
-    Advertencia: { etiqueta: "Advertencia", icono: "utility:warning" },
-    Normal: { etiqueta: "Normal", icono: "utility:success" },
-    "Sin configurar": { etiqueta: "Sin umbral", icono: "utility:help" },
-    "Sin datos": { etiqueta: "Sin datos", icono: "utility:clock" }
+// Se reexportan porque las pruebas y el kit de Jest de Juan las importan desde «Mis activos».
+export {
+    PRESENTACION,
+    TENDENCIAS,
+    MINUTOS_DATO_VIEJO,
+    NOTA_CON_IA,
+    NOTA_SIN_IA,
+    MENSAJE_NARRACION_ERROR,
+    antiguedadDe,
+    medicionLegible,
+    tendenciaLegible,
+    tiempoHastaCritico
 };
-
-// Etiquetas para personas: las listas de selección guardan los valores del contrato del simulador.
-const MEDICIONES = {
-    TEMPERATURE: "Temperatura",
-    WATER_PRESSURE: "Presión de agua",
-    WATER_CONSUMPTION: "Consumo de agua",
-    ENERGY_CONSUMPTION: "Consumo de energía",
-    CAMERA_CONNECTIVITY: "Conectividad de la cámara"
-};
-
-const UNIDADES = {
-    CELSIUS: "°C",
-    BAR: "bar",
-    KWH_PER_15_MIN: "kWh/15 min",
-    LITER_PER_15_MIN: "L/15 min",
-    SECONDS: "s"
-};
-
-/**
- * Medición legible: «Presión de agua: 0,7 bar».
- * @param {string} medicion Valor de la lista Tipo_Medicion__c
- * @param {number} valor Último valor
- * @param {string} unidad Valor de la lista Unidad__c
- * @returns {string}
- */
-export function medicionLegible(medicion, valor, unidad) {
-    if (!medicion) {
-        return "Sin lecturas";
-    }
-    const nombre = MEDICIONES[medicion] || medicion;
-    if (valor === null || valor === undefined) {
-        return nombre;
-    }
-    const numero = Number(valor).toLocaleString("es-CO", { maximumFractionDigits: 2 });
-    const simbolo = UNIDADES[unidad] || unidad || "";
-    return `${nombre}: ${numero} ${simbolo}`.trim();
-}
-
-// La tendencia la calcula el procesamiento (E-02, Juan Rozo). Aquí solo se pone en palabras.
-export const TENDENCIAS = {
-    Calculada: "Hacia el crítico",
-    Ya_En_Critico: "Ya en crítico",
-    Se_Aleja_Del_Critico: "Se aleja del crítico",
-    Estable: "Estable",
-    Sin_Tendencia_Clara: "Sin tendencia clara",
-    Pocas_Lecturas: "Pocas lecturas",
-    Sin_Umbral: "Sin umbral"
-};
-
-/**
- * Cuánto falta, legible: «~13 min» o, desde dos horas, «~3 h».
- * @param {number} minutos
- * @returns {string}
- */
-export function tiempoHastaCritico(minutos) {
-    if (minutos < 120) {
-        return `~${minutos} min`;
-    }
-    return `~${Math.round(minutos / 60)} h`;
-}
-
-/**
- * Tendencia legible: «Temperatura: crítico en ~13 min», o el estado que explica por qué no hay minutos.
- * @param {string} estado Valor de Tendencia_Estado__c
- * @param {number} minutos Tendencia_Minutos_Critico__c
- * @param {string} medicion Tipo_Medicion__c de esa tendencia
- * @returns {string}
- */
-export function tendenciaLegible(estado, minutos, medicion) {
-    if (!estado) {
-        return "—";
-    }
-    if (estado === "Calculada" && minutos !== null && minutos !== undefined) {
-        const nombre = MEDICIONES[medicion] || medicion;
-        const cuando = `crítico en ${tiempoHastaCritico(minutos)}`;
-        return nombre ? `${nombre}: ${cuando}` : cuando.charAt(0).toUpperCase() + cuando.slice(1);
-    }
-    return TENDENCIAS[estado] || estado;
-}
 
 function contar(n, singular, plural) {
     return n > 0 ? `${n} ${n === 1 ? singular : plural}` : null;
@@ -147,100 +87,119 @@ export const FILTROS_SEVERIDAD = [
     { valor: "Sin datos", etiqueta: "Sin datos" }
 ];
 
-const COLUMNAS = [
+const CONTEO_DE = {
+    Critico: "criticos",
+    Advertencia: "advertencias",
+    Normal: "normales",
+    "Sin configurar": "sinUmbral",
+    "Sin datos": "sinDatos"
+};
+
+// Los grupos responden a «qué hago con este equipo», no a un campo. Los dos últimos se pliegan
+// cuando hay algo urgente, para que lo urgente quepa en la primera pantalla.
+export const GRUPOS = [
+    { clave: "atencion", titulo: "Necesitan atención", descripcion: "En crítico: hay que actuar ya.", plegable: false },
     {
-        label: "Severidad",
-        fieldName: "severidadTexto",
-        initialWidth: 150,
-        cellAttributes: {
-            iconName: { fieldName: "icono" },
-            iconAlternativeText: { fieldName: "severidadTexto" }
-        }
+        clave: "vigilar",
+        titulo: "Vigilar",
+        descripcion: "En advertencia, camino del crítico o con una intervención todavía abierta.",
+        plegable: false
     },
-    { label: "Activo", fieldName: "nombre", wrapText: true },
-    { label: "Edificio", fieldName: "edificioNombre" },
-    { label: "Medición que la provoca", fieldName: "medicionTexto", wrapText: true },
+    { clave: "orden", titulo: "En orden", descripcion: "Sus mediciones están en normal.", plegable: true },
     {
-        label: "Tendencia",
-        fieldName: "tendenciaTexto",
-        wrapText: true,
-        cellAttributes: { iconName: { fieldName: "tendenciaIcono" } }
-    },
-    {
-        label: "Fecha de la lectura",
-        fieldName: "ocurridoEn",
-        type: "date",
-        initialWidth: 170,
-        typeAttributes: { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }
-    },
-    { label: "Antigüedad del dato", fieldName: "antiguedad", initialWidth: 160 },
-    {
-        type: "button",
-        initialWidth: 130,
-        typeAttributes: { label: "Ver detalle", name: "detalle", variant: "neutral" }
-    },
-    {
-        type: "button",
-        initialWidth: 120,
-        typeAttributes: {
-            label: "Explicar",
-            name: "explicar",
-            variant: "base",
-            iconName: "utility:einstein",
-            title: "Diagnóstico del equipo en un párrafo"
-        }
-    },
-    {
-        type: "button",
-        initialWidth: 160,
-        typeAttributes: {
-            label: { fieldName: "intervencionEtiqueta" },
-            name: "intervencion",
-            variant: "base",
-            disabled: { fieldName: "sinIntervencion" }
-        }
+        clave: "pendiente",
+        titulo: "Sin umbral o sin datos",
+        descripcion: "Todavía no se pueden evaluar: les falta el umbral o no han llegado lecturas.",
+        plegable: true
     }
 ];
 
-export const MENSAJE_ERROR = "No se pudo cargar la información. Revisa tu conexión e inténtalo de nuevo.";
-
-// E-18: la severidad y las intervenciones las decide el procesamiento; la IA solo las cuenta.
-export const NOTA_CON_IA =
-    "Lo redactó Einstein con los datos del equipo. La severidad y las intervenciones las decide el sistema, no la IA.";
-export const NOTA_SIN_IA = "Einstein no respondió: este diagnóstico se armó con los datos del equipo, sin IA.";
-export const MENSAJE_NARRACION_ERROR = "No se pudo preparar el diagnóstico. Inténtalo de nuevo.";
-
 /**
- * Antigüedad legible del dato de origen, relativa a ahora.
- * @param {string} iso Fecha ISO de la lectura
- * @param {number} ahora Milisegundos de referencia
- * @returns {string}
+ * El grupo de un activo. Un normal que va hacia el crítico, o que aún tiene su intervención
+ * abierta, no está «en orden»: hay que vigilarlo.
+ * @param {object} fila ActivoFila del controlador
+ * @returns {string} Clave del grupo
  */
-export function antiguedadDe(iso, ahora) {
-    if (!iso) {
-        return "Sin lecturas";
+export function grupoDe(fila) {
+    if (fila.severidad === "Critico") {
+        return "atencion";
     }
-    const minutos = Math.floor((ahora - new Date(iso).getTime()) / 60000);
-    if (minutos < 1) {
-        return "Hace menos de 1 min";
+    if (fila.severidad === "Advertencia") {
+        return "vigilar";
     }
-    if (minutos < 60) {
-        return `Hace ${minutos} min`;
+    if (fila.severidad === "Normal") {
+        return fila.intervencionId || vaHaciaElCritico(fila) ? "vigilar" : "orden";
     }
-    const horas = Math.floor(minutos / 60);
-    if (horas < 24) {
-        return `Hace ${horas} h`;
-    }
-    const dias = Math.floor(horas / 24);
-    return dias === 1 ? "Hace 1 día" : `Hace ${dias} días`;
+    return "pendiente";
 }
 
+function vaHaciaElCritico(fila) {
+    return fila.tendenciaEstado === "Calculada" && fila.tendenciaMinutos !== null && fila.tendenciaMinutos !== undefined;
+}
+
+/**
+ * Lo que está pasando con el equipo, en una o dos frases: su intervención y, si va hacia el
+ * crítico, en cuánto llegaría. Un equipo sin umbral o sin datos dice por qué no se evalúa.
+ * @param {object} fila ActivoFila del controlador
+ * @param {number} ahora Milisegundos de referencia
+ * @returns {Array<{clave: string, texto: string, icono: string}>}
+ */
+export function queEstaPasando(fila, ahora) {
+    const lineas = [];
+    if (fila.intervencionId) {
+        const numero = fila.intervencionNumero ? ` ${fila.intervencionNumero}` : "";
+        const cuando = fila.intervencionAbiertaEn ? ` ${antiguedadDe(fila.intervencionAbiertaEn, ahora).toLowerCase()}` : "";
+        const n = fila.intervencionSenales;
+        const senales = n > 0 ? ` · ${n} ${n === 1 ? "señal crítica" : "señales críticas"}` : "";
+        lineas.push({ clave: "intervencion", texto: `Intervención${numero} abierta${cuando}${senales}`, icono: "utility:case" });
+    }
+    if (fila.severidad === "Sin configurar") {
+        lineas.push({
+            clave: "motivo",
+            texto: "Llegan lecturas, pero ninguna medición tiene umbral: no se puede decir si está bien.",
+            icono: "utility:help"
+        });
+    } else if (fila.severidad === "Sin datos") {
+        lineas.push({ clave: "motivo", texto: "Todavía no ha llegado ninguna lectura de este equipo.", icono: "utility:clock" });
+    } else if (fila.severidad !== "Critico" && vaHaciaElCritico(fila)) {
+        const medicion = MEDICIONES_EN_FRASE[fila.tendenciaMedicion] || "la medición";
+        lineas.push({
+            clave: "tendencia",
+            texto: `A este ritmo, ${medicion} llega al crítico en ${tiempoHastaCritico(fila.tendenciaMinutos)}.`,
+            icono: "utility:trending"
+        });
+    }
+    return lineas;
+}
+
+/**
+ * Si la lectura ya no está en crítico pero la intervención sigue viva, se dice: el operador no
+ * debe confundir «volvió a normal» con «está resuelto».
+ * @param {object} fila ActivoFila del controlador
+ * @returns {string|null}
+ */
+export function sigueAbierta(fila) {
+    if (!fila.intervencionId || fila.severidad === "Critico") {
+        return null;
+    }
+    if (fila.severidad === "Normal") {
+        return "Volvió a normal · la intervención sigue abierta";
+    }
+    if (fila.severidad === "Advertencia") {
+        return "Bajó a advertencia · la intervención sigue abierta";
+    }
+    return "La intervención sigue abierta";
+}
+
+export const MENSAJE_ERROR = "No se pudo cargar la información. Revisa tu conexión e inténtalo de nuevo.";
+
 export default class MisActivos extends NavigationMixin(LightningElement) {
-    columnas = COLUMNAS;
+    logo = LOGO;
     edificio = "";
     severidad = "";
     filas = [];
     edificios = [];
+    conteos;
     totalSinFiltro = 0;
     sinAsignacion = false;
     hayError = false;
@@ -251,6 +210,8 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
     autoActualizar = true;
     actualizadoEn;
     temporizador;
+    abiertos = {};
+    idNarrado;
     diagnostico;
     equipoNarrado;
     narrando = false;
@@ -276,7 +237,8 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
             this.sinAsignacion = data.sinAsignacion === true;
             this.totalSinFiltro = data.totalSinFiltro || 0;
             this.edificios = data.edificios || [];
-            this.filas = (data.filas || []).map((fila) => this.aFila(fila, ahora));
+            this.filas = (data.filas || []).map((fila) => this.aTarjeta(fila, ahora));
+            this.conteos = data.conteos || this.contarFilas();
             this.resumen = resumenTurno(data.resumen, ahora);
             this.actualizadoEn = new Date(ahora);
         } else if (error) {
@@ -286,33 +248,39 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
         }
     }
 
-    aFila(fila, ahora) {
+    aTarjeta(fila, ahora) {
         const presentacion = PRESENTACION[fila.severidad] || PRESENTACION["Sin datos"];
-        // La tendencia necesita cinco lecturas; una fila ya crítica lo dice por su severidad.
-        const critica = fila.severidad === "Critico";
-        let medicionTexto = medicionLegible(fila.medicion, fila.valor, fila.unidad);
-        if (fila.medicionesSinConfigurar > 0) {
+        let lineaMedicion = fila.medicion ? medicionLegible(fila.medicion, fila.valor, fila.unidad) : null;
+        if (lineaMedicion && fila.medicionesSinConfigurar > 0) {
             const plural = fila.medicionesSinConfigurar === 1 ? "medición" : "mediciones";
-            medicionTexto += ` (${fila.medicionesSinConfigurar} ${plural} sin umbral)`;
+            lineaMedicion += ` (${fila.medicionesSinConfigurar} ${plural} sin umbral)`;
         }
         return {
             ...fila,
-            severidadTexto: presentacion.etiqueta,
+            grupo: grupoDe(fila),
+            etiqueta: presentacion.etiqueta,
             icono: presentacion.icono,
-            edificioNombre: fila.edificioNombre || fila.edificioExterno || "—",
-            medicionTexto,
-            antiguedad: antiguedadDe(fila.ocurridoEn, ahora),
-            tendenciaTexto: critica
-                ? TENDENCIAS.Ya_En_Critico
-                : tendenciaLegible(fila.tendenciaEstado, fila.tendenciaMinutos, fila.tendenciaMedicion),
-            tendenciaIcono: !critica && fila.tendenciaEstado === "Calculada" ? "utility:trending" : "",
-            sinIntervencion: !fila.intervencionId,
-            intervencionEtiqueta: fila.intervencionId ? `Intervención ${fila.intervencionNumero || ""}`.trim() : "Sin intervención"
+            clase: `tarjeta tarjeta-${presentacion.tono}`,
+            claseEtiqueta: `etiqueta etiqueta-${presentacion.tono}`,
+            edificio: fila.edificioNombre || fila.edificioExterno || "Sin edificio",
+            lineaMedicion,
+            antiguedad: antiguedadDe(fila.ocurridoEn, ahora).toLowerCase(),
+            datoViejo: esViejo(fila.ocurridoEn, ahora),
+            lineas: queEstaPasando(fila, ahora),
+            etiquetaAbierta: sigueAbierta(fila)
         };
     }
 
-    get cargando() {
-        return !this.recibido || this.refrescando;
+    contarFilas() {
+        const conteos = { criticos: 0, advertencias: 0, normales: 0, sinUmbral: 0, sinDatos: 0 };
+        this.filas.forEach((fila) => {
+            conteos[CONTEO_DE[fila.severidad] || "sinDatos"]++;
+        });
+        return conteos;
+    }
+
+    get cargandoPrimeraVez() {
+        return !this.recibido;
     }
 
     get mostrarError() {
@@ -327,7 +295,7 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
         return this.recibido && !this.hayError && !this.sinAsignacion && this.filas.length === 0;
     }
 
-    get mostrarTabla() {
+    get mostrarLista() {
         return this.recibido && !this.hayError && this.filas.length > 0;
     }
 
@@ -335,20 +303,99 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
         return this.recibido && !this.hayError && !this.sinAsignacion;
     }
 
-    get mostrarResumen() {
-        return this.mostrarFiltros && !!this.resumen;
-    }
-
     get textoActualizado() {
         if (!this.actualizadoEn) {
-            return "";
+            return "Cargando tus activos…";
         }
         const hora = this.actualizadoEn.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
         return this.autoActualizar ? `Actualizado a las ${hora} · se actualiza cada 30 s` : `Actualizado a las ${hora}`;
     }
 
+    get etiquetaActualizar() {
+        return this.refrescando ? "Actualizando…" : "Actualizar";
+    }
+
     get mensajeError() {
         return MENSAJE_ERROR;
+    }
+
+    get conteo() {
+        if (this.filas.length === this.totalSinFiltro) {
+            return `${this.totalSinFiltro} activos`;
+        }
+        return `${this.filas.length} de ${this.totalSinFiltro} activos coinciden con los filtros`;
+    }
+
+    get opcionesEdificio() {
+        return [{ label: "Todos mis edificios", value: "" }].concat(
+            (this.edificios || []).map((e) => ({ label: e.nombre, value: e.idExterno }))
+        );
+    }
+
+    get chips() {
+        const conteos = this.conteos || {};
+        const total = Object.values(CONTEO_DE).reduce((suma, clave) => suma + (conteos[clave] || 0), 0);
+        return FILTROS_SEVERIDAD.map((filtro) => {
+            const presentacion = PRESENTACION[filtro.valor];
+            const numero = filtro.valor ? conteos[CONTEO_DE[filtro.valor]] || 0 : total;
+            const activo = this.severidad === filtro.valor;
+            return {
+                ...filtro,
+                clave: filtro.valor || "todas",
+                numero,
+                presionado: String(activo),
+                clase: `chip${activo ? " chip-activo" : ""}${numero === 0 ? " chip-cero" : ""}`,
+                clasePunto: presentacion ? `punto punto-${presentacion.tono}` : "punto punto-todas"
+            };
+        });
+    }
+
+    get grupos() {
+        const porGrupo = {};
+        GRUPOS.forEach((g) => {
+            porGrupo[g.clave] = [];
+        });
+        this.filas.forEach((fila) => {
+            porGrupo[fila.grupo].push({
+                ...fila,
+                explicando: this.idNarrado === fila.id && this.mostrarDiagnostico
+            });
+        });
+        const hayUrgente = porGrupo.atencion.length + porGrupo.vigilar.length > 0;
+        const hayAntes = { orden: hayUrgente, pendiente: hayUrgente || porGrupo.orden.length > 0 };
+        return GRUPOS.filter((g) => porGrupo[g.clave].length > 0).map((g) => {
+            const abierto = this.estaAbierto(g, hayAntes[g.clave]);
+            return {
+                ...g,
+                tarjetas: porGrupo[g.clave],
+                total: porGrupo[g.clave].length,
+                abierto,
+                expandido: String(abierto),
+                textoBoton: abierto ? "Ocultar" : "Mostrar",
+                idTitulo: `grupo-${g.clave}`,
+                clase: `grupo grupo-${g.clave}`
+            };
+        });
+    }
+
+    estaAbierto(grupo, hayAlgoAntes) {
+        if (!grupo.plegable || this.severidad) {
+            return true;
+        }
+        if (grupo.clave in this.abiertos) {
+            return this.abiertos[grupo.clave];
+        }
+        return !hayAlgoAntes;
+    }
+
+    alternarGrupo(event) {
+        const clave = event.currentTarget.dataset.grupo;
+        const grupo = GRUPOS.find((g) => g.clave === clave);
+        const visible = this.grupos.find((g) => g.clave === clave);
+        if (!grupo || !visible) {
+            return;
+        }
+        this.abiertos = { ...this.abiertos, [clave]: !visible.abierto };
     }
 
     get mostrarDiagnostico() {
@@ -367,33 +414,14 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
         return this.diagnostico && this.diagnostico.conIa ? NOTA_CON_IA : NOTA_SIN_IA;
     }
 
-    get conteo() {
-        if (this.filas.length === this.totalSinFiltro) {
-            return `${this.totalSinFiltro} activos`;
-        }
-        return `${this.filas.length} de ${this.totalSinFiltro} activos coinciden con los filtros`;
-    }
-
-    get opcionesEdificio() {
-        return [{ label: "Todos mis edificios", value: "" }].concat(
-            (this.edificios || []).map((e) => ({ label: e.nombre, value: e.idExterno }))
-        );
-    }
-
-    get botonesSeveridad() {
-        return FILTROS_SEVERIDAD.map((f) => ({
-            ...f,
-            clave: f.valor || "todas",
-            variante: this.severidad === f.valor ? "brand" : "neutral"
-        }));
-    }
-
     cambiarEdificio(event) {
         this.edificio = event.detail.value;
     }
 
+    // Pulsar el contador activo lo quita: así se vuelve a «Todas» sin buscar otro botón.
     cambiarSeveridad(event) {
-        this.severidad = event.currentTarget.dataset.valor || "";
+        const valor = event.currentTarget.dataset.valor || "";
+        this.severidad = this.severidad === valor ? "" : valor;
     }
 
     quitarFiltros() {
@@ -418,7 +446,7 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
         this.programarActualizacion();
     }
 
-    // Sin indicador de carga para no hacer parpadear la tabla; solo se pide si la pestaña está a la vista.
+    // Sin indicador de carga para no hacer parpadear la lista; solo se pide si la pestaña está a la vista.
     programarActualizacion() {
         this.detenerActualizacion();
         if (!this.autoActualizar) {
@@ -439,14 +467,18 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
         }
     }
 
-    manejarFila(event) {
-        const accion = event.detail.action.name;
-        const fila = event.detail.row;
-        if (accion === "detalle") {
-            this.irA("Asset", fila.id);
-        } else if (accion === "intervencion" && fila.intervencionId) {
-            this.irA("Case", fila.intervencionId);
-        } else if (accion === "explicar") {
+    verEquipo(event) {
+        this.irA("Asset", event.currentTarget.dataset.activo);
+    }
+
+    abrirIntervencion(event) {
+        this.irA("Case", event.currentTarget.dataset.caso);
+    }
+
+    pedirExplicacion(event) {
+        const id = event.currentTarget.dataset.activo;
+        const fila = this.filas.find((f) => f.id === id);
+        if (fila) {
             this.explicar(fila);
         }
     }
@@ -454,6 +486,7 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
     // Si se pide otro equipo antes de que llegue la respuesta, la anterior se descarta.
     async explicar(fila) {
         const peticion = ++this.peticionNarracion;
+        this.idNarrado = fila.id;
         this.equipoNarrado = fila.nombre;
         this.diagnostico = null;
         this.errorNarracion = null;
@@ -477,6 +510,7 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
 
     cerrarDiagnostico() {
         this.peticionNarracion++;
+        this.idNarrado = null;
         this.diagnostico = null;
         this.errorNarracion = null;
         this.narrando = false;

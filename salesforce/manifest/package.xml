@@ -120,6 +120,10 @@
         <members>SensorPortatilTest</members>
         <members>AccionesAdministradorController</members>
         <members>AccionesAdministradorControllerTest</members>
+        <members>EstadoEquipoController</members>
+        <members>EstadoEquipoControllerTest</members>
+        <members>IntervencionNovaCasaController</members>
+        <members>IntervencionNovaCasaControllerTest</members>
         <name>ApexClass</name>
     </types>
     <types>
@@ -258,12 +262,25 @@
         <members>misActivos</members>
         <members>reprocesarTraza</members>
         <members>revisarSilencioAhora</members>
+        <members>estadoEquipo</members>
+        <members>intervencionNovaCasa</members>
+        <members>novaCasaEstilos</members>
+        <members>novaCasaFormato</members>
         <name>LightningComponentBundle</name>
     </types>
     <types>
         <members>Activo_Nova_Casa</members>
         <members>Mapa_de_edificios</members>
+        <members>Intervencion_Nova_Casa</members>
         <name>FlexiPage</name>
+    </types>
+    <types>
+        <members>NovaCasaLogoBlanco</members>
+        <name>StaticResource</name>
+    </types>
+    <types>
+        <members>NovaCasaIcono</members>
+        <name>ContentAsset</name>
     </types>
     <types>
         <members>Nova_Casa_Alerta</members>

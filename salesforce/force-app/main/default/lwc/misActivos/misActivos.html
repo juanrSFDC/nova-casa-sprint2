@@ -1,147 +1,248 @@
 <template>
-    <lightning-card title="Mis activos" icon-name="standard:asset_object">
-        <div slot="actions" class="acciones">
-            <lightning-input
-                type="toggle"
-                label="Actualizar solo"
-                checked={autoActualizar}
-                message-toggle-active="Cada 30 s"
-                message-toggle-inactive="En pausa"
-                onchange={cambiarAutoActualizar}
-                data-id="auto-actualizar"
-            ></lightning-input>
-            <lightning-button
-                label="Actualizar"
-                icon-name="utility:refresh"
-                onclick={actualizar}
-                disabled={cargando}
-                data-id="actualizar"
-            ></lightning-button>
-        </div>
+    <article class="panel">
+        <header class="cabecera">
+            <img class="logo" src={logo} alt="Nova Casa" />
+            <div class="titulos">
+                <h2 class="titulo">Mis activos</h2>
+                <p class="subtitulo" data-id="actualizado">{textoActualizado}</p>
+            </div>
+        </header>
 
-        <div class="slds-p-horizontal_medium">
-            <template lwc:if={mostrarResumen}>
-                <p class="resumen slds-m-bottom_x-small" data-id="resumen">{resumen}</p>
+        <div class="cuerpo">
+            <template lwc:if={cargandoPrimeraVez}>
+                <div class="carga" data-id="cargando" role="status">
+                    <span class="slds-assistive-text">Cargando tus activos</span>
+                    <div class="esqueleto esqueleto-resumen"></div>
+                    <div class="esqueleto esqueleto-chips"></div>
+                    <div class="esqueleto esqueleto-tarjeta"></div>
+                    <div class="esqueleto esqueleto-tarjeta"></div>
+                    <div class="esqueleto esqueleto-tarjeta"></div>
+                </div>
             </template>
+
+            <template lwc:if={mostrarError}>
+                <div class="vacio" data-id="error" role="alert">
+                    <h3 class="slds-text-heading_small">No se pudo cargar la información</h3>
+                    <p class="slds-m-top_x-small">{mensajeError}</p>
+                    <lightning-button
+                        class="slds-m-top_small"
+                        variant="brand"
+                        label="Reintentar"
+                        onclick={actualizar}
+                        data-id="reintentar"
+                    ></lightning-button>
+                </div>
+            </template>
+
+            <template lwc:if={mostrarSinAsignacion}>
+                <div class="vacio" data-id="vacio-sin-asignacion">
+                    <h3 class="slds-text-heading_small">No tienes activos a tu cargo</h3>
+                    <p class="slds-m-top_x-small">
+                        Esta pantalla muestra los equipos de los edificios que tienes asignados.
+                        Pide a coordinación que te asigne los edificios de tu turno.
+                    </p>
+                </div>
+            </template>
+
             <template lwc:if={mostrarFiltros}>
-                <p class="slds-text-body_small slds-text-color_weak">
-                    <span data-id="conteo">{conteo}</span>
-                    <span class="slds-m-left_x-small" data-id="actualizado">{textoActualizado}</span>
-                </p>
-                <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_x-small slds-m-bottom_small">
-                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-                        <lightning-combobox
-                            name="edificio"
-                            label="Edificio"
-                            value={edificio}
-                            options={opcionesEdificio}
-                            onchange={cambiarEdificio}
-                            data-id="filtro-edificio"
-                        ></lightning-combobox>
+                <template lwc:if={resumen}>
+                    <p class="resumen" data-id="resumen">{resumen}</p>
+                </template>
+
+                <div class="chips" role="group" aria-label="Filtrar por severidad">
+                    <template for:each={chips} for:item="chip">
+                        <button
+                            key={chip.clave}
+                            type="button"
+                            class={chip.clase}
+                            aria-pressed={chip.presionado}
+                            data-valor={chip.valor}
+                            data-id="filtro-severidad"
+                            onclick={cambiarSeveridad}
+                        >
+                            <span class={chip.clasePunto} aria-hidden="true"></span>
+                            <span>{chip.etiqueta}</span>
+                            <span class="numero">{chip.numero}</span>
+                        </button>
+                    </template>
+                </div>
+
+                <div class="barra">
+                    <lightning-combobox
+                        class="filtro-edificio"
+                        name="edificio"
+                        label="Edificio"
+                        value={edificio}
+                        options={opcionesEdificio}
+                        onchange={cambiarEdificio}
+                        data-id="filtro-edificio"
+                    ></lightning-combobox>
+                    <div class="controles">
+                        <lightning-input
+                            type="toggle"
+                            label="Actualizar solo"
+                            checked={autoActualizar}
+                            message-toggle-active="Cada 30 s"
+                            message-toggle-inactive="En pausa"
+                            onchange={cambiarAutoActualizar}
+                            data-id="auto-actualizar"
+                        ></lightning-input>
+                        <lightning-button
+                            label={etiquetaActualizar}
+                            icon-name="utility:refresh"
+                            onclick={actualizar}
+                            disabled={refrescando}
+                            data-id="actualizar"
+                        ></lightning-button>
                     </div>
-                    <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-3">
-                        <fieldset>
-                            <legend class="slds-form-element__label">Severidad</legend>
-                            <div class="grupo-severidad" role="group" aria-label="Filtrar por severidad">
-                                <template for:each={botonesSeveridad} for:item="boton">
-                                    <lightning-button
-                                        key={boton.clave}
-                                        label={boton.etiqueta}
-                                        variant={boton.variante}
-                                        data-valor={boton.valor}
-                                        data-id="filtro-severidad"
-                                        onclick={cambiarSeveridad}
-                                    ></lightning-button>
+                </div>
+                <p class="conteo" data-id="conteo">{conteo}</p>
+            </template>
+
+            <template lwc:if={mostrarFiltroVacio}>
+                <div class="vacio" data-id="vacio-filtro">
+                    <h3 class="slds-text-heading_small">Ningún activo coincide con estos filtros</h3>
+                    <p class="slds-m-top_x-small">Prueba con otro edificio u otra severidad.</p>
+                    <lightning-button
+                        class="slds-m-top_small"
+                        label="Quitar filtros"
+                        onclick={quitarFiltros}
+                        data-id="quitar-filtros"
+                    ></lightning-button>
+                </div>
+            </template>
+
+            <template lwc:if={mostrarLista}>
+                <div data-id="lista">
+                    <template for:each={grupos} for:item="grupo">
+                        <section
+                            key={grupo.clave}
+                            class={grupo.clase}
+                            aria-labelledby={grupo.idTitulo}
+                            data-id="grupo"
+                            data-grupo={grupo.clave}
+                        >
+                            <div class="cabecera-grupo">
+                                <div>
+                                    <h3 class="titulo-grupo" id={grupo.idTitulo}>{grupo.titulo} · {grupo.total}</h3>
+                                    <p class="descripcion-grupo">{grupo.descripcion}</p>
+                                </div>
+                                <template lwc:if={grupo.plegable}>
+                                    <button
+                                        type="button"
+                                        class="boton-grupo"
+                                        aria-expanded={grupo.expandido}
+                                        data-grupo={grupo.clave}
+                                        data-id="plegar"
+                                        onclick={alternarGrupo}
+                                    >
+                                        {grupo.textoBoton}
+                                    </button>
                                 </template>
                             </div>
-                        </fieldset>
-                    </div>
+
+                            <template lwc:if={grupo.abierto}>
+                                <ul class="tarjetas">
+                                    <template for:each={grupo.tarjetas} for:item="tarjeta">
+                                        <li key={tarjeta.id} data-id="tarjeta" data-activo={tarjeta.id}>
+                                            <article class={tarjeta.clase} data-severidad={tarjeta.severidad}>
+                                                <div class="linea-titulo">
+                                                    <span class={tarjeta.claseEtiqueta} data-id="etiqueta">
+                                                        <lightning-icon icon-name={tarjeta.icono} size="xx-small"></lightning-icon>
+                                                        <span>{tarjeta.etiqueta}</span>
+                                                    </span>
+                                                    <h4 class="nombre" data-id="nombre">{tarjeta.nombre}</h4>
+                                                    <span class="edificio">{tarjeta.edificio}</span>
+                                                </div>
+
+                                                <template lwc:if={tarjeta.lineaMedicion}>
+                                                    <p class="linea" data-id="medicion">
+                                                        <span class="valor">{tarjeta.lineaMedicion}</span>
+                                                        <span class="antiguedad">· {tarjeta.antiguedad}</span>
+                                                        <template lwc:if={tarjeta.datoViejo}>
+                                                            <span class="marca marca-vieja" title="La última lectura tiene más de 30 minutos" data-id="dato-viejo">Dato viejo</span>
+                                                        </template>
+                                                    </p>
+                                                </template>
+
+                                                <template for:each={tarjeta.lineas} for:item="linea">
+                                                    <p key={linea.clave} class="linea" data-id={linea.clave}>
+                                                        <lightning-icon icon-name={linea.icono} size="xx-small"></lightning-icon>
+                                                        <span>{linea.texto}</span>
+                                                    </p>
+                                                </template>
+
+                                                <template lwc:if={tarjeta.etiquetaAbierta}>
+                                                    <p class="linea">
+                                                        <span class="marca marca-abierta" data-id="sigue-abierta">{tarjeta.etiquetaAbierta}</span>
+                                                    </p>
+                                                </template>
+
+                                                <div class="acciones-tarjeta">
+                                                    <lightning-button
+                                                        label="Ver equipo"
+                                                        data-activo={tarjeta.id}
+                                                        data-id="ver-equipo"
+                                                        onclick={verEquipo}
+                                                    ></lightning-button>
+                                                    <template lwc:if={tarjeta.intervencionId}>
+                                                        <lightning-button
+                                                            variant="brand"
+                                                            label="Abrir intervención"
+                                                            data-caso={tarjeta.intervencionId}
+                                                            data-id="abrir-intervencion"
+                                                            onclick={abrirIntervencion}
+                                                        ></lightning-button>
+                                                    </template>
+                                                    <lightning-button
+                                                        variant="base"
+                                                        label="Explicar"
+                                                        icon-name="utility:einstein"
+                                                        title="Diagnóstico del equipo en un párrafo"
+                                                        data-activo={tarjeta.id}
+                                                        data-id="explicar"
+                                                        onclick={pedirExplicacion}
+                                                    ></lightning-button>
+                                                </div>
+                                            </article>
+
+                                            <template lwc:if={tarjeta.explicando}>
+                                                <section class="diagnostico" data-id="diagnostico" aria-live="polite">
+                                                    <div class="cabecera-diagnostico">
+                                                        <h5 class="titulo-diagnostico" data-id="titulo-diagnostico">{tituloDiagnostico}</h5>
+                                                        <lightning-button-icon
+                                                            icon-name="utility:close"
+                                                            variant="bare"
+                                                            alternative-text="Cerrar el diagnóstico"
+                                                            onclick={cerrarDiagnostico}
+                                                            data-id="cerrar-diagnostico"
+                                                        ></lightning-button-icon>
+                                                    </div>
+                                                    <template lwc:if={narrando}>
+                                                        <div class="narrando" data-id="narrando" role="status">
+                                                            <lightning-spinner
+                                                                alternative-text="Preparando el diagnóstico"
+                                                                size="small"
+                                                            ></lightning-spinner>
+                                                        </div>
+                                                    </template>
+                                                    <template lwc:elseif={errorNarracion}>
+                                                        <p class="slds-m-top_x-small" role="alert" data-id="error-diagnostico">{errorNarracion}</p>
+                                                    </template>
+                                                    <template lwc:else>
+                                                        <p class="slds-m-top_x-small" data-id="texto-diagnostico">{textoDiagnostico}</p>
+                                                        <p class="nota-diagnostico" data-id="nota-diagnostico">{notaDiagnostico}</p>
+                                                    </template>
+                                                </section>
+                                            </template>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </template>
+                        </section>
+                    </template>
                 </div>
             </template>
         </div>
-
-        <template lwc:if={mostrarDiagnostico}>
-            <section class="diagnostico slds-m-horizontal_medium slds-m-bottom_small" data-id="diagnostico" aria-live="polite">
-                <div class="cabecera-diagnostico">
-                    <h3 class="slds-text-heading_small" data-id="titulo-diagnostico">{tituloDiagnostico}</h3>
-                    <lightning-button-icon
-                        icon-name="utility:close"
-                        variant="bare"
-                        alternative-text="Cerrar el diagnóstico"
-                        onclick={cerrarDiagnostico}
-                        data-id="cerrar-diagnostico"
-                    ></lightning-button-icon>
-                </div>
-                <template lwc:if={narrando}>
-                    <div class="zona-carga" data-id="narrando">
-                        <lightning-spinner alternative-text="Preparando el diagnóstico" size="small"></lightning-spinner>
-                    </div>
-                </template>
-                <template lwc:elseif={errorNarracion}>
-                    <p class="slds-m-top_x-small" role="alert" data-id="error-diagnostico">{errorNarracion}</p>
-                </template>
-                <template lwc:else>
-                    <p class="slds-m-top_x-small" data-id="texto-diagnostico">{textoDiagnostico}</p>
-                    <p class="slds-m-top_x-small slds-text-body_small slds-text-color_weak" data-id="nota-diagnostico">
-                        {notaDiagnostico}
-                    </p>
-                </template>
-            </section>
-        </template>
-
-        <template lwc:if={cargando}>
-            <div class="zona-carga" data-id="cargando">
-                <lightning-spinner alternative-text="Cargando activos" size="small"></lightning-spinner>
-            </div>
-        </template>
-
-        <template lwc:if={mostrarError}>
-            <div class="slds-p-around_medium slds-text-align_center" data-id="error" role="alert">
-                <h3 class="slds-text-heading_small">No se pudo cargar la información</h3>
-                <p class="slds-m-top_x-small">{mensajeError}</p>
-                <lightning-button
-                    class="slds-m-top_small"
-                    variant="brand"
-                    label="Reintentar"
-                    onclick={actualizar}
-                    data-id="reintentar"
-                ></lightning-button>
-            </div>
-        </template>
-
-        <template lwc:if={mostrarSinAsignacion}>
-            <div class="slds-p-around_medium slds-text-align_center" data-id="vacio-sin-asignacion">
-                <h3 class="slds-text-heading_small">No tienes activos a tu cargo</h3>
-                <p class="slds-m-top_x-small">
-                    Esta pantalla muestra los equipos de los edificios que tienes asignados.
-                    Pide a coordinación que te asigne los edificios de tu turno.
-                </p>
-            </div>
-        </template>
-
-        <template lwc:if={mostrarFiltroVacio}>
-            <div class="slds-p-around_medium slds-text-align_center" data-id="vacio-filtro">
-                <h3 class="slds-text-heading_small">Ningún activo coincide con estos filtros</h3>
-                <p class="slds-m-top_x-small">Prueba con otro edificio u otra severidad.</p>
-                <lightning-button
-                    class="slds-m-top_small"
-                    label="Quitar filtros"
-                    onclick={quitarFiltros}
-                    data-id="quitar-filtros"
-                ></lightning-button>
-            </div>
-        </template>
-
-        <template lwc:if={mostrarTabla}>
-            <div class="slds-p-horizontal_small slds-p-bottom_small" data-id="tabla">
-                <lightning-datatable
-                    key-field="id"
-                    data={filas}
-                    columns={columnas}
-                    hide-checkbox-column
-                    onrowaction={manejarFila}
-                ></lightning-datatable>
-            </div>
-        </template>
-    </lightning-card>
+    </article>
 </template>

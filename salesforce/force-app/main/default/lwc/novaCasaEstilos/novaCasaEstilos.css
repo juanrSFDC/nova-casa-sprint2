@@ -1,0 +1,207 @@
+:host {
+    display: block;
+    --nc-azul: #112240;
+    --nc-azul-profundo: #0a1526;
+    --nc-cobre: #cf7b46;
+    --nc-pizarra: #3a4a63;
+    --nc-linea: #e3e7ed;
+    --nc-tinte: #edeff3;
+    --nc-tinte-suave: #f6f7f9;
+    --nc-texto: #181818;
+    --nc-texto-debil: #5c5c5c;
+    --nc-critica: #ba0517;
+    --nc-advertencia: #fe9339;
+    /* El naranja claro no llega a 3:1 contra el blanco: la franja usa el tono más oscuro y la etiqueta lleva texto oscuro. */
+    --nc-advertencia-franja: #dd7a01;
+    --nc-advertencia-texto: #201600;
+    --nc-normal: #2e844a;
+    --nc-sin-datos: #747474;
+    --slds-c-button-brand-color-background: var(--nc-azul);
+    --slds-c-button-brand-color-border: var(--nc-azul);
+    --slds-c-button-brand-color-background-hover: var(--nc-azul-profundo);
+    --slds-c-button-brand-color-border-hover: var(--nc-azul-profundo);
+    --slds-c-button-brand-text-color: #fff;
+}
+
+.panel {
+    background: #fff;
+    border: 1px solid var(--nc-linea);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    color: var(--nc-texto);
+}
+
+.cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--nc-azul);
+    border-bottom: 3px solid var(--nc-cobre);
+    color: #fff;
+}
+
+.logo {
+    height: 1.75rem;
+    width: auto;
+}
+
+.titulos {
+    border-left: 1px solid rgba(255, 255, 255, 0.35);
+    padding-left: 1rem;
+}
+
+.titulo {
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.subtitulo {
+    font-size: 0.75rem;
+    color: #d3d9e2;
+}
+
+.cuerpo {
+    padding: 0.75rem 1rem 1rem;
+}
+
+.etiqueta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.etiqueta-critica {
+    background: var(--nc-critica);
+    color: #fff;
+    --slds-c-icon-color-foreground-default: #fff;
+}
+
+.etiqueta-advertencia {
+    background: var(--nc-advertencia);
+    color: var(--nc-advertencia-texto);
+    --slds-c-icon-color-foreground-default: var(--nc-advertencia-texto);
+}
+
+.etiqueta-normal {
+    background: var(--nc-normal);
+    color: #fff;
+    --slds-c-icon-color-foreground-default: #fff;
+}
+
+.etiqueta-sin-datos {
+    background: var(--nc-sin-datos);
+    color: #fff;
+    --slds-c-icon-color-foreground-default: #fff;
+}
+
+.etiqueta-sin-umbral {
+    border: 1px dashed var(--nc-pizarra);
+    background: #fff;
+    color: var(--nc-pizarra);
+    --slds-c-icon-color-foreground-default: var(--nc-pizarra);
+}
+
+.marca {
+    display: inline-block;
+    padding: 0 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.marca-vieja {
+    border: 1px solid var(--nc-sin-datos);
+    background: #f3f3f3;
+    color: #444;
+}
+
+.marca-abierta {
+    border: 1px solid var(--nc-azul);
+    background: var(--nc-tinte);
+    color: var(--nc-azul);
+}
+
+.titulo-seccion {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--nc-azul);
+}
+
+.diagnostico {
+    padding: 0.75rem;
+    border-left: 4px solid var(--nc-azul);
+    border-radius: 0.25rem;
+    background: var(--nc-tinte-suave);
+    line-height: 1.5;
+}
+
+.cabecera-diagnostico {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.titulo-diagnostico {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--nc-azul);
+}
+
+.nota-diagnostico {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--nc-texto-debil);
+}
+
+.narrando {
+    position: relative;
+    min-height: 3rem;
+}
+
+.vacio {
+    padding: 1rem;
+    text-align: center;
+}
+
+.esqueleto {
+    border-radius: 0.375rem;
+    background: linear-gradient(90deg, var(--nc-tinte) 25%, var(--nc-tinte-suave) 37%, var(--nc-tinte) 63%);
+    background-size: 400% 100%;
+    animation: brillo 1.4s ease infinite;
+}
+
+@keyframes brillo {
+    0% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0 50%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .esqueleto {
+        animation: none;
+    }
+}
+
+@media (max-width: 30em) {
+    .titulos {
+        border-left: 0;
+        padding-left: 0;
+    }
+}

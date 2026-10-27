@@ -90,6 +90,12 @@
     <flexiPageRegions>
         <itemInstances>
             <componentInstance>
+                <componentName>estadoEquipo</componentName>
+                <identifier>c_estadoEquipo</identifier>
+            </componentInstance>
+        </itemInstances>
+        <itemInstances>
+            <componentInstance>
                 <componentName>graficaTendencia</componentName>
                 <identifier>c_graficaTendencia</identifier>
             </componentInstance>
