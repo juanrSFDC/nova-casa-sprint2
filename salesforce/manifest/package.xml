@@ -124,6 +124,8 @@
         <members>EstadoEquipoControllerTest</members>
         <members>IntervencionNovaCasaController</members>
         <members>IntervencionNovaCasaControllerTest</members>
+        <members>EdificioSelector</members>
+        <members>EdificioSelectorTest</members>
         <name>ApexClass</name>
     </types>
     <types>

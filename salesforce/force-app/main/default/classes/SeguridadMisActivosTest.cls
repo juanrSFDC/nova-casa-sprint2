@@ -10,12 +10,9 @@
  * que aquí se simula con AssetShare/CaseShare/LocationShare manuales al usuario (RowCause 'Manual').
  * Las reglas reales se verifican en la org con UserRecordAccess (208.6), no aquí.
  *
- * Nota de harness: el permiso de campo que da un Permission Set asignado en ESTA misma transacción no se
- * refleja en Schema...isAccessible() (el describe queda cacheado sin la FLS recién concedida). Por eso el
- * controlador deja veEdificio=false en prueba y devuelve el CÓDIGO del edificio, no el nombre (igual que
- * MonitoreoActivosControllerTest). Que el operador SÍ puede leer el nombre de su edificio (FLS de
- * Location.Name + compartición) se comprueba con una consulta directa a Location dentro del runAs; en
- * producción, con la FLS ya vigente, el nombre llega también por el controlador.
+ * El nombre del edificio no llega por Asset.LocationId, que los operadores no pueden leer ni en la org
+ * aunque su Permission Set lo conceda: el controlador lo busca por código con EdificioSelector, así que el
+ * operador ve el nombre de su edificio si se le compartió y el código si no.
  */
 @isTest
 private class SeguridadMisActivosTest {
@@ -164,6 +161,45 @@ private class SeguridadMisActivosTest {
         // y ve su nombre real (FLS de Location.Name + compartición), no solo el código.
         Assert.areEqual(1, locsVistas.size(), 'Solo ve el edificio que se le compartió, no el de Barranquilla');
         Assert.areEqual(NOMBRE_BOG, locsVistas[0].Name, 'Ve el nombre real de su edificio');
+    }
+
+    @isTest
+    static void listarActivos_edificioCompartido_muestraSuNombre() {
+        User bog = operadorEnRunAs();
+        Edificio eBog = montarEdificio(COD_BOG, NOMBRE_BOG, 'Bomba BOG', 2, ingestaEnRunAs());
+        compartir(eBog, bog, true);
+
+        MonitoreoActivosController.ListaActivosResultado r;
+        Test.startTest();
+        System.runAs(bog) {
+            r = MonitoreoActivosController.listarActivos(null, null);
+        }
+        Test.stopTest();
+
+        Assert.areEqual(2, r.filas.size(), 'Los dos activos de su edificio');
+        for (MonitoreoActivosController.ActivoFila f : r.filas) {
+            Assert.areEqual(NOMBRE_BOG, f.edificioNombre, 'La tarjeta muestra el nombre del edificio, no su código');
+        }
+        Assert.areEqual(NOMBRE_BOG, r.edificios[0].nombre, 'El filtro «Edificio» también ofrece el nombre');
+    }
+
+    @isTest
+    static void listarActivos_edificioSinCompartir_muestraElCodigo() {
+        User bog = operadorEnRunAs();
+        Edificio eBog = montarEdificio(COD_BOG, NOMBRE_BOG, 'Bomba BOG', 2, ingestaEnRunAs());
+        compartir(eBog, bog, false);
+
+        MonitoreoActivosController.ListaActivosResultado r;
+        Test.startTest();
+        System.runAs(bog) {
+            r = MonitoreoActivosController.listarActivos(null, null);
+        }
+        Test.stopTest();
+
+        Assert.areEqual(2, r.filas.size(), 'Ve los activos aunque no vea el registro del edificio');
+        for (MonitoreoActivosController.ActivoFila f : r.filas) {
+            Assert.areEqual(COD_BOG, f.edificioNombre, 'Sin acceso al edificio, la tarjeta muestra el código');
+        }
     }
 
     @isTest

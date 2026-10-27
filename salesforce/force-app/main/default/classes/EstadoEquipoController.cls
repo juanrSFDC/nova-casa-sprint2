@@ -37,16 +37,14 @@ public with sharing class EstadoEquipoController {
     }
 
     private static EstadoEquipo construir(Id activoId) {
-        Boolean veEdificio = Schema.SObjectType.Asset.fields.LocationId.isAccessible()
-            && Schema.SObjectType.Location.isAccessible();
         List<Asset> activos;
         try {
-            activos = Database.queryWithBinds(
-                'SELECT Id, Name, Id_Externo__c, Tipo_Activo__c, Edificio_Externo__c, Severidad_Etiqueta__c'
-                    + (veEdificio ? ', Location.Name' : '')
-                    + ' FROM Asset WHERE Id = :activoId LIMIT 1',
-                new Map<String, Object>{ 'activoId' => activoId },
-                AccessLevel.USER_MODE);
+            activos = [
+                SELECT Id, Name, Id_Externo__c, Tipo_Activo__c, Edificio_Externo__c, Severidad_Etiqueta__c
+                FROM Asset WHERE Id = :activoId
+                WITH USER_MODE
+                LIMIT 1
+            ];
         } catch (QueryException e) {
             throw new DiagnosticoActivoService.DiagnosticoException(DiagnosticoActivoService.ERROR_SIN_ACCESO);
         }
@@ -59,8 +57,7 @@ public with sharing class EstadoEquipoController {
         equipo.nombre = activo.Name;
         equipo.codigo = activo.Id_Externo__c;
         equipo.tipo = TextoNovaCasa.tipoActivo(activo.Tipo_Activo__c);
-        equipo.edificio = veEdificio && activo.Location != null && String.isNotBlank(activo.Location.Name)
-            ? activo.Location.Name : activo.Edificio_Externo__c;
+        equipo.edificio = EdificioSelector.nombreOCodigo(activo.Edificio_Externo__c);
         equipo.severidad = String.isBlank(activo.Severidad_Etiqueta__c)
             ? MonitoreoActivosController.SIN_DATOS : activo.Severidad_Etiqueta__c;
         equipo.mediciones = mediciones(activo);

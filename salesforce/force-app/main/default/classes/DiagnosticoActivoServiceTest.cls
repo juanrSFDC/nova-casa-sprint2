@@ -16,7 +16,8 @@ private class DiagnosticoActivoServiceTest {
             Asset.Tipo_Activo__c => 'WATER_PUMP',
             Asset.Medicion_Esperada__c => 'WATER_PRESSURE',
             Asset.Unidad_Esperada__c => 'BAR',
-            Asset.LocationId => edificio.Id
+            Asset.LocationId => edificio.Id,
+            Asset.Edificio_Externo__c => edificio.Id_Externo__c
         }, true);
     }
 

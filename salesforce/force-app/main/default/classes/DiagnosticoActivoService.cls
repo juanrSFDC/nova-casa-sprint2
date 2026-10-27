@@ -30,8 +30,8 @@ public with sharing class DiagnosticoActivoService {
         public List<Case> abiertas = new List<Case>();
         public Case ultimaCerrada;
         public Datetime momento = Datetime.now();
-        /** Si la consulta trajo Location.Name; si no, el edificio se nombra por su código. */
-        public Boolean veEdificio = false;
+        /** El nombre del edificio o, si quien consulta no lo puede leer, su código (EdificioSelector). */
+        public String edificio;
         /** Campos del caso que quien consulta puede no ver (el operador no ve ClosedDate). */
         public Boolean veEstadoCaso = false;
         public Boolean veCierre = false;
@@ -39,24 +39,21 @@ public with sharing class DiagnosticoActivoService {
     }
 
     /**
-     * Cinco consultas, todas en modo usuario.
+     * Seis consultas, todas en modo usuario.
      *
      * @param activoId El activo
      * @return Lo que el usuario puede ver de él
      * @throws DiagnosticoException si no existe o el usuario no lo ve
      */
     public static Diagnostico cargar(Id activoId) {
-        // Igual que «Mis activos»: un operador puede no ver Location aunque su permission set lo
-        // nombre, y el modo usuario rechaza la consulta entera por un solo campo.
-        Boolean veEdificio = Schema.SObjectType.Asset.fields.LocationId.isAccessible()
-            && Schema.SObjectType.Location.isAccessible();
         List<Asset> activos;
         try {
-            activos = Database.queryWithBinds(
-                'SELECT Id, Name, Tipo_Activo__c, Edificio_Externo__c' + (veEdificio ? ', Location.Name' : '')
-                    + ' FROM Asset WHERE Id = :activoId LIMIT 1',
-                new Map<String, Object>{ 'activoId' => activoId },
-                AccessLevel.USER_MODE);
+            activos = [
+                SELECT Id, Name, Tipo_Activo__c, Edificio_Externo__c
+                FROM Asset WHERE Id = :activoId
+                WITH USER_MODE
+                LIMIT 1
+            ];
         } catch (QueryException e) {
             throw new DiagnosticoException(ERROR_SIN_ACCESO);
         }
@@ -65,7 +62,7 @@ public with sharing class DiagnosticoActivoService {
         }
         Diagnostico d = new Diagnostico();
         d.activo = activos[0];
-        d.veEdificio = veEdificio;
+        d.edificio = EdificioSelector.nombreOCodigo(d.activo.Edificio_Externo__c);
         d.estados = [
             SELECT Tipo_Medicion__c, Ultimo_Valor__c, Unidad__c, Severidad__c, Severidad_Nivel__c, Ocurrido_En__c,
                 Tendencia_Estado__c, Tendencia_Minutos_Critico__c
@@ -250,8 +247,7 @@ public with sharing class DiagnosticoActivoService {
     }
 
     private static String edificio(Diagnostico d) {
-        return d.veEdificio && d.activo.Location != null && String.isNotBlank(d.activo.Location.Name)
-            ? d.activo.Location.Name : d.activo.Edificio_Externo__c;
+        return String.isNotBlank(d.edificio) ? d.edificio : d.activo.Edificio_Externo__c;
     }
 
     private static String severidad(String valor) {

@@ -35,8 +35,8 @@ public with sharing class MonitoreoActivosController {
     @TestVisible private static final String ERROR_CARGA =
         'No se pudo cargar la información de tus activos.';
 
-    /** Si la última consulta trajo Location.Name (depende del permiso de campo de Asset.LocationId). */
-    private static Boolean trajoEdificio = false;
+    /** Nombre de cada edificio visible por su código (Location.Id_Externo__c), de la última consulta. */
+    private static Map<String, String> nombresPorCodigo = new Map<String, String>();
 
     /**
      * @param edificioExterno Asset.Edificio_Externo__c del edificio, o vacío para todos los visibles
@@ -46,36 +46,40 @@ public with sharing class MonitoreoActivosController {
     @AuraEnabled(cacheable=true)
     public static ListaActivosResultado listarActivos(String edificioExterno, String severidad) {
         try {
-            return construir(consultarVisibles(), edificioExterno, severidad);
+            List<Asset> visibles = consultarVisibles();
+            nombresPorCodigo = nombresDeEdificios(visibles);
+            return construir(visibles, edificioExterno, severidad);
         } catch (Exception e) {
             System.debug(LoggingLevel.WARN, 'MonitoreoActivosController · ' + e.getTypeName() + ' · ' + e.getMessage());
             throw new AuraHandledException(ERROR_CARGA);
         }
     }
 
-    /**
-     * El nombre del edificio sale de Asset.LocationId, que tiene permiso de campo propio.
-     * Si quien consulta no lo tiene, se omite y la pantalla muestra el código del edificio
-     * en vez de fallar entera (el modo usuario rechaza la consulta completa por un campo).
-     */
+    /** Los activos que quien abre la pantalla puede ver, con sus estados y su intervención abierta. */
     private static List<Asset> consultarVisibles() {
-        Boolean veEdificio = Schema.SObjectType.Asset.fields.LocationId.isAccessible()
-            && Schema.SObjectType.Location.isAccessible();
-        trajoEdificio = veEdificio;
-        String soql = 'SELECT Id, Name, Id_Externo__c, Edificio_Externo__c, '
-            + 'Severidad_Actual__c, Severidad_Etiqueta__c, Mediciones_Sin_Configurar__c'
-            + (veEdificio ? ', Location.Name' : '')
-            + ', (SELECT Tipo_Medicion__c, Ultimo_Valor__c, Unidad__c, Ocurrido_En__c, Severidad__c, Severidad_Nivel__c,'
-            + '   Tendencia_Estado__c, Tendencia_Ritmo__c, Tendencia_Minutos_Critico__c'
-            + '   FROM Estados_Medicion__r)'
-            + ', (SELECT Id, CaseNumber, CreatedDate FROM Cases'
-            + '   WHERE RecordType.DeveloperName = :tipo AND IsClosed = false'
-            + '   ORDER BY CreatedDate DESC LIMIT 1)'
-            + ' FROM Asset ORDER BY Name LIMIT :maximo';
-        return Database.queryWithBinds(
-            soql,
-            new Map<String, Object>{ 'tipo' => RT_INTERVENCION, 'maximo' => MAXIMO_ACTIVOS },
-            AccessLevel.USER_MODE);
+        return [
+            SELECT Id, Name, Id_Externo__c, Edificio_Externo__c,
+                Severidad_Actual__c, Severidad_Etiqueta__c, Mediciones_Sin_Configurar__c,
+                (SELECT Tipo_Medicion__c, Ultimo_Valor__c, Unidad__c, Ocurrido_En__c, Severidad__c, Severidad_Nivel__c,
+                    Tendencia_Estado__c, Tendencia_Ritmo__c, Tendencia_Minutos_Critico__c
+                FROM Estados_Medicion__r),
+                (SELECT Id, CaseNumber, CreatedDate FROM Cases
+                WHERE RecordType.DeveloperName = :RT_INTERVENCION AND IsClosed = false
+                ORDER BY CreatedDate DESC LIMIT 1)
+            FROM Asset
+            WITH USER_MODE
+            ORDER BY Name
+            LIMIT :MAXIMO_ACTIVOS
+        ];
+    }
+
+    /** El nombre de cada edificio de esos activos, por su código (EdificioSelector). */
+    private static Map<String, String> nombresDeEdificios(List<Asset> activos) {
+        Set<String> codigos = new Set<String>();
+        for (Asset activo : activos) {
+            codigos.add(activo.Edificio_Externo__c);
+        }
+        return EdificioSelector.nombresPorCodigo(codigos);
     }
 
     @TestVisible
@@ -186,7 +190,7 @@ public with sharing class MonitoreoActivosController {
     }
 
     private static String nombreEdificio(Asset activo) {
-        String nombre = trajoEdificio && activo.Location != null ? activo.Location.Name : null;
+        String nombre = nombresPorCodigo.get(activo.Edificio_Externo__c);
         return String.isBlank(nombre) ? activo.Edificio_Externo__c : nombre;
     }
 
