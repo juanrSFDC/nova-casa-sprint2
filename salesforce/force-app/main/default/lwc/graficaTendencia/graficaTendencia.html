@@ -44,6 +44,9 @@
                 <template lwc:if={avisoActualizacion}>
                     <p class="aviso slds-m-top_xx-small" role="status" data-id="aviso">{avisoActualizacion}</p>
                 </template>
+                <template lwc:if={textoConsultaParcial}>
+                    <p class="aviso slds-m-top_xx-small" data-id="consulta-parcial">{textoConsultaParcial}</p>
+                </template>
 
                 <template for:each={series} for:item="serie">
                     <section key={serie.clave} class="serie slds-m-top_small" data-id="serie" data-medicion={serie.clave}>

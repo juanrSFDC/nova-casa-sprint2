@@ -220,6 +220,12 @@ export default class MapaEdificios extends NavigationMixin(LightningElement) {
             : `${n} edificios no tienen coordenadas y no salen en el mapa; están en la lista.`;
     }
 
+    get textoEdificiosParcial() {
+        return this.datos && this.datos.edificiosParcial
+            ? "Hay más edificios de los que caben aquí: se muestran los primeros por nombre."
+            : "";
+    }
+
     get textoConteoParcial() {
         return this.datos && this.datos.conteoParcial
             ? "Hay más activos de los que se pueden contar aquí: los conteos pueden quedarse cortos."

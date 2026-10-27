@@ -5,10 +5,13 @@
  *
  * Cubren: la peor severidad de cada edificio (Crítico, Advertencia, Normal y «Sin datos» sin activos con
  * severidad), los conteos por Severidad_Etiqueta__c, la lista de críticos con su tope, el orden del peor
- * al mejor, la región con su etiqueta, el edificio sin coordenadas, el tope de activos, y el plano de
- * registro en modo usuario: cada gerente regional ve solo el edificio de su región (1 de 2), el
- * coordinador ve los dos, sin compartición no se ve ninguno, y un usuario sin Permission Set recibe el
- * error genérico. El controlador no filtra por región: lo que cambia entre usuarios es la compartición.
+ * al mejor (sin distinguir mayúsculas), la región con su etiqueta, el edificio sin coordenadas, los topes
+ * de edificios y de activos con sus avisos (edificiosParcial, conteoParcial) a uno y otro lado, la unión
+ * por código, el fallo al armar la respuesta, las dos consultas por llamada y el plano de registro en modo
+ * usuario: cada gerente regional ve solo el edificio de su región (1 de 2), el coordinador ve los dos, sin
+ * compartición no se ve ninguno, y un usuario sin Permission Set recibe el error de carga. El controlador
+ * no filtra por región: lo que cambia entre usuarios es la compartición. Lo que no depende de la consulta
+ * se prueba con construir, en memoria.
  *
  * El activo se une a su edificio por el código (Edificio_Externo__c = Id_Externo__c). Unirlo por
  * Asset.LocationId no se podría probar en modo usuario: la FLS que da un Permission Set asignado en la misma
@@ -24,12 +27,31 @@
 @IsTest
 private with sharing class MapaEdificiosControllerTest {
 
-    private static final String PERM_SET_COORDINADOR = 'Nova_Casa_Coordinador';
+    private static final String COD_BOG = 'BLD-BOG-001';
+    private static final String COD_BAQ = 'BLD-BAQ-001';
     private static final Map<String, Integer> NIVEL = new Map<String, Integer>{
         'Critico' => 3, 'Advertencia' => 2, 'Normal' => 1, 'Sin_Configurar' => 0
     };
 
     private static Integer secuencia = 0;
+
+    /** Bogotá con un activo por severidad (dos críticos y uno sin estado), Barranquilla en advertencia, uno en normal y uno vacío. */
+    private class CuatroEdificios {
+        Schema.Location bog;
+        Schema.Location baq;
+        Schema.Location normal;
+        Schema.Location vacio;
+        List<Asset> deBog;
+    }
+
+    /** Alameda (Andina, con un crítico) y Caribe; quién los ve depende del constructor del escenario. */
+    private class DosRegiones {
+        User gerenteAndina;
+        User gerenteCaribe;
+        User coordinador;
+        Schema.Location alameda;
+        Schema.Location caribe;
+    }
 
     private static Schema.Location edificio(String codigo, String region, Decimal latitud, Decimal longitud) {
         return TestDataFactory.createLocation(new Map<SObjectField, Object>{
@@ -76,6 +98,125 @@ private with sharing class MapaEdificiosControllerTest {
         return activos;
     }
 
+    private static void sembrarCritico(Schema.Location e, String nombre) {
+        Asset activo = TestDataFactory.createAsset(new Map<SObjectField, Object>{
+            Asset.Name => nombre,
+            Asset.Id_Externo__c => 'AST-MAPA-CRITICO',
+            Asset.Edificio_Externo__c => e.Id_Externo__c
+        }, true);
+        // Sin tendencia: el flujo Nova_Casa_Aviso_Tendencia no se dispara.
+        TestDataFactory.createEstadoMedicion(new Map<SObjectField, Object>{
+            Estado_Medicion__c.Activo__c => activo.Id,
+            Estado_Medicion__c.Clave_Estado__c => 'AST-MAPA-CRITICO|TEMPERATURE',
+            Estado_Medicion__c.Severidad__c => 'Critico',
+            Estado_Medicion__c.Severidad_Nivel__c => 3
+        }, true);
+    }
+
+    private static CuatroEdificios cuatroEdificios() {
+        CuatroEdificios escenario = new CuatroEdificios();
+        escenario.bog = edificio(COD_BOG, 'ANDINA', 4.6533, -74.0602);
+        escenario.baq = edificio(COD_BAQ, 'CARIBE', 11.0004, -74.8066);
+        escenario.vacio = edificio('BLD-TEST-VACIO', null, 4.7, -74.05);
+        escenario.normal = edificio('BLD-TEST-NORMAL', 'ANDINA', 4.61, -74.08);
+        escenario.deBog = sembrar(escenario.bog, new List<String>{ 'Normal', 'Critico', 'Advertencia', 'Sin_Configurar', null, 'Critico' });
+        sembrar(escenario.baq, new List<String>{ 'Advertencia', 'Normal' });
+        sembrar(escenario.normal, new List<String>{ 'Normal', null });
+        return escenario;
+    }
+
+    /** Cada edificio, compartido con el grupo de los operadores de su región; cada gerente, encima de ellos. */
+    private static DosRegiones dosRegionesConSusGerentes() {
+        DosRegiones escenario = new DosRegiones();
+        List<Group> grupos;
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            grupos = gerentesSobreSusOperadores(escenario);
+        }
+        escenario.alameda = edificio(COD_BOG, 'ANDINA', 4.6533, -74.0602);
+        escenario.caribe = edificio(COD_BAQ, 'CARIBE', 11.0004, -74.8066);
+        compartirConGrupo(escenario.alameda, sembrar(escenario.alameda, new List<String>{ 'Critico', 'Normal' }), grupos[0].Id);
+        compartirConGrupo(escenario.caribe, sembrar(escenario.caribe, new List<String>{ 'Advertencia' }), grupos[1].Id);
+        return escenario;
+    }
+
+    /**
+     * Roles de gerente con los de sus operadores debajo, y un grupo por región con DoesIncludeBosses y su
+     * operador dentro. Son objetos de setup: el llamador lo envuelve en runAs (MIXED_DML_OPERATION).
+     */
+    private static List<Group> gerentesSobreSusOperadores(DosRegiones escenario) {
+        UserRole rolAndina = new UserRole(Name = 'Gerente prueba Andina', DeveloperName = 'Gerente_Prueba_Andina_E24');
+        UserRole rolCaribe = new UserRole(Name = 'Gerente prueba Caribe', DeveloperName = 'Gerente_Prueba_Caribe_E24');
+        insert new List<UserRole>{ rolAndina, rolCaribe };
+        UserRole opAndina = new UserRole(Name = 'Operador prueba Andina', DeveloperName = 'Operador_Prueba_Andina_E24', ParentRoleId = rolAndina.Id);
+        UserRole opCaribe = new UserRole(Name = 'Operador prueba Caribe', DeveloperName = 'Operador_Prueba_Caribe_E24', ParentRoleId = rolCaribe.Id);
+        insert new List<UserRole>{ opAndina, opCaribe };
+
+        List<Group> grupos = TestDataFactory.crearGrupos(2);
+        update new List<Group>{
+            new Group(Id = grupos[0].Id, DoesIncludeBosses = true),
+            new Group(Id = grupos[1].Id, DoesIncludeBosses = true)
+        };
+        escenario.gerenteAndina = TestDataFactory.crearUsuarioGerente();
+        escenario.gerenteCaribe = TestDataFactory.crearUsuarioGerente();
+        User operadorAndina = TestDataFactory.crearUsuarioOperador();
+        User operadorCaribe = TestDataFactory.crearUsuarioOperador();
+        update new List<User>{
+            new User(Id = escenario.gerenteAndina.Id, UserRoleId = rolAndina.Id),
+            new User(Id = escenario.gerenteCaribe.Id, UserRoleId = rolCaribe.Id),
+            new User(Id = operadorAndina.Id, UserRoleId = opAndina.Id),
+            new User(Id = operadorCaribe.Id, UserRoleId = opCaribe.Id)
+        };
+        insert new List<GroupMember>{
+            new GroupMember(GroupId = grupos[0].Id, UserOrGroupId = operadorAndina.Id),
+            new GroupMember(GroupId = grupos[1].Id, UserOrGroupId = operadorCaribe.Id)
+        };
+        return grupos;
+    }
+
+    /** Los dos edificios, compartidos con un grupo que hace de Coordinadores. */
+    private static DosRegiones dosRegionesConCoordinador() {
+        DosRegiones escenario = new DosRegiones();
+        Group coordinadores;
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            escenario.coordinador = TestDataFactory.crearUsuarioCoordinador();
+            coordinadores = TestDataFactory.crearGrupos(1)[0];
+            insert new GroupMember(GroupId = coordinadores.Id, UserOrGroupId = escenario.coordinador.Id);
+        }
+        escenario.alameda = edificio(COD_BOG, 'ANDINA', 4.6533, -74.0602);
+        escenario.caribe = edificio(COD_BAQ, 'CARIBE', 11.0004, -74.8066);
+        compartirConGrupo(escenario.alameda, sembrar(escenario.alameda, new List<String>{ 'Critico' }), coordinadores.Id);
+        compartirConGrupo(escenario.caribe, sembrar(escenario.caribe, new List<String>{ 'Normal' }), coordinadores.Id);
+        return escenario;
+    }
+
+    private static void compartirConGrupo(Schema.Location e, List<Asset> activos, Id grupoId) {
+        insert new LocationShare(ParentId = e.Id, UserOrGroupId = grupoId, AccessLevel = 'Read', RowCause = 'Manual');
+        List<AssetShare> compartidos = new List<AssetShare>();
+        for (Asset a : activos) {
+            compartidos.add(new AssetShare(AssetId = a.Id, UserOrGroupId = grupoId, AssetAccessLevel = 'Read', RowCause = 'Manual'));
+        }
+        insert compartidos;
+    }
+
+    private static MapaEdificiosController.Mapa mapaDe(User usuario) {
+        MapaEdificiosController.Mapa m;
+        System.runAs(usuario) {
+            m = MapaEdificiosController.obtenerMapa();
+        }
+        return m;
+    }
+
+    /** El mensaje del AuraHandledException al pedir el mapa; la prueba falla si no se lanza. */
+    private static String errorAlPedirElMapa() {
+        try {
+            MapaEdificiosController.obtenerMapa();
+        } catch (AuraHandledException e) {
+            return e.getMessage();
+        }
+        Assert.fail('Se esperaba un AuraHandledException al pedir el mapa');
+        return null;
+    }
+
     private static MapaEdificiosController.Edificio buscar(MapaEdificiosController.Mapa m, Id edificioId) {
         for (MapaEdificiosController.Edificio e : m.edificios) {
             if (e.id == edificioId) {
@@ -93,103 +234,155 @@ private with sharing class MapaEdificiosControllerTest {
         return ids;
     }
 
-    private static User usuarioMinimo(String nombre, String permiso) {
-        Profile perfil = [SELECT Id FROM Profile WHERE Name = 'Minimum Access - Salesforce' LIMIT 1];
-        String sufijo = String.valueOf(Datetime.now().getTime()) + String.valueOf(Math.round(Math.random() * 100000));
-        User u = new User(
-            FirstName = nombre, LastName = 'Prueba',
-            Email = nombre.toLowerCase() + '.prueba@novacasa.test.invalid',
-            Username = nombre.toLowerCase() + '.' + sufijo + '@novacasa.test.invalid',
-            Alias = nombre.left(4).toLowerCase() + 'map', ProfileId = perfil.Id,
-            TimeZoneSidKey = 'America/Bogota', LocaleSidKey = 'es_CO',
-            EmailEncodingKey = 'UTF-8', LanguageLocaleKey = 'es'
-        );
-        insert u;
-        if (permiso != null) {
-            PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :permiso LIMIT 1];
-            insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
-        }
-        return u;
+    private static Schema.Location edificioEnMemoria(String codigo) {
+        return TestDataFactory.createLocation(new Map<SObjectField, Object>{
+            Schema.Location.Id_Externo__c => codigo
+        }, false);
     }
 
     @IsTest
-    static void obtenerMapa_peorSeveridadConteosCriticosYOrden() {
-        Schema.Location bog = edificio('BLD-BOG-001', 'ANDINA', 4.6533, -74.0602);
-        Schema.Location baq = edificio('BLD-BAQ-001', 'CARIBE', 11.0004, -74.8066);
-        Schema.Location vacio = edificio('BLD-TEST-VACIO', null, 4.7, -74.05);
-        Schema.Location normal = edificio('BLD-TEST-NORMAL', 'ANDINA', 4.61, -74.08);
-        List<Asset> deBog = sembrar(bog, new List<String>{ 'Normal', 'Critico', 'Advertencia', 'Sin_Configurar', null, 'Critico' });
-        sembrar(baq, new List<String>{ 'Advertencia', 'Normal' });
-        sembrar(normal, new List<String>{ 'Normal', null });
+    static void obtenerMapa_unaLlamada_haceDosConsultas() {
+        cuatroEdificios();
 
         Test.startTest();
-        Integer soql = Limits.getQueries();
-        MapaEdificiosController.Mapa m = MapaEdificiosController.obtenerMapa();
-        Assert.areEqual(soql + 2, Limits.getQueries(), 'Dos consultas: los edificios y sus activos');
+        Integer antes = Limits.getQueries();
+        MapaEdificiosController.obtenerMapa();
+        Integer consultas = Limits.getQueries() - antes;
         Test.stopTest();
 
-        Assert.areEqual(4, m.edificios.size());
-        Assert.areEqual(0, m.sinCoordenadas);
-        Assert.isFalse(m.conteoParcial);
-        Assert.areEqual(bog.Id, m.edificios[0].id, 'Primero el peor: Bogotá tiene críticos');
-        Assert.areEqual(baq.Id, m.edificios[1].id, 'Después Advertencia');
-        Assert.areEqual(normal.Id, m.edificios[2].id, 'Después Normal');
-        Assert.areEqual(vacio.Id, m.edificios[3].id, 'Al final el que no tiene datos');
-
-        MapaEdificiosController.Edificio e = m.edificios[0];
-        Assert.areEqual(MapaEdificiosController.CRITICO, e.peorSeveridad);
-        Assert.areEqual('Edificio BLD-BOG-001', e.nombre);
-        Assert.areEqual('BLD-BOG-001', e.codigo);
-        Assert.areEqual('ANDINA', e.region);
-        Assert.areEqual('Andina', e.regionEtiqueta, 'La región llega con su etiqueta');
-        Assert.areEqual('Bogotá', e.ciudad);
-        Assert.areEqual(4.6533, e.latitud);
-        Assert.areEqual(-74.0602, e.longitud);
-        Assert.isTrue(e.tieneCoordenadas);
-        Assert.areEqual(6, e.totalActivos);
-        Assert.areEqual(2, e.criticos);
-        Assert.areEqual(1, e.advertencias);
-        Assert.areEqual(1, e.normales);
-        Assert.areEqual(1, e.sinConfigurar);
-        Assert.areEqual(1, e.sinDatos);
-        Assert.areEqual(2, e.activosCriticos.size(), 'Los dos críticos, por nombre');
-        Assert.areEqual(deBog[1].Id, e.activosCriticos[0].id);
-        Assert.areEqual(deBog[5].Id, e.activosCriticos[1].id);
-        Assert.areEqual('TEMPERATURE_SENSOR', e.activosCriticos[0].tipoActivo);
-
-        Assert.areEqual(MapaEdificiosController.ADVERTENCIA, m.edificios[1].peorSeveridad);
-        Assert.areEqual('Caribe', m.edificios[1].regionEtiqueta);
-        Assert.isTrue(m.edificios[1].activosCriticos.isEmpty());
-        Assert.areEqual(MapaEdificiosController.NORMAL, m.edificios[2].peorSeveridad);
-        Assert.areEqual(1, m.edificios[2].sinDatos, 'El activo sin estado cuenta como «Sin datos»');
-        Assert.areEqual(MapaEdificiosController.SIN_DATOS, m.edificios[3].peorSeveridad, 'Sin activos: gris');
-        Assert.areEqual(0, m.edificios[3].totalActivos);
-        Assert.isNull(m.edificios[3].regionEtiqueta, 'Sin región, sin etiqueta');
+        Assert.areEqual(2, consultas, 'Dos consultas: los edificios y sus activos');
     }
 
     @IsTest
-    static void obtenerMapa_sinCoordenadasYSoloSinConfigurar_sinDatosEnElMapa() {
-        // La plataforma no deja guardar una latitud sin longitud: el único caso es sin las dos.
-        Schema.Location sinCoordenadas = edificio('BLD-TEST-SINCOORD', 'ANDINA', null, null);
-        sembrar(sinCoordenadas, new List<String>{ 'Sin_Configurar' });
+    static void obtenerMapa_cadaEdificio_tomaLaPeorSeveridadDeSusActivos() {
+        CuatroEdificios escenario = cuatroEdificios();
 
         Test.startTest();
         MapaEdificiosController.Mapa m = MapaEdificiosController.obtenerMapa();
+        Test.stopTest();
+
+        Assert.areEqual(MapaEdificiosController.CRITICO, buscar(m, escenario.bog.Id).peorSeveridad, 'Bogotá tiene críticos');
+        Assert.areEqual(MapaEdificiosController.ADVERTENCIA, buscar(m, escenario.baq.Id).peorSeveridad, 'Barranquilla, como mucho advertencia');
+        Assert.areEqual(MapaEdificiosController.NORMAL, buscar(m, escenario.normal.Id).peorSeveridad, 'Normal y uno sin estado: normal');
+        Assert.areEqual(MapaEdificiosController.SIN_DATOS, buscar(m, escenario.vacio.Id).peorSeveridad, 'Sin activos: gris');
+    }
+
+    @IsTest
+    static void obtenerMapa_variosEdificios_vanDelPeorAlMejor() {
+        CuatroEdificios escenario = cuatroEdificios();
+        List<Id> esperados = new List<Id>{ escenario.bog.Id, escenario.baq.Id, escenario.normal.Id, escenario.vacio.Id };
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = MapaEdificiosController.obtenerMapa();
+        Test.stopTest();
+
+        Assert.areEqual(esperados.size(), m.edificios.size(), 'Los cuatro edificios');
+        for (Integer i = 0; i < esperados.size(); i++) {
+            Assert.areEqual(esperados[i], m.edificios[i].id, 'Posición ' + i + ': crítico, advertencia, normal y sin datos');
+        }
+    }
+
+    @IsTest
+    static void obtenerMapa_edificioConActivos_cuentaCadaSeveridad() {
+        CuatroEdificios escenario = cuatroEdificios();
+
+        Test.startTest();
+        MapaEdificiosController.Edificio e = buscar(MapaEdificiosController.obtenerMapa(), escenario.bog.Id);
+        Test.stopTest();
+
+        Assert.areEqual(6, e.totalActivos, 'Los seis activos de Bogotá');
+        Assert.areEqual(2, e.criticos, 'Dos en crítico');
+        Assert.areEqual(1, e.advertencias, 'Uno en advertencia');
+        Assert.areEqual(1, e.normales, 'Uno en normal');
+        Assert.areEqual(1, e.sinConfigurar, 'Uno sin configurar');
+        Assert.areEqual(1, e.sinDatos, 'Y el que no tiene estado, en «Sin datos»');
+    }
+
+    @IsTest
+    static void obtenerMapa_edificioConDosCriticos_losListaPorNombreConSuTipo() {
+        CuatroEdificios escenario = cuatroEdificios();
+
+        Test.startTest();
+        MapaEdificiosController.Edificio e = buscar(MapaEdificiosController.obtenerMapa(), escenario.bog.Id);
+        Test.stopTest();
+
+        Assert.areEqual(2, e.activosCriticos.size(), 'Los dos críticos');
+        Assert.areEqual(escenario.deBog[1].Id, e.activosCriticos[0].id, 'Primero el de nombre menor');
+        Assert.areEqual(escenario.deBog[5].Id, e.activosCriticos[1].id, 'Después el otro');
+        Assert.areEqual('TEMPERATURE_SENSOR', e.activosCriticos[0].tipoActivo, 'Cada uno con su tipo de activo');
+    }
+
+    @IsTest
+    static void obtenerMapa_edificio_traeSusDatosYLaEtiquetaDeLaRegion() {
+        CuatroEdificios escenario = cuatroEdificios();
+
+        Test.startTest();
+        MapaEdificiosController.Edificio e = buscar(MapaEdificiosController.obtenerMapa(), escenario.bog.Id);
+        Test.stopTest();
+
+        Assert.areEqual('Edificio ' + COD_BOG, e.nombre, 'Su nombre');
+        Assert.areEqual(COD_BOG, e.codigo, 'Su código');
+        Assert.areEqual('ANDINA', e.region, 'Su región');
+        Assert.areEqual('Andina', e.regionEtiqueta, 'La región llega con su etiqueta');
+        Assert.areEqual('Bogotá', e.ciudad, 'Su ciudad');
+        Assert.areEqual(4.6533, e.latitud, 'Su latitud');
+        Assert.areEqual(-74.0602, e.longitud, 'Su longitud');
+        Assert.isTrue(e.tieneCoordenadas, 'Con las dos coordenadas sale en el mapa');
+    }
+
+    @IsTest
+    static void obtenerMapa_soloSinConfigurar_sinColorDeSeveridad() {
+        Schema.Location bog = edificio(COD_BOG, 'ANDINA', 4.6533, -74.0602);
+        sembrar(bog, new List<String>{ 'Sin_Configurar' });
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = MapaEdificiosController.obtenerMapa();
+        Test.stopTest();
+
+        Assert.areEqual(MapaEdificiosController.SIN_DATOS, m.edificios[0].peorSeveridad,
+            'Una medición sin umbral no tiene color de severidad');
+    }
+
+    @IsTest
+    static void construir_edificioSinRegion_sinEtiqueta() {
+        Schema.Location sinRegion = edificioEnMemoria(COD_BOG);
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = MapaEdificiosController.construir(new List<Schema.Location>{ sinRegion }, new List<Asset>());
+        Test.stopTest();
+
+        Assert.isNull(m.edificios[0].regionEtiqueta, 'Sin región, sin etiqueta');
+    }
+
+    @IsTest
+    static void construir_edificioSinCoordenadas_seListaSinMarcador() {
+        // La plataforma no deja guardar una latitud sin longitud: el único caso es sin las dos.
+        Schema.Location sinCoordenadas = edificioEnMemoria(COD_BOG);
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = MapaEdificiosController.construir(new List<Schema.Location>{ sinCoordenadas }, new List<Asset>());
         Test.stopTest();
 
         Assert.areEqual(1, m.edificios.size(), 'Sigue en la lista aunque no salga en el mapa');
-        Assert.areEqual(1, m.sinCoordenadas, 'Sin coordenadas no hay marcador');
-        MapaEdificiosController.Edificio e = buscar(m, sinCoordenadas.Id);
-        Assert.isFalse(e.tieneCoordenadas);
-        Assert.isNull(e.latitud);
-        Assert.areEqual(MapaEdificiosController.SIN_DATOS, e.peorSeveridad,
-            'Una medición sin umbral no tiene color de severidad');
-        Assert.areEqual(1, e.sinConfigurar);
+        Assert.isFalse(m.edificios[0].tieneCoordenadas, 'Pero sin marcador');
+    }
+
+    @IsTest
+    static void construir_edificioSinCoordenadas_seCuentaEnSinCoordenadas() {
+        List<Schema.Location> edificios = new List<Schema.Location>{ edificioEnMemoria(COD_BOG), edificioEnMemoria(COD_BAQ) };
+        edificios[1].Latitude = 11.0004;
+        edificios[1].Longitude = -74.8066;
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = MapaEdificiosController.construir(edificios, new List<Asset>());
+        Test.stopTest();
+
+        Assert.areEqual(1, m.sinCoordenadas, 'Cuenta solo el que no tiene coordenadas, para avisarlo en la pantalla');
     }
 
     @IsTest
     static void obtenerMapa_masDeDiezCriticos_listaLasDiezPrimerasYCuentaTodas() {
-        Schema.Location bog = edificio('BLD-BOG-001', 'ANDINA', 4.6533, -74.0602);
+        Schema.Location bog = edificio(COD_BOG, 'ANDINA', 4.6533, -74.0602);
         List<String> severidades = new List<String>();
         for (Integer i = 0; i < 12; i++) {
             severidades.add('Critico');
@@ -206,153 +399,182 @@ private with sharing class MapaEdificiosControllerTest {
     }
 
     @IsTest
-    static void construir_enElTopeDeActivos_avisaConteoParcial() {
-        Schema.Location bog = edificio('BLD-BOG-001', 'ANDINA', 4.6533, -74.0602);
-        List<Asset> activos = new List<Asset>();
-        for (Integer i = 0; i < MapaEdificiosController.MAXIMO_ACTIVOS; i++) {
-            activos.add(new Asset(Name = 'Activo ' + i, Edificio_Externo__c = bog.Id_Externo__c));
-        }
+    static void obtenerMapa_masEdificiosQueElTope_avisaEdificiosParcial() {
+        TestDataFactory.createLocations(MapaEdificiosController.MAXIMO_EDIFICIOS + 1, null, true);
 
         Test.startTest();
-        MapaEdificiosController.Mapa m = MapaEdificiosController.construir(new List<Schema.Location>{ bog }, activos);
+        MapaEdificiosController.Mapa m = MapaEdificiosController.obtenerMapa();
+        Test.stopTest();
+
+        Assert.areEqual(MapaEdificiosController.MAXIMO_EDIFICIOS, m.edificios.size(), 'Se muestran como mucho 100 edificios');
+        Assert.isTrue(m.edificiosParcial, 'Con más edificios que el tope, el mapa avisa de que faltan');
+    }
+
+    @IsTest
+    static void construir_bajoElTopeDeEdificios_sinEdificiosParcial() {
+        List<Schema.Location> edificios = TestDataFactory.createLocations(MapaEdificiosController.MAXIMO_EDIFICIOS - 1, null, false);
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = MapaEdificiosController.construir(edificios, new List<Asset>());
+        Test.stopTest();
+
+        Assert.isFalse(m.edificiosParcial, 'Por debajo del tope la consulta trajo todos los edificios');
+    }
+
+    @IsTest
+    static void obtenerMapa_masActivosQueElTope_conservaElCritico() {
+        Schema.Location bog = edificio(COD_BOG, 'ANDINA', 4.6533, -74.0602);
+        // Los del tope van antes por nombre y no tienen severidad; el crítico es el último por nombre.
+        TestDataFactory.createAssets(MapaEdificiosController.MAXIMO_ACTIVOS, new Map<SObjectField, Object>{
+            Asset.Name => 'Activo sin estado',
+            Asset.Edificio_Externo__c => bog.Id_Externo__c
+        }, true);
+        sembrarCritico(bog, 'Zeta crítico');
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = MapaEdificiosController.obtenerMapa();
+        Test.stopTest();
+
+        Assert.isTrue(m.conteoParcial, 'Precondición: hay más activos que el tope');
+        Assert.areEqual(MapaEdificiosController.CRITICO, m.edificios[0].peorSeveridad,
+            'El crítico entra en el tope aunque sea el último por nombre: el edificio sale en rojo');
+    }
+
+    @IsTest
+    static void construir_enElTopeDeActivos_avisaConteoParcial() {
+        List<Asset> activos = TestDataFactory.createAssets(MapaEdificiosController.MAXIMO_ACTIVOS, null, false);
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = MapaEdificiosController.construir(new List<Schema.Location>{ edificioEnMemoria(COD_BOG) }, activos);
         Test.stopTest();
 
         Assert.isTrue(m.conteoParcial, 'Con 2000 activos la consulta pudo dejar fuera otros');
-        Assert.areEqual(MapaEdificiosController.MAXIMO_ACTIVOS, m.edificios[0].sinDatos);
     }
 
     @IsTest
-    static void construir_activoDeOtroCodigoOEdificioSinCodigo_noSeCuenta() {
-        Schema.Location bog = edificio('BLD-BOG-001', 'ANDINA', 4.6533, -74.0602);
-        Schema.Location sinCodigo = new Schema.Location(Name = 'Edificio sin código', Latitude = 4.7, Longitude = -74.05);
-        List<Asset> activos = new List<Asset>{
-            new Asset(Name = 'Activo de Bogotá', Edificio_Externo__c = 'BLD-BOG-001'),
-            new Asset(Name = 'Activo de otro edificio', Edificio_Externo__c = 'BLD-OTRO-001'),
-            new Asset(Name = 'Activo sin edificio')
-        };
+    static void construir_bajoElTopeDeActivos_sinConteoParcial() {
+        List<Asset> activos = TestDataFactory.createAssets(MapaEdificiosController.MAXIMO_ACTIVOS - 1, null, false);
 
         Test.startTest();
-        MapaEdificiosController.Mapa m = MapaEdificiosController.construir(
-            new List<Schema.Location>{ bog, sinCodigo }, activos);
+        MapaEdificiosController.Mapa m = MapaEdificiosController.construir(new List<Schema.Location>{ edificioEnMemoria(COD_BOG) }, activos);
         Test.stopTest();
 
-        Assert.areEqual(2, m.edificios.size());
-        Assert.areEqual(1, buscar(m, bog.Id).totalActivos, 'Se une por Edificio_Externo__c = Id_Externo__c');
-        Assert.areEqual(1, buscar(m, bog.Id).sinDatos);
-        Assert.areEqual(0, buscar(m, null).totalActivos, 'Sin código no se le asigna ningún activo');
-        Assert.isFalse(m.conteoParcial);
+        Assert.isFalse(m.conteoParcial, 'Por debajo del tope los conteos están completos');
     }
 
     @IsTest
-    static void obtenerMapa_cadaGerenteVeSoloElEdificioDeSuRegion() {
-        User gerenteAndina;
-        User gerenteCaribe;
-        List<Group> grupos;
-        System.runAs(new User(Id = UserInfo.getUserId())) {
-            UserRole rolAndina = new UserRole(Name = 'Gerente prueba Andina', DeveloperName = 'Gerente_Prueba_Andina_E24');
-            UserRole rolCaribe = new UserRole(Name = 'Gerente prueba Caribe', DeveloperName = 'Gerente_Prueba_Caribe_E24');
-            insert new List<UserRole>{ rolAndina, rolCaribe };
-            UserRole opAndina = new UserRole(Name = 'Operador prueba Andina', DeveloperName = 'Operador_Prueba_Andina_E24', ParentRoleId = rolAndina.Id);
-            UserRole opCaribe = new UserRole(Name = 'Operador prueba Caribe', DeveloperName = 'Operador_Prueba_Caribe_E24', ParentRoleId = rolCaribe.Id);
-            insert new List<UserRole>{ opAndina, opCaribe };
+    static void construir_nombresConDistintasMayusculas_ordenaSinDistinguirlas() {
+        List<Schema.Location> edificios = TestDataFactory.createLocations(2, null, false);
+        edificios[0].Name = 'Beta';
+        edificios[1].Name = 'alfa';
 
-            grupos = TestDataFactory.crearGrupos(2);
-            update new List<Group>{
-                new Group(Id = grupos[0].Id, DoesIncludeBosses = true),
-                new Group(Id = grupos[1].Id, DoesIncludeBosses = true)
-            };
-
-            gerenteAndina = TestDataFactory.crearUsuarioGerente();
-            gerenteCaribe = TestDataFactory.crearUsuarioGerente();
-            User operadorAndina = TestDataFactory.crearUsuarioOperador();
-            User operadorCaribe = TestDataFactory.crearUsuarioOperador();
-            update new List<User>{
-                new User(Id = gerenteAndina.Id, UserRoleId = rolAndina.Id),
-                new User(Id = gerenteCaribe.Id, UserRoleId = rolCaribe.Id),
-                new User(Id = operadorAndina.Id, UserRoleId = opAndina.Id),
-                new User(Id = operadorCaribe.Id, UserRoleId = opCaribe.Id)
-            };
-            insert new List<GroupMember>{
-                new GroupMember(GroupId = grupos[0].Id, UserOrGroupId = operadorAndina.Id),
-                new GroupMember(GroupId = grupos[1].Id, UserOrGroupId = operadorCaribe.Id)
-            };
-        }
-        Schema.Location alameda = edificio('BLD-BOG-001', 'ANDINA', 4.6533, -74.0602);
-        Schema.Location caribe = edificio('BLD-BAQ-001', 'CARIBE', 11.0004, -74.8066);
-        List<Asset> deAlameda = sembrar(alameda, new List<String>{ 'Critico', 'Normal' });
-        List<Asset> deCaribe = sembrar(caribe, new List<String>{ 'Advertencia' });
-        insert new List<LocationShare>{
-            new LocationShare(ParentId = alameda.Id, UserOrGroupId = grupos[0].Id, AccessLevel = 'Read', RowCause = 'Manual'),
-            new LocationShare(ParentId = caribe.Id, UserOrGroupId = grupos[1].Id, AccessLevel = 'Read', RowCause = 'Manual')
-        };
-        List<AssetShare> activosCompartidos = new List<AssetShare>();
-        for (Asset a : deAlameda) {
-            activosCompartidos.add(new AssetShare(AssetId = a.Id, UserOrGroupId = grupos[0].Id, AssetAccessLevel = 'Read', RowCause = 'Manual'));
-        }
-        for (Asset a : deCaribe) {
-            activosCompartidos.add(new AssetShare(AssetId = a.Id, UserOrGroupId = grupos[1].Id, AssetAccessLevel = 'Read', RowCause = 'Manual'));
-        }
-        insert activosCompartidos;
-
-        MapaEdificiosController.Mapa deAndina;
-        MapaEdificiosController.Mapa deCaribeMapa;
         Test.startTest();
-        System.runAs(gerenteAndina) {
-            deAndina = MapaEdificiosController.obtenerMapa();
-        }
-        System.runAs(gerenteCaribe) {
-            deCaribeMapa = MapaEdificiosController.obtenerMapa();
-        }
+        MapaEdificiosController.Mapa m = MapaEdificiosController.construir(edificios, new List<Asset>());
         Test.stopTest();
 
-        Assert.areEqual(1, deAndina.edificios.size(), 'El gerente Andina ve 1 edificio');
-        Assert.areEqual(alameda.Id, deAndina.edificios[0].id, '...y es Alameda');
-        Assert.areEqual(MapaEdificiosController.CRITICO, deAndina.edificios[0].peorSeveridad);
-        Assert.areEqual(2, deAndina.edificios[0].totalActivos);
-        Assert.areEqual(4.6533, deAndina.edificios[0].latitud, 'Lee las coordenadas: FLS en Nova_Casa_Gerente');
-        Assert.isTrue(deAndina.edificios[0].tieneCoordenadas);
-
-        Assert.areEqual(1, deCaribeMapa.edificios.size(), 'El gerente Caribe ve 1 edificio');
-        Assert.areEqual(caribe.Id, deCaribeMapa.edificios[0].id, '...y es Caribe');
-        Assert.areEqual(MapaEdificiosController.ADVERTENCIA, deCaribeMapa.edificios[0].peorSeveridad);
-        Assert.areEqual(11.0004, deCaribeMapa.edificios[0].latitud);
+        Assert.areEqual('alfa', m.edificios[0].nombre, 'A igual severidad, «alfa» va antes que «Beta» aunque empiece en minúscula');
     }
 
     @IsTest
-    static void obtenerMapa_coordinadorVeLosDos() {
-        User coordinador;
-        Group coordinadores;
-        System.runAs(new User(Id = UserInfo.getUserId())) {
-            coordinador = usuarioMinimo('Coordinador', PERM_SET_COORDINADOR);
-            coordinadores = TestDataFactory.crearGrupos(1)[0];
-            insert new GroupMember(GroupId = coordinadores.Id, UserOrGroupId = coordinador.Id);
-        }
-        Schema.Location alameda = edificio('BLD-BOG-001', 'ANDINA', 4.6533, -74.0602);
-        Schema.Location caribe = edificio('BLD-BAQ-001', 'CARIBE', 11.0004, -74.8066);
-        List<Asset> activos = sembrar(alameda, new List<String>{ 'Normal' });
-        activos.addAll(sembrar(caribe, new List<String>{ 'Critico' }));
-        insert new List<LocationShare>{
-            new LocationShare(ParentId = alameda.Id, UserOrGroupId = coordinadores.Id, AccessLevel = 'Read', RowCause = 'Manual'),
-            new LocationShare(ParentId = caribe.Id, UserOrGroupId = coordinadores.Id, AccessLevel = 'Read', RowCause = 'Manual')
-        };
-        List<AssetShare> activosCompartidos = new List<AssetShare>();
-        for (Asset a : activos) {
-            activosCompartidos.add(new AssetShare(AssetId = a.Id, UserOrGroupId = coordinadores.Id, AssetAccessLevel = 'Read', RowCause = 'Manual'));
-        }
-        insert activosCompartidos;
+    static void construir_activoDeOtroCodigo_noSeCuentaEnElEdificio() {
+        // Los activos de fábrica son de BLD-BOG-001.
+        List<Asset> activos = TestDataFactory.createAssets(2, null, false);
+        activos[1].Edificio_Externo__c = 'BLD-OTRO-001';
 
-        MapaEdificiosController.Mapa m;
         Test.startTest();
-        System.runAs(coordinador) {
-            m = MapaEdificiosController.obtenerMapa();
-        }
+        MapaEdificiosController.Mapa m = MapaEdificiosController.construir(new List<Schema.Location>{ edificioEnMemoria(COD_BOG) }, activos);
         Test.stopTest();
 
-        Assert.areEqual(new Set<Id>{ alameda.Id, caribe.Id }, idsDe(m), 'El coordinador ve los dos edificios');
-        Assert.areEqual(caribe.Id, m.edificios[0].id, 'Primero el que tiene críticos');
-        Assert.areEqual(1, m.edificios[0].activosCriticos.size());
-        Assert.areEqual(-74.8066, m.edificios[0].longitud, 'Lee las coordenadas: FLS en Nova_Casa_Coordinador');
-        Assert.areEqual(0, m.sinCoordenadas);
+        Assert.areEqual(1, m.edificios[0].totalActivos, 'Solo el de su código: se une por Edificio_Externo__c = Id_Externo__c');
+    }
+
+    @IsTest
+    static void construir_edificioSinCodigo_noRecibeActivos() {
+        List<Asset> activos = TestDataFactory.createAssets(1, new Map<SObjectField, Object>{ Asset.Edificio_Externo__c => null }, false);
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = MapaEdificiosController.construir(new List<Schema.Location>{ edificioEnMemoria(null) }, activos);
+        Test.stopTest();
+
+        Assert.areEqual(0, m.edificios[0].totalActivos, 'Sin código no se le asigna ningún activo, ni el que tampoco tiene edificio');
+    }
+
+    @IsTest
+    static void obtenerMapa_falloAlConstruir_errorDeCarga() {
+        edificio(COD_BOG, 'ANDINA', 4.6533, -74.0602);
+        MapaEdificiosController.forzarFalloAlConstruir = true;
+
+        Test.startTest();
+        String mensaje = errorAlPedirElMapa();
+        Test.stopTest();
+
+        Assert.areEqual(MapaEdificiosController.ERROR_CARGA, mensaje, 'Un fallo al armar la respuesta llega saneado, sin detalle');
+    }
+
+    @IsTest
+    static void obtenerMapa_gerenteAndina_veSoloElEdificioDeSuRegion() {
+        DosRegiones escenario = dosRegionesConSusGerentes();
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = mapaDe(escenario.gerenteAndina);
+        Test.stopTest();
+
+        Assert.areEqual(new Set<Id>{ escenario.alameda.Id }, idsDe(m), 'El gerente Andina ve 1 de 2: Alameda');
+    }
+
+    @IsTest
+    static void obtenerMapa_gerenteCaribe_veSoloElEdificioDeSuRegion() {
+        DosRegiones escenario = dosRegionesConSusGerentes();
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = mapaDe(escenario.gerenteCaribe);
+        Test.stopTest();
+
+        Assert.areEqual(new Set<Id>{ escenario.caribe.Id }, idsDe(m), 'El gerente Caribe ve 1 de 2: Caribe');
+    }
+
+    @IsTest
+    static void obtenerMapa_gerenteAndina_cuentaLosActivosDeSuEdificio() {
+        DosRegiones escenario = dosRegionesConSusGerentes();
+
+        Test.startTest();
+        MapaEdificiosController.Edificio alameda = buscar(mapaDe(escenario.gerenteAndina), escenario.alameda.Id);
+        Test.stopTest();
+
+        Assert.areEqual(2, alameda.totalActivos, 'Los dos activos que la compartición le deja ver');
+    }
+
+    @IsTest
+    static void obtenerMapa_gerenteAndina_leeLasCoordenadas() {
+        DosRegiones escenario = dosRegionesConSusGerentes();
+
+        Test.startTest();
+        MapaEdificiosController.Edificio alameda = buscar(mapaDe(escenario.gerenteAndina), escenario.alameda.Id);
+        Test.stopTest();
+
+        Assert.areEqual(4.6533, alameda.latitud, 'Lee las coordenadas: FLS en Nova_Casa_Gerente');
+    }
+
+    @IsTest
+    static void obtenerMapa_coordinador_veLosDosEdificios() {
+        DosRegiones escenario = dosRegionesConCoordinador();
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = mapaDe(escenario.coordinador);
+        Test.stopTest();
+
+        Assert.areEqual(new Set<Id>{ escenario.alameda.Id, escenario.caribe.Id }, idsDe(m), 'El coordinador ve los dos edificios');
+    }
+
+    @IsTest
+    static void obtenerMapa_coordinador_leeLasCoordenadas() {
+        DosRegiones escenario = dosRegionesConCoordinador();
+
+        Test.startTest();
+        MapaEdificiosController.Edificio caribe = buscar(mapaDe(escenario.coordinador), escenario.caribe.Id);
+        Test.stopTest();
+
+        Assert.areEqual(-74.8066, caribe.longitud, 'Lee las coordenadas: FLS en Nova_Casa_Coordinador');
     }
 
     @IsTest
@@ -361,37 +583,27 @@ private with sharing class MapaEdificiosControllerTest {
         System.runAs(new User(Id = UserInfo.getUserId())) {
             gerente = TestDataFactory.crearUsuarioGerente();
         }
-        Schema.Location alameda = edificio('BLD-BOG-001', 'ANDINA', 4.6533, -74.0602);
-        sembrar(alameda, new List<String>{ 'Critico' });
+        sembrar(edificio(COD_BOG, 'ANDINA', 4.6533, -74.0602), new List<String>{ 'Critico' });
 
-        MapaEdificiosController.Mapa m;
         Test.startTest();
-        System.runAs(gerente) {
-            m = MapaEdificiosController.obtenerMapa();
-        }
+        MapaEdificiosController.Mapa m = mapaDe(gerente);
         Test.stopTest();
 
         Assert.isTrue(m.edificios.isEmpty(), 'Sin compartición no hay edificios: el mapa muestra el estado vacío');
-        Assert.areEqual(0, m.sinCoordenadas);
     }
 
     @IsTest
-    static void obtenerMapa_sinPermissionSet_errorGenerico() {
-        User sinPs;
+    static void obtenerMapa_sinPermissionSet_errorDeCarga() {
+        User sinPermisos;
         System.runAs(new User(Id = UserInfo.getUserId())) {
-            sinPs = usuarioMinimo('Sinps', null);
+            sinPermisos = TestDataFactory.crearUsuarioSinPermisos();
         }
-        edificio('BLD-BOG-001', 'ANDINA', 4.6533, -74.0602);
+        edificio(COD_BOG, 'ANDINA', 4.6533, -74.0602);
 
         String mensaje;
         Test.startTest();
-        System.runAs(sinPs) {
-            try {
-                MapaEdificiosController.obtenerMapa();
-                Assert.fail('Sin Permission Set no debe leer los edificios');
-            } catch (AuraHandledException e) {
-                mensaje = e.getMessage();
-            }
+        System.runAs(sinPermisos) {
+            mensaje = errorAlPedirElMapa();
         }
         Test.stopTest();
 
