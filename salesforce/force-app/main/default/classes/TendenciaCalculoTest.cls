@@ -168,7 +168,7 @@ private class TendenciaCalculoTest {
 
         Assert.areEqual(TendenciaCalculo.Estado.YA_EN_CRITICO, r.estado,
             'Con lecturas dispersas (R² < 0,7) no se anuncia una salida del crítico');
-        Assert.isTrue(r.r2 < TendenciaCalculo.R2_MINIMO, 'El R² queda como diagnóstico');
+        Assert.areEqual(0.0361, r.r2, 'El R² queda como diagnóstico: 20² ÷ (437,5 × 25,33) ≈ 0,0361');
         Assert.isNull(r.ritmo, 'Ya en crítico no guarda ritmo');
     }
 

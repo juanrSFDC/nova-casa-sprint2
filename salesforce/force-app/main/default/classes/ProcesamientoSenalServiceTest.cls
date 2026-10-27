@@ -18,6 +18,9 @@ private class ProcesamientoSenalServiceTest {
     private static final String ID_TEMP = 'AST-BOG-TEMP-001';
     private static final String ID_CAM = 'AST-BOG-CAM-001';
     private static final Datetime OCURRIDO = Datetime.newInstanceGmt(2026, 9, 26, 12, 0, 0);
+    private static final Decimal VALOR_EN_CONFLICTO = 99.9;
+    private static final String ENTREGA_EN_CONFLICTO = 'dlv_prueba|carga-3';
+    private static final String ACTIVO_DESCONOCIDO = 'AST-NO-EXISTE';
 
     /** Excepción de prueba: su tipo no está en la lista blanca de detalleSaneado (detalle genérico). */
     private class PruebaException extends Exception {}
@@ -374,48 +377,54 @@ private class ProcesamientoSenalServiceTest {
     }
 
     @isTest
-    static void procesar_rechazoYConflicto_guardanLoQueLlego_duplicadaYProcesadaNo() {
-        User usuario;
-        System.runAs(new User(Id = UserInfo.getUserId())) {
-            usuario = TestDataFactory.crearUsuarioIngesta();
-        }
-        Senal_Sensor__e original = medicion('prueba|carga', ID_TEMP, 'TEMPERATURE', 'CELSIUS');
-        Senal_Sensor__e reenvio = medicion('prueba|carga', ID_TEMP, 'TEMPERATURE', 'CELSIUS');
-        reenvio.Id_Entrega__c = 'dlv_prueba|carga-2';
-        Senal_Sensor__e conflicto = medicion('prueba|carga', ID_TEMP, 'TEMPERATURE', 'CELSIUS');
-        conflicto.Id_Entrega__c = 'dlv_prueba|carga-3';
-        conflicto.Valor__c = 99.9;
-        Senal_Sensor__e rechazo = medicion('prueba|carga-activo', 'AST-NO-EXISTE', 'TEMPERATURE', 'CELSIUS');
+    static void procesar_conflicto_guardaEnLaTrazaLoQueLlego() {
+        procesarLoteConConflictoYRechazo();
 
-        System.runAs(usuario) {
-            Test.startTest();
-            EventBus.publish(new List<Senal_Sensor__e>{ original, reenvio, conflicto, rechazo });
-            Test.getEventBus().deliver();
-            Test.stopTest();
-        }
+        Registro_Procesamiento__c traza = [
+            SELECT Carga_Evento__c FROM Registro_Procesamiento__c WHERE Resultado__c = 'Conflicto'
+        ];
+        Senal_Sensor__e llego = (Senal_Sensor__e) JSON.deserialize(traza.Carga_Evento__c, Senal_Sensor__e.class);
+        Assert.areEqual(VALOR_EN_CONFLICTO, llego.Valor__c, 'El conflicto guarda el valor que llegó, no el guardado');
+        Assert.areEqual(ENTREGA_EN_CONFLICTO, llego.Id_Entrega__c, 'Y la entrega que lo trajo');
+    }
 
-        Map<String, Registro_Procesamiento__c> porResultado = new Map<String, Registro_Procesamiento__c>();
-        for (Registro_Procesamiento__c t : [
+    @isTest
+    static void procesar_rechazo_guardaEnLaTrazaLoQueLlego() {
+        procesarLoteConConflictoYRechazo();
+
+        Registro_Procesamiento__c traza = [
+            SELECT Carga_Evento__c FROM Registro_Procesamiento__c WHERE Resultado__c = 'Rechazada'
+        ];
+        Senal_Sensor__e llego = (Senal_Sensor__e) JSON.deserialize(traza.Carga_Evento__c, Senal_Sensor__e.class);
+        Assert.areEqual(ACTIVO_DESCONOCIDO, llego.Activo_Externo__c, 'El rechazo guarda lo que trajo la señal');
+    }
+
+    @isTest
+    static void procesar_duplicadaYProcesada_noGuardanCarga() {
+        procesarLoteConConflictoYRechazo();
+
+        List<Registro_Procesamiento__c> trazas = [
+            SELECT Resultado__c, Carga_Evento__c FROM Registro_Procesamiento__c
+            WHERE Resultado__c IN ('Duplicada', 'Procesada')
+        ];
+        Assert.areEqual(2, trazas.size(), 'El original deja una Procesada y su reenvío una Duplicada');
+        for (Registro_Procesamiento__c traza : trazas) {
+            Assert.isNull(traza.Carga_Evento__c, traza.Resultado__c + ': su contenido ya está en la lectura');
+        }
+    }
+
+    @isTest
+    static void procesar_conflictoYRechazoConCarga_siguenSinSerReintentables() {
+        procesarLoteConConflictoYRechazo();
+
+        List<Registro_Procesamiento__c> trazas = [
             SELECT Resultado__c, Reintentable__c, Carga_Evento__c FROM Registro_Procesamiento__c
-        ]) {
-            porResultado.put(t.Resultado__c, t);
-        }
-        Assert.areEqual(new Set<String>{ 'Procesada', 'Duplicada', 'Conflicto', 'Rechazada' }, porResultado.keySet(),
-            'Un desenlace de cada tipo');
-
-        Senal_Sensor__e llegoEnConflicto = (Senal_Sensor__e) JSON.deserialize(
-            porResultado.get('Conflicto').Carga_Evento__c, Senal_Sensor__e.class);
-        Assert.areEqual(99.9, llegoEnConflicto.Valor__c, 'El conflicto guarda el valor que llegó, no el guardado');
-        Assert.areEqual('dlv_prueba|carga-3', llegoEnConflicto.Id_Entrega__c, 'Y la entrega que lo trajo');
-
-        Senal_Sensor__e llegoEnRechazo = (Senal_Sensor__e) JSON.deserialize(
-            porResultado.get('Rechazada').Carga_Evento__c, Senal_Sensor__e.class);
-        Assert.areEqual('AST-NO-EXISTE', llegoEnRechazo.Activo_Externo__c, 'El rechazo guarda lo que trajo la señal');
-
-        Assert.isNull(porResultado.get('Duplicada').Carga_Evento__c, 'La duplicada no: su contenido es el de la lectura original');
-        Assert.isNull(porResultado.get('Procesada').Carga_Evento__c, 'La procesada no: su contenido quedó en la lectura');
-        for (Registro_Procesamiento__c t : porResultado.values()) {
-            Assert.isFalse(t.Reintentable__c, 'Guardar la carga no vuelve reintentable ningún desenlace de negocio');
+            WHERE Resultado__c IN ('Conflicto', 'Rechazada')
+        ];
+        Assert.areEqual(2, trazas.size(), 'Un conflicto y un rechazo');
+        for (Registro_Procesamiento__c traza : trazas) {
+            Assert.isNotNull(traza.Carga_Evento__c, traza.Resultado__c + ': guarda su carga');
+            Assert.isFalse(traza.Reintentable__c, traza.Resultado__c + ': guardar la carga no la vuelve reintentable');
         }
     }
 
@@ -753,6 +762,31 @@ private class ProcesamientoSenalServiceTest {
     }
 
     // ─── Ayudantes ──────────────────────────────────────────────────────────
+
+    /**
+     * Un lote real por el bus como el usuario de integración: el original, su reenvío idéntico, un
+     * conflicto con otro valor y un rechazo por activo desconocido. Deja una traza de cada desenlace.
+     */
+    private static void procesarLoteConConflictoYRechazo() {
+        User usuario;
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            usuario = TestDataFactory.crearUsuarioIngesta();
+        }
+        Senal_Sensor__e original = medicion('prueba|carga', ID_TEMP, 'TEMPERATURE', 'CELSIUS');
+        Senal_Sensor__e reenvio = medicion('prueba|carga', ID_TEMP, 'TEMPERATURE', 'CELSIUS');
+        reenvio.Id_Entrega__c = 'dlv_prueba|carga-2';
+        Senal_Sensor__e conflicto = medicion('prueba|carga', ID_TEMP, 'TEMPERATURE', 'CELSIUS');
+        conflicto.Id_Entrega__c = ENTREGA_EN_CONFLICTO;
+        conflicto.Valor__c = VALOR_EN_CONFLICTO;
+        Senal_Sensor__e rechazo = medicion('prueba|carga-activo', ACTIVO_DESCONOCIDO, 'TEMPERATURE', 'CELSIUS');
+
+        System.runAs(usuario) {
+            Test.startTest();
+            EventBus.publish(new List<Senal_Sensor__e>{ original, reenvio, conflicto, rechazo });
+            Test.getEventBus().deliver();
+            Test.stopTest();
+        }
+    }
 
     /** Un evento sin activo (para el camino de fallo), con clave, entrega, tipo válido y recepción. */
     private static Senal_Sensor__e evento(String clave, String idEntrega) {
