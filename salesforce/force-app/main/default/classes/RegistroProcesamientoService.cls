@@ -14,7 +14,10 @@
  * §3.1). Ocurrido_En__c (fecha origen de la señal, 209.1) se llena en las trazas del suscriptor; en las
  * de ingesta queda null (no hay señal validada). El saneado de Detalle__c nunca deja tokens ni stack.
  * Desde E-06 los fallos reintentables del suscriptor guardan la carga de su señal (Carga_Evento__c) y
- * marcarReprocesadas deja constancia de quién reprocesó cada traza desde la pantalla.
+ * marcarReprocesadas deja constancia de quién reprocesó cada traza desde la pantalla. Desde el 27-oct
+ * también la guardan los rechazos y los conflictos del suscriptor: lo que no se guarda como lectura
+ * queda en su traza, para que el administrador vea qué mandó el proveedor. La carga no los vuelve
+ * reintentables: el reproceso exige Fallo_Tecnico reintentable.
  * Desde E-07 (25-oct) registra también el silencio del proveedor (registrarSilencios): una traza por
  * episodio, sin Recibido_En__c, para que nunca cuente como una señal recibida.
  *
@@ -196,7 +199,8 @@ public with sharing class RegistroProcesamientoService {
      * Reintentable__c = false (el dato es incorrecto, reintentarlo daría el mismo rechazo). Motivo__c es
      * el valor de picklist que decidió el Domain; Tipo_Mensaje__c solo se guarda si es un valor válido de
      * la picklist restringida (en TIPO_MENSAJE_DESCONOCIDO no lo es → null, para no tumbar el insert). El
-     * detalle ya viene saneado del Domain (qué no cuadró, nunca la carga cruda). Lista vacía o nula: nada.
+     * detalle ya viene saneado del Domain (qué no cuadró, nunca la carga cruda); lo que llegó queda en
+     * Carga_Evento__c (sin Carga_Cruda__c), porque un rechazo no deja lectura. Lista vacía o nula: nada.
      *
      * @param rechazos Los rechazos del lote (SenalSensorDomain.validar)
      * @param ahora El momento del procesamiento (parámetro para poder probarlo con hora fija)
@@ -224,7 +228,8 @@ public with sharing class RegistroProcesamientoService {
                 Procesado_En__c = ahora,
                 Ocurrido_En__c = ocurridoDe(evento),
                 Referencia__c = referenciaDe(evento),
-                Detalle__c = truncar(rechazo.detalle, MAX_DETALLE)
+                Detalle__c = truncar(rechazo.detalle, MAX_DETALLE),
+                Carga_Evento__c = cargaDe(evento)
             ));
         }
         Database.insert(trazas, AccessLevel.USER_MODE);
@@ -440,7 +445,8 @@ public with sharing class RegistroProcesamientoService {
             Procesado_En__c = ahora,
             Ocurrido_En__c = ocurridoDe(evento),
             Referencia__c = referenciaDe(evento),
-            Detalle__c = truncar(rechazo.detalle, MAX_DETALLE)
+            Detalle__c = truncar(rechazo.detalle, MAX_DETALLE),
+            Carga_Evento__c = cargaDe(evento)
         );
     }
 
@@ -448,7 +454,8 @@ public with sharing class RegistroProcesamientoService {
      * Construye (sin insertar) la traza de un duplicado/conflicto del suscriptor (202.3), o —si su original
      * obligatorio volvió a fallar la reintervención (205)— un Fallo_Tecnico reintentable apuntando al
      * original. El duplicado/conflicto normal es no reintentable y apunta con Lectura__c al original; el
-     * conflicto añade Motivo__c = COLISION_CLAVE.
+     * conflicto añade Motivo__c = COLISION_CLAVE y guarda en Carga_Evento__c lo que llegó, que no se
+     * guarda en ningún otro lado. El duplicado no: su contenido es el de la lectura original.
      */
     private static Registro_Procesamiento__c construirTrazaDedup(DesenlaceDedup desenlace, Datetime ahora) {
         Senal_Sensor__e evento = desenlace.evento;
@@ -468,7 +475,8 @@ public with sharing class RegistroProcesamientoService {
             Ocurrido_En__c = ocurridoDe(evento),
             Referencia__c = referenciaDe(evento),
             Lectura__c = desenlace.lecturaOriginal,
-            Detalle__c = desenlace.esConflicto ? DETALLE_CONFLICTO : DETALLE_DUPLICADA
+            Detalle__c = desenlace.esConflicto ? DETALLE_CONFLICTO : DETALLE_DUPLICADA,
+            Carga_Evento__c = desenlace.esConflicto ? cargaDe(evento) : null
         );
     }
 

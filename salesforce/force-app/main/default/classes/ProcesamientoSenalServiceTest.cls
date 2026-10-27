@@ -374,6 +374,52 @@ private class ProcesamientoSenalServiceTest {
     }
 
     @isTest
+    static void procesar_rechazoYConflicto_guardanLoQueLlego_duplicadaYProcesadaNo() {
+        User usuario;
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            usuario = TestDataFactory.crearUsuarioIngesta();
+        }
+        Senal_Sensor__e original = medicion('prueba|carga', ID_TEMP, 'TEMPERATURE', 'CELSIUS');
+        Senal_Sensor__e reenvio = medicion('prueba|carga', ID_TEMP, 'TEMPERATURE', 'CELSIUS');
+        reenvio.Id_Entrega__c = 'dlv_prueba|carga-2';
+        Senal_Sensor__e conflicto = medicion('prueba|carga', ID_TEMP, 'TEMPERATURE', 'CELSIUS');
+        conflicto.Id_Entrega__c = 'dlv_prueba|carga-3';
+        conflicto.Valor__c = 99.9;
+        Senal_Sensor__e rechazo = medicion('prueba|carga-activo', 'AST-NO-EXISTE', 'TEMPERATURE', 'CELSIUS');
+
+        System.runAs(usuario) {
+            Test.startTest();
+            EventBus.publish(new List<Senal_Sensor__e>{ original, reenvio, conflicto, rechazo });
+            Test.getEventBus().deliver();
+            Test.stopTest();
+        }
+
+        Map<String, Registro_Procesamiento__c> porResultado = new Map<String, Registro_Procesamiento__c>();
+        for (Registro_Procesamiento__c t : [
+            SELECT Resultado__c, Reintentable__c, Carga_Evento__c FROM Registro_Procesamiento__c
+        ]) {
+            porResultado.put(t.Resultado__c, t);
+        }
+        Assert.areEqual(new Set<String>{ 'Procesada', 'Duplicada', 'Conflicto', 'Rechazada' }, porResultado.keySet(),
+            'Un desenlace de cada tipo');
+
+        Senal_Sensor__e llegoEnConflicto = (Senal_Sensor__e) JSON.deserialize(
+            porResultado.get('Conflicto').Carga_Evento__c, Senal_Sensor__e.class);
+        Assert.areEqual(99.9, llegoEnConflicto.Valor__c, 'El conflicto guarda el valor que llegó, no el guardado');
+        Assert.areEqual('dlv_prueba|carga-3', llegoEnConflicto.Id_Entrega__c, 'Y la entrega que lo trajo');
+
+        Senal_Sensor__e llegoEnRechazo = (Senal_Sensor__e) JSON.deserialize(
+            porResultado.get('Rechazada').Carga_Evento__c, Senal_Sensor__e.class);
+        Assert.areEqual('AST-NO-EXISTE', llegoEnRechazo.Activo_Externo__c, 'El rechazo guarda lo que trajo la señal');
+
+        Assert.isNull(porResultado.get('Duplicada').Carga_Evento__c, 'La duplicada no: su contenido es el de la lectura original');
+        Assert.isNull(porResultado.get('Procesada').Carga_Evento__c, 'La procesada no: su contenido quedó en la lectura');
+        for (Registro_Procesamiento__c t : porResultado.values()) {
+            Assert.isFalse(t.Reintentable__c, 'Guardar la carga no vuelve reintentable ningún desenlace de negocio');
+        }
+    }
+
+    @isTest
     static void procesar_duplicateValueEnCarrera_seTrataComoDuplicada() {
         User usuario;
         System.runAs(new User(Id = UserInfo.getUserId())) {
