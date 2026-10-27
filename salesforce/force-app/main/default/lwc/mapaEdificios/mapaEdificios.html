@@ -46,6 +46,9 @@
                     <p class="aviso slds-m-top_xx-small" role="status" data-id="aviso">{avisoActualizacion}</p>
                 </template>
                 <p class="slds-m-top_xx-small" data-id="resumen">{textoResumen}</p>
+                <template lwc:if={textoEdificiosParcial}>
+                    <p class="aviso slds-m-top_xx-small" data-id="edificios-parcial">{textoEdificiosParcial}</p>
+                </template>
 
                 <lightning-layout multiple-rows>
                     <lightning-layout-item size="12" large-device-size="8" padding="around-small">

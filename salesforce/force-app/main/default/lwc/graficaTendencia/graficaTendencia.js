@@ -526,6 +526,12 @@ export default class GraficaTendencia extends LightningElement {
         return this.actualizadoEn ? `Actualizado a las ${formatoHoraSegundos.format(this.actualizadoEn)} · cada 30 s` : "";
     }
 
+    get textoConsultaParcial() {
+        return this.datos && this.datos.consultaParcial
+            ? "Hay más lecturas de las que se pueden traer de una vez: alguna medición puede verse con menos puntos."
+            : "";
+    }
+
     // La petición no es cacheable: cada vuelta trae lo que hay en la org, no lo que guardó el cliente.
     async cargar() {
         if (!this.recordId) {

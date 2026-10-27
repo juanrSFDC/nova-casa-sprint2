@@ -63,6 +63,7 @@ public with sharing class MapaEdificiosController {
             AccessLevel.USER_MODE);
     }
 
+    /** Los peores primero: si se llega al tope, lo que queda fuera no cambia el color de ningún edificio. */
     private static List<Asset> consultarActivos(List<Schema.Location> edificios) {
         Set<String> codigos = new Set<String>();
         for (Schema.Location registro : edificios) {
@@ -75,7 +76,8 @@ public with sharing class MapaEdificiosController {
         }
         return Database.queryWithBinds(
             'SELECT Id, Name, Edificio_Externo__c, Tipo_Activo__c, Severidad_Actual__c, Severidad_Etiqueta__c'
-                + ' FROM Asset WHERE Edificio_Externo__c IN :codigos ORDER BY Name LIMIT :maximoActivos',
+                + ' FROM Asset WHERE Edificio_Externo__c IN :codigos'
+                + ' ORDER BY Severidad_Actual__c DESC NULLS LAST, Name LIMIT :maximoActivos',
             new Map<String, Object>{ 'codigos' => codigos, 'maximoActivos' => MAXIMO_ACTIVOS },
             AccessLevel.USER_MODE);
     }
@@ -111,6 +113,7 @@ public with sharing class MapaEdificiosController {
                 mapa.sinCoordenadas++;
             }
         }
+        mapa.edificiosParcial = edificios.size() == MAXIMO_EDIFICIOS;
         mapa.conteoParcial = activos.size() == MAXIMO_ACTIVOS;
         return mapa;
     }
@@ -165,11 +168,13 @@ public with sharing class MapaEdificiosController {
         @AuraEnabled public List<Edificio> edificios;
         /** Edificios visibles que no salen en el mapa porque les faltan coordenadas. */
         @AuraEnabled public Integer sinCoordenadas;
+        /** Si se alcanzó el tope de edificios y hay edificios visibles que no salen (los últimos por nombre). */
+        @AuraEnabled public Boolean edificiosParcial;
         /** Si se alcanzó el tope de activos y los conteos pueden quedarse cortos. */
         @AuraEnabled public Boolean conteoParcial;
     }
 
-    /** Se ordena del peor al mejor y, a igual severidad, por nombre. */
+    /** Se ordena del peor al mejor y, a igual severidad, por nombre sin distinguir mayúsculas. */
     public class Edificio implements Comparable {
         @AuraEnabled public Id id;
         @AuraEnabled public String nombre;
@@ -195,7 +200,7 @@ public with sharing class MapaEdificiosController {
             if (nivel != o.nivel) {
                 return nivel > o.nivel ? -1 : 1;
             }
-            return (nombre == null ? '' : nombre).compareTo(o.nombre == null ? '' : o.nombre);
+            return (nombre ?? '').toLowerCase().compareTo((o.nombre ?? '').toLowerCase());
         }
     }
 

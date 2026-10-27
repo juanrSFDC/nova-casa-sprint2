@@ -13,7 +13,13 @@
  * dejó el procesamiento. No calcula ni decide nada: solo lee.
  *
  * Todo en modo usuario y con la compartición de quien abre la ficha: si no ve el activo, no ve
- * sus lecturas. Dos consultas por llamada: el activo con sus estados y lecturas, y sus umbrales.
+ * sus lecturas. Tres consultas por llamada: el activo con sus estados, sus lecturas y sus umbrales.
+ *
+ * Las lecturas se traen desde el inicio de la ventana más antigua de las mediciones: la ventana de
+ * cada una acaba en su estado (la lectura ganadora más reciente; las atrasadas son anteriores), así
+ * que una medición frecuente no deja sin puntos a otra. Si aun así se llega al tope de lecturas de
+ * la consulta, la gráfica lo dice (consultaParcial). Un umbral en otra unidad que la de la serie no
+ * se dibuja.
  *
  * @example
  *   GraficaTendenciaController.Grafica g = GraficaTendenciaController.obtenerGrafica(activoId);
@@ -23,7 +29,10 @@ public with sharing class GraficaTendenciaController {
 
     @TestVisible private static final Integer VENTANA_MINUTOS = 180;
     @TestVisible private static final Integer MAXIMO_PUNTOS = 50;
-    private static final Integer MAXIMO_LECTURAS_CONSULTA = 200;
+    /** Tope de lecturas por llamada, para todas las mediciones juntas; si se alcanza, consultaParcial. */
+    @TestVisible private static final Integer MAXIMO_LECTURAS_CONSULTA = 2000;
+    /** Sin estados no hay de dónde sacar la ventana: se traen las más recientes, hasta el tope. */
+    private static final Datetime SIN_COTA = Datetime.newInstanceGmt(1970, 1, 1);
     /** La conectividad de la cámara es un latido, no una magnitud: no tiene gráfica. */
     @TestVisible private static final Set<String> MEDICIONES_NO_NUMERICAS = new Set<String>{ 'CAMERA_CONNECTIVITY' };
     private static final Set<String> OPERADORES_ARRIBA = new Set<String>{ 'MAYOR_QUE', 'MAYOR_O_IGUAL' };
@@ -48,7 +57,8 @@ public with sharing class GraficaTendenciaController {
             throw nuevoError(ERROR_SIN_ACCESO);
         }
         try {
-            return construir(activo, consultarUmbrales(activo));
+            List<Lectura_Sensor__c> lecturas = consultarLecturas(activo.Id, inicioVentanaMasAntigua(activo.Estados_Medicion__r));
+            return construir(activo, activo.Estados_Medicion__r, lecturas, consultarUmbrales(activo));
         } catch (Exception e) {
             System.debug(LoggingLevel.WARN, 'GraficaTendenciaController · ' + e.getTypeName() + ' · ' + e.getMessage());
             throw nuevoError(ERROR_CARGA);
@@ -69,15 +79,35 @@ public with sharing class GraficaTendenciaController {
             + ', (SELECT Tipo_Medicion__c, Ultimo_Valor__c, Unidad__c, Ocurrido_En__c, Severidad__c,'
             + '   Tendencia_Estado__c, Tendencia_Ritmo__c, Tendencia_Minutos_Critico__c'
             + '   FROM Estados_Medicion__r)'
-            + ', (SELECT Id, Tipo_Medicion__c, Valor__c, Unidad__c, Ocurrido_En__c, Severidad_Sellada__c, Atrasada__c'
-            + '   FROM Lecturas_Sensor__r WHERE Valor__c != null AND Ocurrido_En__c != null'
-            + '   ORDER BY Ocurrido_En__c DESC LIMIT :maximoLecturas)'
             + ' FROM Asset WHERE Id = :activoId LIMIT 1';
         List<Asset> activos = Database.queryWithBinds(
             soql,
-            new Map<String, Object>{ 'activoId' => activoId, 'maximoLecturas' => MAXIMO_LECTURAS_CONSULTA },
+            new Map<String, Object>{ 'activoId' => activoId },
             AccessLevel.USER_MODE);
         return activos.isEmpty() ? null : activos[0];
+    }
+
+    /** El inicio de la ventana de la medición cuyo estado es el más antiguo; SIN_COTA si no hay estados. */
+    private static Datetime inicioVentanaMasAntigua(List<Estado_Medicion__c> estados) {
+        Datetime masAntiguo;
+        for (Estado_Medicion__c estado : estados) {
+            if (estado.Ocurrido_En__c != null && (masAntiguo == null || estado.Ocurrido_En__c < masAntiguo)) {
+                masAntiguo = estado.Ocurrido_En__c;
+            }
+        }
+        return masAntiguo == null ? SIN_COTA : masAntiguo.addMinutes(-VENTANA_MINUTOS);
+    }
+
+    /** De la más reciente a la más antigua; a igual Ocurrido_En__c, por Id, para que el corte sea estable. */
+    private static List<Lectura_Sensor__c> consultarLecturas(Id activoId, Datetime desde) {
+        String soql = 'SELECT Id, Tipo_Medicion__c, Valor__c, Unidad__c, Ocurrido_En__c, Severidad_Sellada__c, Atrasada__c'
+            + ' FROM Lectura_Sensor__c'
+            + ' WHERE Activo__c = :activoId AND Valor__c != null AND Ocurrido_En__c >= :desde'
+            + ' ORDER BY Ocurrido_En__c DESC, Id DESC LIMIT :maximoLecturas';
+        return Database.queryWithBinds(
+            soql,
+            new Map<String, Object>{ 'activoId' => activoId, 'desde' => desde, 'maximoLecturas' => MAXIMO_LECTURAS_CONSULTA },
+            AccessLevel.USER_MODE);
     }
 
     private static List<Umbral_Medicion__c> consultarUmbrales(Asset activo) {
@@ -94,14 +124,19 @@ public with sharing class GraficaTendenciaController {
     }
 
     @TestVisible
-    private static Grafica construir(Asset activo, List<Umbral_Medicion__c> umbrales) {
+    private static Grafica construir(
+        Asset activo,
+        List<Estado_Medicion__c> estadosDelActivo,
+        List<Lectura_Sensor__c> lecturasDelActivo,
+        List<Umbral_Medicion__c> umbrales
+    ) {
         Map<String, Estado_Medicion__c> estados = new Map<String, Estado_Medicion__c>();
-        for (Estado_Medicion__c estado : activo.Estados_Medicion__r) {
+        for (Estado_Medicion__c estado : estadosDelActivo) {
             estados.put(estado.Tipo_Medicion__c, estado);
         }
         // Vienen de la más reciente a la más antigua.
         Map<String, List<Lectura_Sensor__c>> lecturas = new Map<String, List<Lectura_Sensor__c>>();
-        for (Lectura_Sensor__c lectura : activo.Lecturas_Sensor__r) {
+        for (Lectura_Sensor__c lectura : lecturasDelActivo) {
             if (!lecturas.containsKey(lectura.Tipo_Medicion__c)) {
                 lecturas.put(lectura.Tipo_Medicion__c, new List<Lectura_Sensor__c>());
             }
@@ -119,6 +154,7 @@ public with sharing class GraficaTendenciaController {
         grafica.activoId = activo.Id;
         grafica.activoNombre = activo.Name;
         grafica.ventanaMinutos = VENTANA_MINUTOS;
+        grafica.consultaParcial = lecturasDelActivo.size() == MAXIMO_LECTURAS_CONSULTA;
         grafica.series = new List<Serie>();
         for (String medicion : medicionesDe(activo, estados.keySet(), lecturas.keySet())) {
             grafica.series.add(serieDe(
@@ -171,7 +207,7 @@ public with sharing class GraficaTendenciaController {
             serie.recortada = serie.puntos.size() == MAXIMO_PUNTOS && lecturasRecientes.size() > MAXIMO_PUNTOS
                 && lecturasRecientes[MAXIMO_PUNTOS].Ocurrido_En__c >= inicioVentana(lecturasRecientes);
         }
-        serie.lineas = lineasDe(umbrales);
+        serie.lineas = lineasDe(umbrales, serie.unidad);
         return serie;
     }
 
@@ -217,8 +253,11 @@ public with sharing class GraficaTendenciaController {
         return puntos;
     }
 
-    /** Advertencia y crítico de cada umbral activo de la medición, con su dirección. El inválido no se dibuja. */
-    private static List<Linea> lineasDe(List<Umbral_Medicion__c> umbrales) {
+    /**
+     * Advertencia y crítico de cada umbral activo de la medición, con su dirección. El inválido no se dibuja,
+     * ni el umbral que tenga otra unidad que la serie: su valor no se lee en ese eje.
+     */
+    private static List<Linea> lineasDe(List<Umbral_Medicion__c> umbrales, String unidad) {
         List<Linea> lineas = new List<Linea>();
         if (umbrales == null) {
             return lineas;
@@ -227,7 +266,8 @@ public with sharing class GraficaTendenciaController {
             String direccion = OPERADORES_ARRIBA.contains(umbral.Operador_Comparacion__c)
                 ? 'ARRIBA'
                 : (OPERADORES_ABAJO.contains(umbral.Operador_Comparacion__c) ? 'ABAJO' : null);
-            if (direccion == null) {
+            Boolean otraUnidad = String.isNotBlank(umbral.Unidad__c) && String.isNotBlank(unidad) && umbral.Unidad__c != unidad;
+            if (direccion == null || otraUnidad) {
                 continue;
             }
             agregarLinea(lineas, 'Advertencia', direccion, umbral.Operador_Comparacion__c, umbral.Valor_Advertencia__c);
@@ -268,6 +308,8 @@ public with sharing class GraficaTendenciaController {
         @AuraEnabled public Id activoId;
         @AuraEnabled public String activoNombre;
         @AuraEnabled public Integer ventanaMinutos;
+        /** Si se llegó al tope de lecturas de la consulta y alguna serie puede verse con menos puntos. */
+        @AuraEnabled public Boolean consultaParcial;
         @AuraEnabled public List<Serie> series;
     }
 

@@ -124,6 +124,118 @@ private class GraficaTendenciaControllerTest {
         insert umbrales;
     }
 
+    /** Lecturas de una medición, la primera en «ultima» y las demás cada «segundos» hacia atrás. */
+    private static List<Lectura_Sensor__c> serieCada(
+        Asset activo, String medicion, String unidad, Datetime ultima, Integer cuantas, Integer segundos
+    ) {
+        List<Lectura_Sensor__c> lecturas = new List<Lectura_Sensor__c>();
+        for (Integer i = 0; i < cuantas; i++) {
+            Lectura_Sensor__c l = lectura(activo, 3, ultima.addSeconds(-i * segundos), 'Normal', false);
+            l.Tipo_Medicion__c = medicion;
+            l.Unidad__c = unidad;
+            lecturas.add(l);
+        }
+        return lecturas;
+    }
+
+    private static void estadoDe(Asset activo, String medicion, String unidad, Datetime ocurrido) {
+        // Sin tendencia: el flujo Nova_Casa_Aviso_Tendencia no se dispara.
+        TestDataFactory.createEstadoMedicion(new Map<SObjectField, Object>{
+            Estado_Medicion__c.Activo__c => activo.Id,
+            Estado_Medicion__c.Clave_Estado__c => activo.Id_Externo__c + '|' + medicion,
+            Estado_Medicion__c.Tipo_Medicion__c => medicion,
+            Estado_Medicion__c.Unidad__c => unidad,
+            Estado_Medicion__c.Severidad__c => 'Normal',
+            Estado_Medicion__c.Severidad_Nivel__c => 1,
+            Estado_Medicion__c.Ocurrido_En__c => ocurrido
+        }, true);
+    }
+
+    private static void umbralDePresion(String unidad) {
+        TestDataFactory.createUmbralMedicion(new Map<SObjectField, Object>{
+            Umbral_Medicion__c.Tipo_Activo__c => 'WATER_PUMP',
+            Umbral_Medicion__c.Tipo_Medicion__c => 'WATER_PRESSURE',
+            Umbral_Medicion__c.Unidad__c => unidad,
+            Umbral_Medicion__c.Valor_Advertencia__c => 4,
+            Umbral_Medicion__c.Valor_Critico__c => 5,
+            Umbral_Medicion__c.Valor_Invalido__c => 20
+        }, true);
+    }
+
+    @isTest
+    static void obtenerGrafica_medicionFrecuenteYOtraAntigua_cadaUnaTraeSuVentana() {
+        Asset activo = bomba(COD_BOG, null);
+        Datetime ultimaTemperatura = ULTIMA.addMinutes(-300);
+        List<Lectura_Sensor__c> lecturas = serieCada(activo, 'WATER_PRESSURE', 'BAR', ULTIMA, 210, 30);
+        lecturas.addAll(serieCada(activo, 'TEMPERATURE', 'CELSIUS', ultimaTemperatura, 5, 60));
+        insert lecturas;
+        estadoDe(activo, 'WATER_PRESSURE', 'BAR', ULTIMA);
+        estadoDe(activo, 'TEMPERATURE', 'CELSIUS', ultimaTemperatura);
+
+        Test.startTest();
+        GraficaTendenciaController.Grafica g = GraficaTendenciaController.obtenerGrafica(activo.Id);
+        Test.stopTest();
+
+        Assert.areEqual('TEMPERATURE', g.series[1].medicion, 'La temperatura va después de la medición esperada');
+        Assert.areEqual(5, g.series[1].puntos.size(),
+            'La temperatura conserva sus 5 lecturas aunque la presión tenga 210 más recientes');
+    }
+
+    @isTest
+    static void construir_enElTopeDeLecturas_avisaConsultaParcial() {
+        Asset activo = TestDataFactory.createAsset(null, false);
+        List<Lectura_Sensor__c> lecturas = TestDataFactory.createLecturasSensor(
+            GraficaTendenciaController.MAXIMO_LECTURAS_CONSULTA, null, false);
+
+        Test.startTest();
+        GraficaTendenciaController.Grafica g = GraficaTendenciaController.construir(
+            activo, new List<Estado_Medicion__c>(), lecturas, new List<Umbral_Medicion__c>());
+        Test.stopTest();
+
+        Assert.isTrue(g.consultaParcial, 'Con tantas lecturas como el tope de la consulta, puede faltar alguna');
+    }
+
+    @isTest
+    static void construir_bajoElTopeDeLecturas_sinConsultaParcial() {
+        Asset activo = TestDataFactory.createAsset(null, false);
+        List<Lectura_Sensor__c> lecturas = TestDataFactory.createLecturasSensor(
+            GraficaTendenciaController.MAXIMO_LECTURAS_CONSULTA - 1, null, false);
+
+        Test.startTest();
+        GraficaTendenciaController.Grafica g = GraficaTendenciaController.construir(
+            activo, new List<Estado_Medicion__c>(), lecturas, new List<Umbral_Medicion__c>());
+        Test.stopTest();
+
+        Assert.isFalse(g.consultaParcial, 'Por debajo del tope la consulta trajo todas las lecturas');
+    }
+
+    @isTest
+    static void obtenerGrafica_umbralEnOtraUnidad_noDibujaSusLineas() {
+        umbralDePresion('CELSIUS');
+        Asset activo = bomba(COD_BOG, null);
+        insert lectura(activo, 3.6, ULTIMA, 'Normal', false);
+
+        Test.startTest();
+        GraficaTendenciaController.Grafica g = GraficaTendenciaController.obtenerGrafica(activo.Id);
+        Test.stopTest();
+
+        Assert.areEqual('BAR', g.series[0].unidad, 'La serie de presión está en BAR');
+        Assert.isTrue(g.series[0].lineas.isEmpty(), 'Un umbral en CELSIUS no se dibuja sobre la presión en BAR');
+    }
+
+    @isTest
+    static void obtenerGrafica_umbralSinUnidad_dibujaSusLineas() {
+        umbralDePresion(null);
+        Asset activo = bomba(COD_BOG, null);
+        insert lectura(activo, 3.6, ULTIMA, 'Normal', false);
+
+        Test.startTest();
+        GraficaTendenciaController.Grafica g = GraficaTendenciaController.obtenerGrafica(activo.Id);
+        Test.stopTest();
+
+        Assert.areEqual(2, g.series[0].lineas.size(), 'Sin unidad en el umbral se dibujan su advertencia y su crítico');
+    }
+
     @isTest
     static void obtenerGrafica_ventanaOrdenAtrasadasLineasYTendencia() {
         umbralesDeBomba();
@@ -141,7 +253,7 @@ private class GraficaTendenciaControllerTest {
         Test.startTest();
         Integer soql = Limits.getQueries();
         GraficaTendenciaController.Grafica g = GraficaTendenciaController.obtenerGrafica(activo.Id);
-        Assert.areEqual(soql + 2, Limits.getQueries(), 'Dos consultas: el activo con estados y lecturas, y sus umbrales');
+        Assert.areEqual(soql + 3, Limits.getQueries(), 'Tres consultas: el activo con sus estados, sus lecturas y sus umbrales');
         Test.stopTest();
 
         Assert.areEqual(activo.Id, g.activoId);

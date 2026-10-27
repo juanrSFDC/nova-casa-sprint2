@@ -76,6 +76,21 @@ private with sharing class MapaEdificiosControllerTest {
         return activos;
     }
 
+    private static void sembrarCritico(Schema.Location e, String nombre) {
+        Asset activo = TestDataFactory.createAsset(new Map<SObjectField, Object>{
+            Asset.Name => nombre,
+            Asset.Id_Externo__c => 'AST-MAPA-CRITICO',
+            Asset.Edificio_Externo__c => e.Id_Externo__c
+        }, true);
+        // Sin tendencia: el flujo Nova_Casa_Aviso_Tendencia no se dispara.
+        TestDataFactory.createEstadoMedicion(new Map<SObjectField, Object>{
+            Estado_Medicion__c.Activo__c => activo.Id,
+            Estado_Medicion__c.Clave_Estado__c => 'AST-MAPA-CRITICO|TEMPERATURE',
+            Estado_Medicion__c.Severidad__c => 'Critico',
+            Estado_Medicion__c.Severidad_Nivel__c => 3
+        }, true);
+    }
+
     private static MapaEdificiosController.Edificio buscar(MapaEdificiosController.Mapa m, Id edificioId) {
         for (MapaEdificiosController.Edificio e : m.edificios) {
             if (e.id == edificioId) {
@@ -203,6 +218,50 @@ private with sharing class MapaEdificiosControllerTest {
         Assert.areEqual(12, m.edificios[0].criticos, 'El conteo es el real');
         Assert.areEqual(MapaEdificiosController.MAXIMO_CRITICOS_LISTADOS, m.edificios[0].activosCriticos.size(),
             'La lista se corta en 10 para que quepa en el marcador');
+    }
+
+    @IsTest
+    static void obtenerMapa_masEdificiosQueElTope_avisaEdificiosParcial() {
+        TestDataFactory.createLocations(MapaEdificiosController.MAXIMO_EDIFICIOS + 1, null, true);
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = MapaEdificiosController.obtenerMapa();
+        Test.stopTest();
+
+        Assert.areEqual(MapaEdificiosController.MAXIMO_EDIFICIOS, m.edificios.size(), 'Se muestran como mucho 100 edificios');
+        Assert.isTrue(m.edificiosParcial, 'Con más edificios que el tope, el mapa avisa de que faltan');
+    }
+
+    @IsTest
+    static void obtenerMapa_masActivosQueElTope_conservaElCritico() {
+        Schema.Location bog = edificio('BLD-BOG-001', 'ANDINA', 4.6533, -74.0602);
+        // Los del tope van antes por nombre y no tienen severidad; el crítico es el último por nombre.
+        TestDataFactory.createAssets(MapaEdificiosController.MAXIMO_ACTIVOS, new Map<SObjectField, Object>{
+            Asset.Name => 'Activo sin estado',
+            Asset.Edificio_Externo__c => bog.Id_Externo__c
+        }, true);
+        sembrarCritico(bog, 'Zeta crítico');
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = MapaEdificiosController.obtenerMapa();
+        Test.stopTest();
+
+        Assert.isTrue(m.conteoParcial, 'Hay más activos que el tope');
+        Assert.areEqual(MapaEdificiosController.CRITICO, m.edificios[0].peorSeveridad,
+            'El crítico entra en el tope aunque sea el último por nombre: el edificio sale en rojo');
+    }
+
+    @IsTest
+    static void construir_nombresConDistintasMayusculas_ordenaSinDistinguirlas() {
+        List<Schema.Location> edificios = TestDataFactory.createLocations(2, null, false);
+        edificios[0].Name = 'Beta';
+        edificios[1].Name = 'alfa';
+
+        Test.startTest();
+        MapaEdificiosController.Mapa m = MapaEdificiosController.construir(edificios, new List<Asset>());
+        Test.stopTest();
+
+        Assert.areEqual('alfa', m.edificios[0].nombre, 'A igual severidad, «alfa» va antes que «Beta» aunque empiece en minúscula');
     }
 
     @IsTest
