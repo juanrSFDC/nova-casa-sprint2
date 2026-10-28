@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Todos_los_controles</fullName>
+    <columns>NAME</columns>
+    <columns>Fuente__c</columns>
+    <columns>Habilitada__c</columns>
+    <columns>Ultimo_Resultado__c</columns>
+    <columns>Ultima_Ejecucion__c</columns>
+    <columns>Minutos_Silencio__c</columns>
+    <columns>En_Silencio_Desde__c</columns>
+    <filterScope>Everything</filterScope>
+    <label>Todos los controles</label>
+</ListView>

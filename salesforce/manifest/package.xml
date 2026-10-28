@@ -192,6 +192,7 @@
         <members>Registro_Procesamiento__c.Rechazadas</members>
         <members>Registro_Procesamiento__c.Todas_las_trazas</members>
         <members>Umbral_Medicion__c.Todos_los_umbrales</members>
+        <members>Control_Ingesta__c.Todos_los_controles</members>
         <name>ListView</name>
     </types>
     <types>
