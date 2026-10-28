@@ -7,7 +7,7 @@ import REPROCESADO_EN from "@salesforce/schema/Registro_Procesamiento__c.Reproce
 import cargar from "@salesforce/apex/TrazaNovaCasaController.cargar";
 import { MEDICIONES, UNIDADES, antiguedadDe, horaColombia, numero, presentacionDe, valorConUnidad } from "c/novaCasaFormato";
 
-// Página de la traza (Juan Rozo, 28-oct), con el diseño de la página de la intervención de Juan Flórez:
+// Página de la traza, con el diseño de la página de la intervención:
 // qué pasó con el mensaje, de dónde vino, qué produjo, su reproceso y las demás trazas del mismo mensaje.
 // Nada de esto decide: solo cuenta lo que manda TrazaNovaCasaController.
 

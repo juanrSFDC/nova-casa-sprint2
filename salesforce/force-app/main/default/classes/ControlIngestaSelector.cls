@@ -1,7 +1,6 @@
 /**
  * Lee la configuración y el cursor de la ingesta desde Control_Ingesta__c (US-201).
  *
- * Responsable: Juan Rozo · tarea 201.4.
  * Lo usa: ControlIngestaService, que decide con Habilitada__c y arma la corrida.
  * Contrato: docs/entrega-discovery-sprint2.md §0.5 (fila 4) y §9 del modelo de datos.
  *

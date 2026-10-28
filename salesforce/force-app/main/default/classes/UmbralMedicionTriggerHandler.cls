@@ -1,8 +1,6 @@
 /**
  * Lógica de UmbralMedicionTrigger (US-204).
  *
- * Responsable: Juan Flórez · 204.2 (caché) y 204.3 (mecanismo de edición).
- *
  * Deriva Clave_Umbral__c para que el índice único impida dos umbrales para la
  * misma pareja y dirección. El Coordinador no puede editar la clave (no tiene
  * permiso de campo), así que sin esta derivación un umbral creado desde la

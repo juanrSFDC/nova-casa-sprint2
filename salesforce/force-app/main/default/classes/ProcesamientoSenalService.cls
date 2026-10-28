@@ -1,15 +1,14 @@
 /**
  * Orquesta el procesamiento de un lote de Senal_Sensor__e (US-202, US-203, US-209).
  *
- * Responsable: Juan Rozo · tareas 202.1 (esqueleto), 202.2 (validar) y 202.3 (deduplicar y guardar).
  * La llama: SenalSensorTriggerHandler, con Trigger.new del suscriptor.
  * Contrato: docs/entrega-discovery-sprint2.md §3.1 (pasos a–e y camino rojo) y §3.4 (orden del lote).
  *
  * Estado de los pasos: validar (202.2), deduplicar (202.3), clasificar y sellar severidad/umbral
- * (204.1, vía EnrutamientoSeveridad de Juan Flórez), reducir colisiones y marcar atrasadas (203.1),
+ * (204.1, vía EnrutamientoSeveridad), reducir colisiones y marcar atrasadas (203.1),
  * guardar lecturas (202.3), calcular la tendencia de las ganadoras (E-02, D-7, vía TendenciaService),
  * mantener el estado actual con esa tendencia (203.2), intervenir sobre las críticas (205, vía
- * IntervencionService de Juan Flórez) y la traza de rechazos, duplicados, conflictos, PROCESADAS,
+ * IntervencionService) y la traza de rechazos, duplicados, conflictos, PROCESADAS,
  * ATRASADAS, VALOR_INVALIDO y fallos de intervención (209.1, una sola inserción por lote) YA funcionan.
  *
  * CAMINO DE FALLO: si el pipeline lanza una excepción
@@ -116,7 +115,7 @@ public with sharing class ProcesamientoSenalService {
      * atrasadas (203.1), la persistencia de las lecturas nuevas, la tendencia de las ganadoras (E-02), el
      * upsert del estado actual con esa tendencia (203.2) y la traza de rechazos, duplicados, conflictos,
      * procesadas y atrasadas (209.1, una inserción por lote).
-     * La clasificación (204.1) y la intervención (205) están conectadas a las clases de Juan Flórez. El
+     * La clasificación (204.1) y la intervención (205) están conectadas a EnrutamientoSeveridad e IntervencionService. El
      * camino de fallo (try/catch → rollback al punto de retorno → Fallo_Tecnico reintentable) sigue igual:
      * si un paso ya escribió lecturas, estados o trazas y algo falla después, se deshacen. Un lote nulo o
      * vacío no hace nada.

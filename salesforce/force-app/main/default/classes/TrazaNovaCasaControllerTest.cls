@@ -1,8 +1,6 @@
 /**
  * Pruebas de TrazaNovaCasaController (página de la traza).
  *
- * Responsable: Juan Rozo · página de la traza (28-oct).
- *
  * Cubren lo que es del controlador: devuelve el detalle de una traza visible y convierte cada fallo en uno
  * de sus dos mensajes, sin detalles internos (sin Id o sin traza → sin acceso; sin permisos → sin acceso;
  * cualquier otro fallo → error de carga). Lo que cuenta el detalle lo prueba TrazaDetalleServiceTest.

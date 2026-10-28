@@ -1,8 +1,6 @@
 /**
  * Cómo se nombra una medición y cómo se escribe un valor en los textos que lee el operador:
  * los avisos (AvisosNovaCasa) y el diagnóstico del activo (DiagnosticoActivoService).
- *
- * Responsable: Juan Flórez.
  */
 public with sharing class TextoNovaCasa {
 

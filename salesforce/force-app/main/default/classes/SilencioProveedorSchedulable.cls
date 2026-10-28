@@ -1,7 +1,6 @@
 /**
  * Dispara la vigilancia del silencio del proveedor cada 5 minutos (extra E-07, 25-oct).
  *
- * Responsable: Juan Rozo · E-07.
  * Contrato: docs/entrega-discovery-sprint2.md §3.1 (vigilancia del silencio).
  *
  * execute revisa todas las fuentes habilitadas con Minutos_Silencio__c (SilencioProveedorService).

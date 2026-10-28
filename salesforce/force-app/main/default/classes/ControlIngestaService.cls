@@ -1,7 +1,6 @@
 /**
  * La memoria de la ingesta: lee la configuración, recuerda el cursor y deja el resultado (US-201).
  *
- * Responsable: Juan Rozo · tarea 201.4.
  * La llama: el job de la 201.5, que abre la sesión si hace falta, pide lotes, publica y persiste.
  * Contrato: docs/entrega-discovery-sprint2.md §0.5 (bloque «Decisiones de la 201.4») y §9.
  *

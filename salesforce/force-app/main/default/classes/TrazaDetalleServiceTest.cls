@@ -1,8 +1,6 @@
 /**
  * Pruebas de TrazaDetalleService (lo que cuenta la página de la traza).
  *
- * Responsable: Juan Rozo · página de la traza (28-oct).
- *
  * Cubren: la traza inexistente; la lectura (por clave, por enlace y nunca en una rechazada), su equipo, su
  * edificio y su intervención; el equipo de una señal sin lectura, conocido o no; la fuente con control, la
  * evidencia y la desconocida; las trazas de una corrida y del silencio; el messageId; el reenvío de

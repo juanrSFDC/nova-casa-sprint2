@@ -2,7 +2,6 @@
  * Reproceso desde la traza (E-06, cierra US-209): el administrador relanza un Fallo_Tecnico reintentable
  * que aún no se reprocesó, y la traza original queda marcada con cuándo, quién y qué se hizo.
  *
- * Responsable: Juan Rozo · E-06.
  * La llama: ReprocesoTrazaAction (botón sin ventana «Reprocesar» de Registro_Procesamiento__c, vía AccionesAdministradorController).
  * Contrato: docs/entrega-discovery-sprint2.md §3.1 (la traza completa y la vista del administrador).
  *

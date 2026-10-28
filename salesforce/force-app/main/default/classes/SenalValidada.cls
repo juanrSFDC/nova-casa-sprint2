@@ -1,7 +1,6 @@
 /**
  * Una señal que superó la validación del lote, ya normalizada y con su activo resuelto (US-202).
  *
- * Responsable: Juan Rozo · tarea 202.2.
  * La produce: SenalSensorDomain.validar. La consumen los pasos siguientes del pipeline
  *   (202.3 deduplicación/persistencia, 203.x estado) a través del contexto del lote.
  * Contrato: docs/entrega-discovery-sprint2.md §3.1 (paso a) y §3.4.

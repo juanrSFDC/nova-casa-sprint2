@@ -1,8 +1,6 @@
 /**
  * Pruebas de MapaEdificiosController (mapa de edificios, extra E-24).
  *
- * Responsable: Juan Rozo.
- *
  * Cubren: la peor severidad de cada edificio (Crítico, Advertencia, Normal y «Sin datos» sin activos con
  * severidad), los conteos por Severidad_Etiqueta__c, la lista de críticos con su tope, el orden del peor
  * al mejor (sin distinguir mayúsculas), la región con su etiqueta, el edificio sin coordenadas, los topes

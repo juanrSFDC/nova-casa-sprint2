@@ -2,8 +2,7 @@
  * Sirve la página de la traza (LWC trazaNovaCasa, en la página Traza_Nova_Casa): qué pasó con un mensaje,
  * de dónde vino, qué produjo, su reproceso y las demás trazas del mismo mensaje.
  *
- * Responsable: Juan Rozo · página de la traza (28-oct). Sigue el diseño de la página de la intervención de
- * Juan Flórez (IntervencionNovaCasaController).
+ * Sigue el diseño de la página de la intervención (IntervencionNovaCasaController).
  *
  * No decide nada: delega en TrazaDetalleService, que lee todo en modo usuario. Al usuario solo le llegan dos
  * mensajes, sin detalles internos: ERROR_SIN_ACCESO si la traza no existe o no tiene permiso para leerla, y

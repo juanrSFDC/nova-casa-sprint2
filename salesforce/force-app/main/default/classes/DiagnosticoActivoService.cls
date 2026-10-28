@@ -2,7 +2,7 @@
  * Los hechos de un activo, en texto, para que la plantilla Narrar_Diagnostico_Activo los redacte
  * (extra E-18) y, si Einstein no responde, el mismo diagnóstico armado sin IA.
  *
- * Responsable: Juan Flórez. «La matemática decide, la IA explica»: aquí solo se lee lo que ya
+ * «La matemática decide, la IA explica»: aquí solo se lee lo que ya
  * calculó el procesamiento (severidad, tendencia, intervenciones); el modelo no decide nada.
  * Todo en modo usuario: el diagnóstico solo cuenta lo que quien lo pide puede ver.
  */

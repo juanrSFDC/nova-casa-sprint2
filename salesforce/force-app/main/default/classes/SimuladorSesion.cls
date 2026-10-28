@@ -1,7 +1,6 @@
 /**
  * La sesión que abre el simulador: el cursor inicial y la configuración eco (US-201).
  *
- * Responsable: Juan Rozo · tarea 201.2.
  * La llena: SimuladorCliente.crearSesion a partir de la respuesta 201 de POST /session.
  * La usa: el job de la 201.5 (guarda el cursor y los tiempos en Control_Ingesta__c vía 201.4).
  * Contrato: docs/entrega-discovery-sprint2.md §0.5 y Anexo §A.1.

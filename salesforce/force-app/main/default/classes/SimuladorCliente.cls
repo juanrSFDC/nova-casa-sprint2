@@ -1,7 +1,6 @@
 /**
  * Cliente HTTP del simulador de sensores: hace una llamada por método (US-201).
  *
- * Responsable: Juan Rozo · tarea 201.2.
  * Lo usa: el job de la 201.5, que crea la sesión si no hay cursor y luego pide lotes.
  * Contrato: docs/entrega-discovery-sprint2.md §0.5 y Anexo §A.1-§A.2.
  *

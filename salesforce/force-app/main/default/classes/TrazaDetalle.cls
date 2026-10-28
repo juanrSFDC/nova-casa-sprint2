@@ -2,8 +2,6 @@
  * Lo que recibe la página de la traza (LWC trazaNovaCasa): la traza, de dónde vino, qué produjo, el
  * reproceso y las demás trazas del mismo mensaje. Solo datos; lo arma TrazaDetalleService.
  *
- * Responsable: Juan Rozo · página de la traza (28-oct).
- *
  * @example
  * TrazaDetalle detalle = new TrazaDetalleService().detalle(trazaId);
  */

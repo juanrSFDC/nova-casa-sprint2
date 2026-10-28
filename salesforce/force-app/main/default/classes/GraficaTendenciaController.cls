@@ -1,7 +1,6 @@
 /**
  * Sirve la gráfica de tendencia de la ficha del activo (extra E-23).
  *
- * Responsable: Juan Rozo.
  * Lo usa: el LWC graficaTendencia, en la página de registro Activo_Nova_Casa.
  *
  * Contrato: una serie por medición del activo (la esperada y las que tengan estado o lecturas).

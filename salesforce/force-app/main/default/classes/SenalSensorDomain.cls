@@ -1,7 +1,6 @@
 /**
  * Reglas de negocio del suscriptor de señales: valida el lote y normaliza las señales (US-202).
  *
- * Responsable: Juan Rozo · tarea 202.2 (paso a del procesamiento).
  * Lo usa: ProcesamientoSenalService, con el lote y el mapa de activos ya resuelto.
  * Contrato: docs/entrega-discovery-sprint2.md §3.1 (paso a), §3.4 (orden del lote) y §6.
  *

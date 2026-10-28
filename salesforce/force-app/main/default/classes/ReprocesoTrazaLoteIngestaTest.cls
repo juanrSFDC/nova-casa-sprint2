@@ -1,7 +1,6 @@
 /**
  * Pruebas del reproceso del fallo del lote y del fallo de la ingesta desde la traza (E-06, US-209).
  *
- * Responsable: Juan Rozo · E-06.
  * Lote: el camino de fallo del suscriptor (falloInyectado, como el usuario de integración) guarda en cada
  * traza la carga de su señal sin Carga_Cruda__c; si no cabe, la traza se escribe igual sin carga. El
  * administrador republica la carga y el bus de verdad la entrega (en una prueba el disparador corre como

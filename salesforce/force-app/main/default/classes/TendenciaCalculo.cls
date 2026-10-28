@@ -2,7 +2,6 @@
  * Cálculo de la tendencia de un activo+medición (D-7, extra 2.1): recta por mínimos cuadrados sobre sus
  * últimas lecturas y minutos hasta el umbral crítico en la dirección en que se mueve.
  *
- * Responsable: Juan Rozo · tarea E-02.
  * Lo usa: TendenciaService, que le pasa los puntos y los críticos ya consultados (una Entrada por ganadora).
  * Contrato: docs/entrega-discovery-sprint2.md §1.7 (D-7).
  *

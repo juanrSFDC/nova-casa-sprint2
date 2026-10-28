@@ -1,7 +1,7 @@
 /**
  * Enruta cada señal por su severidad dentro del procesamiento (US-206, tarea 206.1).
  *
- * Responsable: Juan Flórez. Lo llama ProcesamientoSenalService, de Juan Rozo, desde sus pasos
+ * Lo llama ProcesamientoSenalService desde sus pasos
  * «clasificar» e «intervenir», para que el procesador no tenga que conocer las reglas de US-204 y US-205.
  *
  *   - clasificar: sella la severidad de cada señal nueva con ClasificacionService y aparta como

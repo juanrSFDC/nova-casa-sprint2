@@ -1,7 +1,6 @@
 /**
  * Pruebas de ReprocesoTrazaAction (botón «Reprocesar» de la traza, E-06).
  *
- * Responsable: Juan Rozo · E-06.
  * La acción reprocesa en bloque y devuelve una respuesta por solicitud, en el mismo orden, con el mensaje
  * del servicio; sin traza o con una que no existe responde un mensaje claro y nunca lanza.
  */

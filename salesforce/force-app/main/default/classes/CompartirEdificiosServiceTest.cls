@@ -1,7 +1,6 @@
 /**
  * Pruebas de CompartirEdificiosService (US-208, 208.3).
  *
- * Responsable: Juan Rozo · tarea 208.3.
  * Qué cubre: la lógica de LocationShare (crea los shares, no los duplica al reejecutar, y no rompe cuando
  * no hay nada que compartir). El acceso REAL por edificio (BOG vs BAQ) NO se prueba aquí: las reglas por
  * criterio se aplican sobre los grupos desplegados —no visibles con SeeAllData=false— y se recalculan en

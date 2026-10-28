@@ -4,7 +4,7 @@ import { notifyRecordUpdateAvailable } from "lightning/uiRecordApi";
 import ingerir from "@salesforce/apex/AccionesAdministradorController.ingerir";
 import estadoIngesta from "@salesforce/apex/AccionesAdministradorController.estadoIngesta";
 
-// Botón sin ventana «Ingerir ahora» (Juan Rozo, 25-oct). El servidor encola la ingesta; aquí se
+// Botón sin ventana «Ingerir ahora». El servidor encola la ingesta; aquí se
 // espera a que cambie Última ejecución para avisar del resultado sin que nadie recargue la página.
 const ESPERA_MS = 2000;
 const INTENTOS = 15; // ≈30 s

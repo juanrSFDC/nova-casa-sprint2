@@ -2,7 +2,6 @@
  * Vigila el silencio del proveedor (extra E-07, 25-oct): avisa cuando una fuente habilitada lleva más
  * de sus Minutos_Silencio__c sin entregar señales, y otra vez cuando vuelve a entregarlas.
  *
- * Responsable: Juan Rozo · E-07.
  * La llaman: SilencioProveedorSchedulable (cada 5 minutos, todas las fuentes vigiladas) y
  *   SilencioProveedorAction (el botón «Revisar silencio ahora» del registro de control).
  * Contrato: docs/entrega-discovery-sprint2.md §3.1 (vigilancia del silencio) y §9 del modelo de datos.

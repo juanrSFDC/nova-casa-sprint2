@@ -2,7 +2,6 @@
  * Red de seguridad de la ingesta: si el Queueable muere por un error no atrapable (p. ej. un límite
  * de la plataforma que hace rollback), deja una traza reintentable (US-201, tarea 201.5).
  *
- * Responsable: Juan Rozo · tarea 201.5.
  * Lo adjunta: IngestaQueueable en su execute (System.attachFinalizer).
  *
  * IngestaService ya atrapa sus propias excepciones y las lleva a registrarFallo; este Finalizer

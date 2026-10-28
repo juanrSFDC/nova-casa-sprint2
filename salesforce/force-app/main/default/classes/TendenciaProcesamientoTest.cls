@@ -2,7 +2,7 @@
  * Pruebas de la tendencia de punta a punta (D-7, tarea E-03): ProcesamientoSenalService.procesar con
  * Senal_Sensor__e como el usuario de integración (Nova_Casa_Ingesta), igual que ProcesamientoConexionTest.
  *
- * Responsable: Juan Rozo · tarea E-03. Cubren: la serie que sube en un lote (modo usuario, sin casos), dos
+ * Cubren: la serie que sube en un lote (modo usuario, sin casos), dos
  * lotes donde el historial guardado entra en la recta, la serie anterior a un estado ya guardado (la
  * advertencia de D-7: todas atrasadas, la tendencia no se mueve), atrasadas mezcladas que no deforman la
  * recta, el crítico por abajo, la medición sin umbral, los gobernadores con 200 señales (+2 SOQL y 0 DML

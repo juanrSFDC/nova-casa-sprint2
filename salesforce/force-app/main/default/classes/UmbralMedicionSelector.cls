@@ -1,13 +1,12 @@
 /**
  * Lee los umbrales activos con valor crítico, para la dirección de la tendencia (D-7, extra 2.1).
  *
- * Responsable: Juan Rozo · tarea E-02.
  * Lo usa: TendenciaService, una vez por lote con los tipos de activo y medición de las ganadoras.
  * Contrato: docs/entrega-discovery-sprint2.md §1.7 (D-7).
  *
  * inherited sharing: hereda la compartición de quien lo llame. Consulta en modo usuario (WITH USER_MODE),
  * así el usuario de integración solo lee los campos que su Permission Set permite. Es una consulta propia
- * y no la caché de ClasificacionService (de Juan Flórez), para no tocar esa clase: cuesta una SOQL por lote
+ * y no la caché de ClasificacionService, para no tocar esa clase: cuesta una SOQL por lote
  * con ganadoras. El índice único Clave_Umbral__c (tipo|medición|ARRIBA/ABAJO) garantiza como mucho un
  * crítico por dirección.
  *

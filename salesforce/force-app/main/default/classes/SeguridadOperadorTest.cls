@@ -1,7 +1,6 @@
 /**
  * Pruebas del Permission Set Nova_Casa_Operador (US-208, 208.2).
  *
- * Responsable: Juan Rozo · tarea 208.2.
  * Qué cubre: que un operador (perfil de acceso mínimo + solo Nova_Casa_Operador) puede LEER edificios,
  * activos, lecturas, estados, casos y umbrales, y NO tiene acceso de objeto a la traza
  * (Registro_Procesamiento__c) ni a la configuración de ingesta (Control_Ingesta__c); y que con OWD Private

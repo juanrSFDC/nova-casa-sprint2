@@ -1,7 +1,6 @@
 /**
  * Pruebas de SilencioProveedorAction (botón «Revisar silencio ahora», extra E-07).
  *
- * Responsable: Juan Rozo · E-07.
  * Sin el permiso Revisar_Silencio la acción no consulta, no escribe y no avisa; con él revisa solo el
  * registro del botón y devuelve el mensaje del servicio; un registro no vigilado lo dice. El permiso se
  * da con un Permission Set de prueba sobre el usuario de ingesta, así la prueba no depende del perfil de

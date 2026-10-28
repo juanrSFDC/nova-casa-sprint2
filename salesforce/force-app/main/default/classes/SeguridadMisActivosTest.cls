@@ -1,7 +1,7 @@
 /**
  * Seguridad de fila de «Mis activos» pedida directamente a Apex (US-208.5, parte de pruebas).
  *
- * Responsable: Juan Rozo. Complementa MonitoreoActivosControllerTest (que cubre orden, causa y los
+ * Complementa MonitoreoActivosControllerTest (que cubre orden, causa y los
  * dos vacíos de BR-207) probando el plano de registro: cada operador solo recibe los activos de sus
  * edificios aunque llame al controlador sin pasar por la pantalla, pedir un edificio ajeno no filtra
  * nada de ese edificio, y un usuario sin el Permission Set recibe el error genérico.

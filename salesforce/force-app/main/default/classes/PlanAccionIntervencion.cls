@@ -2,7 +2,7 @@
  * Plan de acción con Prompt Builder (extra 4.2 del catálogo): al abrirse una intervención, Einstein
  * propone qué revisar primero y el texto queda en Case.Plan_Accion__c para coordinación.
  *
- * Responsable: Juan Flórez. La llama el Flow Nova_Casa_Plan_Intervencion por su propia ruta asíncrona,
+ * La llama el Flow Nova_Casa_Plan_Intervencion por su propia ruta asíncrona,
  * aparte del aviso: así el aviso no espera a Einstein y las llamadas a Slack no comparten transacción
  * con la escritura del plan. La IA sugiere, no decide: solo se escribe Plan_Accion__c, nunca el estado,
  * la prioridad ni la severidad. Si Einstein no responde, el campo queda en blanco y nada más cambia.

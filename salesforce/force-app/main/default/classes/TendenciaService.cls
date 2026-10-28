@@ -2,7 +2,6 @@
  * Tendencia del lote (D-7, extra 2.1): para cada ganadora del estado, arma su historial y sus críticos y
  * delega el cálculo en TendenciaCalculo.
  *
- * Responsable: Juan Rozo · tarea E-02.
  * La llama: ProcesamientoSenalService, entre guardar las lecturas (202.3) y el upsert del estado (203.2):
  *   así el historial ya incluye las lecturas del propio lote, y el resultado viaja en el MISMO upsert.
  * Contrato: docs/entrega-discovery-sprint2.md §1.7 (D-7) y §3.4 (gobernadores).

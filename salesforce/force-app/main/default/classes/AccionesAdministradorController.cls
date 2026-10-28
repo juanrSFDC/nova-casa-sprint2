@@ -2,7 +2,6 @@
  * Sirve los tres botones sin ventana del administrador: «Ingerir ahora» y «Revisar silencio ahora» en
  * Control_Ingesta__c, y «Reprocesar» en Registro_Procesamiento__c (pantallas del administrador, 25-oct).
  *
- * Responsable: Juan Rozo.
  * Lo llaman: los LWC ingerirAhora, revisarSilencioAhora y reprocesarTraza (acciones rápidas sin ventana).
  *
  * Es una capa fina: no repite lógica ni comprobaciones. Cada botón delega en su acción invocable, que ya

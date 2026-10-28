@@ -1,7 +1,6 @@
 /**
  * Pruebas puras del cálculo de la tendencia (D-7, E-03): sin SOQL ni DML, con valores exactos.
  *
- * Responsable: Juan Rozo · tarea E-03.
  * Cada serie se arma hacia atrás desde la ganadora (GANADORA): el último punto es la ganadora y el resto
  * va cada N minutos antes. Los ritmos esperados salen de la serie (paso ÷ minutos entre puntos) y los
  * minutos, de (crítico − último valor) ÷ ritmo, redondeado hacia arriba.

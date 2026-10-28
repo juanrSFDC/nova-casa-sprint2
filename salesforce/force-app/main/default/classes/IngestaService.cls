@@ -2,7 +2,6 @@
  * Orquesta la ingesta de una fuente: abre sesión si hace falta, pide lotes, traduce, publica y
  * persiste (US-201, tarea 201.5).
  *
- * Responsable: Juan Rozo · tarea 201.5.
  * La llama: IngestaQueueable (horario o botón «Ingerir ahora»).
  * Contrato: docs/entrega-discovery-sprint2.md §0.5.
  *

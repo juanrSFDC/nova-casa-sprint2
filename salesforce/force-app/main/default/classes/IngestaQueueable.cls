@@ -2,7 +2,6 @@
  * Corre la ingesta en asíncrono con permiso de callouts, y adjunta el Finalizer de red de seguridad
  * (US-201, tarea 201.5).
  *
- * Responsable: Juan Rozo · tarea 201.5.
  * Lo encolan: IngestaSchedulable (horario) e IngestaManualAction (botón «Ingerir ahora»).
  *
  * Database.AllowsCallouts porque IngestaService llama al simulador. El Finalizer se adjunta en

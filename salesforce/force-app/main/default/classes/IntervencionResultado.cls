@@ -1,8 +1,8 @@
 /**
  * Qué pasó con la intervención de una lectura crítica.
  *
- * Responsable: Juan Flórez, que la llena desde IntervencionService (US-205).
- * La consume: ProcesamientoSenalService, de Juan Rozo, para escribir la traza (US-209):
+ * La llena IntervencionService (US-205).
+ * La consume: ProcesamientoSenalService, para escribir la traza (US-209):
  * exito es Procesada; si no, Fallo_Tecnico con Reintentable__c = true.
  * Contrato: docs/entrega-discovery-sprint2.md §3.4, puerta 2.
  *

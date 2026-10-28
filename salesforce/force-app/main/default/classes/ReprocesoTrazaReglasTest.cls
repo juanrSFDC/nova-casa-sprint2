@@ -1,7 +1,6 @@
 /**
  * Pruebas de las reglas y el volumen del reproceso desde la traza (E-06, US-209).
  *
- * Responsable: Juan Rozo · E-06.
  * Reglas: sin el Custom Permission Reprocesar_Trazas no se hace nada (el usuario de integración lee la
  * traza pero no tiene el permiso); solo se relanza un Fallo_Tecnico reintentable que no se reprocesó; un
  * Id inexistente o un conjunto vacío no fallan. Volumen: 200 trazas mezcladas (intervención, lote e

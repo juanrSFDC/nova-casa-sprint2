@@ -1,7 +1,6 @@
 /**
  * Lee el estado actual de cada activo+medición por su Clave_Estado__c, para mantenerlo al día (US-203).
  *
- * Responsable: Juan Rozo · tarea 203.1 (paso d/e del procesamiento).
  * Lo usa: ProcesamientoSenalService, que compara el Ocurrido_En__c de las señales del lote contra el
  *   estado guardado ANTES del lote para marcar atrasadas y decidir la ganadora contra ese estado.
  * Contrato: docs/entrega-discovery-sprint2.md §3.1 (pasos d/e), §3.4 (orden del lote) y §4.

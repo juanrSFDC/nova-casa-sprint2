@@ -1,7 +1,6 @@
 /**
  * Dispara la ingesta de la fuente del simulador cada 15 minutos (US-201, tarea 201.5).
  *
- * Responsable: Juan Rozo · tarea 201.5.
  * Contrato: docs/entrega-discovery-sprint2.md §0.5.
  *
  * execute encola un IngestaQueueable. programar() crea 4 disparos por hora (minutos 0/15/30/45) sin

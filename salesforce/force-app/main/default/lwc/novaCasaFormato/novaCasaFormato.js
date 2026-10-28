@@ -162,7 +162,7 @@ export const NOTA_CON_IA =
 export const NOTA_SIN_IA = "Einstein no respondió: este diagnóstico se armó con los datos del equipo, sin IA.";
 export const MENSAJE_NARRACION_ERROR = "No se pudo preparar el diagnóstico. Inténtalo de nuevo.";
 
-// La tendencia la calcula el procesamiento (E-02, Juan Rozo). Aquí solo se pone en palabras.
+// La tendencia la calcula el procesamiento (E-02). Aquí solo se pone en palabras.
 export const TENDENCIAS = {
     Calculada: "Hacia el crítico",
     Ya_En_Critico: "Ya en crítico",

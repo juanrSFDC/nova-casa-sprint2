@@ -2,7 +2,7 @@ import { LightningElement, api } from "lwc";
 import TIME_ZONE from "@salesforce/i18n/timeZone";
 import obtenerGrafica from "@salesforce/apex/GraficaTendenciaController.obtenerGrafica";
 
-// Gráfica de tendencia de la ficha del activo (extra E-23, Juan Rozo). SVG hecho a mano, sin librerías:
+// Gráfica de tendencia de la ficha del activo (extra E-23). SVG hecho a mano, sin librerías:
 // no decide nada, dibuja lo que guardó el procesamiento (lecturas selladas, umbral vigente y tendencia D-7).
 
 export const INTERVALO_ACTUALIZACION_MS = 30000;

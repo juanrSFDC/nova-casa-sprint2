@@ -1,8 +1,7 @@
 /**
  * Dice la severidad de cada valor según los umbrales configurados (US-204).
  *
- * Responsable: Juan Flórez · tareas 204.1 (clasificación) y 204.2 (caché de umbrales).
- * Lo llama: ProcesamientoSenalService, de Juan Rozo, una vez por lote.
+ * Lo llama: ProcesamientoSenalService, una vez por lote.
  * Contrato: docs/entrega-discovery-sprint2.md §3.4, puerta 1.
  *
  * No escribe nada. Reglas acordadas:

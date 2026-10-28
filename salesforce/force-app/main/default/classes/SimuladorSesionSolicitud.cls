@@ -1,7 +1,6 @@
 /**
  * Lo que se pide para abrir una corrida en el simulador (US-201).
  *
- * Responsable: Juan Rozo · tarea 201.2.
  * La consume: SimuladorCliente.crearSesion, que la serializa como el cuerpo de POST /session.
  * Contrato: docs/entrega-discovery-sprint2.md §0.5 y Anexo §A.1.
  *

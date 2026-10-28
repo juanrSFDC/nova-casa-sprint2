@@ -2,7 +2,7 @@
  * Le da a la plantilla Proponer_Plan_Accion los hechos de una intervención (extra 4.2 del catálogo:
  * plan de acción con Prompt Builder).
  *
- * Responsable: Juan Flórez. Reúne qué abrió la intervención, el diagnóstico del equipo (el mismo de
+ * Reúne qué abrió la intervención, el diagnóstico del equipo (el mismo de
  * «Explicar», DiagnosticoActivoService) y las causas que coordinación registró al cerrar
  * intervenciones anteriores del MISMO equipo y la misma medición: solo de ese equipo, para que el
  * plan, que queda escrito en el caso, no traiga datos de otros edificios. Todo en modo usuario.

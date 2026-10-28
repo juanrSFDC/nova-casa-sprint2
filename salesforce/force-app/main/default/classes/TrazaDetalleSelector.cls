@@ -2,7 +2,6 @@
  * Consultas de la página de la traza (LWC trazaNovaCasa): la traza, las trazas del mismo mensaje, la
  * lectura que guardó y el activo que nombraba. El control de su fuente lo trae ControlIngestaSelector.
  *
- * Responsable: Juan Rozo · página de la traza (28-oct).
  * Lo usa: TrazaDetalleService.
  *
  * inherited sharing y modo usuario: quien consulta solo obtiene los registros y campos que puede ver; si le

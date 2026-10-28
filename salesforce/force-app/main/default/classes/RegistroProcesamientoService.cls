@@ -1,7 +1,6 @@
 /**
  * Único escritor de la traza Registro_Procesamiento__c (US-201, US-209).
  *
- * Responsable: Juan Rozo · tarea 201.4.
  * La llama: ControlIngestaService cuando la corrida falla; más adelante (202, 209) el suscriptor
  *   añadirá aquí sus desenlaces con Escrito_Por__c = Suscriptor.
  * Contrato: docs/entrega-discovery-sprint2.md §3.4 (la traza la escribe solo Rozo) y §6.

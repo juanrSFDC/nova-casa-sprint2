@@ -2,9 +2,8 @@
  * Lee el nombre de los edificios por su código (Location.Id_Externo__c), para nombrar el edificio de un
  * activo a partir de Asset.Edificio_Externo__c.
  *
- * Responsable: Juan Rozo · tour de US-207 (27-oct).
  * Lo usan: MonitoreoActivosController («Mis activos»), DiagnosticoActivoService («Explicar») y
- * EstadoEquipoController («Estado del equipo»), de Juan Flórez.
+ * EstadoEquipoController («Estado del equipo»).
  *
  * No se llega al edificio por Asset.LocationId: los operadores no pueden leer ese campo estándar aunque su
  * Permission Set lo conceda, y el modo usuario rechaza la consulta entera por un solo campo.

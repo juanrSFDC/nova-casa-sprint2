@@ -2,7 +2,6 @@
  * Acción invocable «Ingerir ahora»: encola la ingesta de la fuente del registro y devuelve si se
  * encoló y un mensaje de cara al usuario (US-201, tarea 201.5).
  *
- * Responsable: Juan Rozo · tarea 201.5.
  * La llama: AccionesAdministradorController, desde el botón sin ventana «Ingerir ahora» (acción LWC
  * Control_Ingesta__c.Ingerir, 25-oct). Sigue siendo invocable para que un Flow pueda usarla.
  *

@@ -2,7 +2,6 @@
  * Acción invocable «Reprocesar»: relanza el fallo técnico reintentable de ese Registro_Procesamiento__c
  * y devuelve el mensaje de cara al usuario (E-06, US-209).
  *
- * Responsable: Juan Rozo · E-06.
  * La llama: AccionesAdministradorController, desde el botón sin ventana «Reprocesar» de la traza
  * (acción LWC Registro_Procesamiento__c.Reprocesar_Ahora, 25-oct). Sigue siendo invocable.
  *

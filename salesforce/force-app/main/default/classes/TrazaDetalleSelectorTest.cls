@@ -1,8 +1,6 @@
 /**
  * Pruebas de TrazaDetalleSelector (consultas de la página de la traza).
  *
- * Responsable: Juan Rozo · página de la traza (28-oct).
- *
  * Cubren cada consulta con su entrada vacía (sin consultar), su caso normal y su caso sin resultado; el orden
  * y el tope de la historia con 251 trazas del mismo mensaje; la lectura por enlace y por clave; y el modo
  * usuario: sin permisos sobre la traza, la consulta lanza QueryException.

@@ -2,7 +2,6 @@
  * Pruebas del portátil como segunda fuente real (25-oct): la señal que publica
  * herramientas/sensor_portatil.py entra por el mismo camino que la del simulador.
  *
- * Responsable: Juan Rozo · segunda fuente (D-8) y E-07.
  * Una medición de temperatura de la fuente nova-casa-portatil, sobre un activo TECHNICAL_ROOM con su
  * umbral 30/35, pasa por ProcesamientoSenalService.procesar como el usuario de integración: deja su
  * lectura con el Origen__c del portátil, el estado en Advertencia y su traza Procesada. Después, la

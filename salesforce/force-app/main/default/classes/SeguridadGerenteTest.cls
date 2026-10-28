@@ -1,7 +1,6 @@
 /**
  * Pruebas del gerente regional (extra E-19): Permission Set Nova_Casa_Gerente y acceso por jerarquía.
  *
- * Responsable: Juan Rozo · E-19 (plan de la E-05, §3.3 del discovery).
  * Qué cubre: que Nova_Casa_Gerente solo LEE (sin crear, editar, borrar, «Ver todo» ni «Modificar todo»)
  * los 8 objetos que necesita, lee Location.Region__c sin editarla y no tiene la traza
  * (Registro_Procesamiento__c) ni la configuración de ingesta (Control_Ingesta__c); que sin compartición

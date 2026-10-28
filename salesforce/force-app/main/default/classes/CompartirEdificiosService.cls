@@ -1,7 +1,6 @@
 /**
  * Comparte cada edificio (Location) del proyecto con su grupo de operadores y con Coordinadores (US-208, 208.3).
  *
- * Responsable: Juan Rozo · tarea 208.3 (compartición por edificio).
  * Se ejecuta: una vez con Apex anónimo (scripts/apex/compartir_edificios.apex) tras desplegar los grupos.
  * Diseño: docs/entrega-discovery-sprint2.md §3.3.
  *

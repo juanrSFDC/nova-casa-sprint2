@@ -1,7 +1,6 @@
 /**
  * Pruebas del reproceso de una intervención fallida desde la traza (E-06, US-209).
  *
- * Responsable: Juan Rozo · E-06.
  * El fallo es real: la creación del caso falla con la inyección de Flórez (IntervencionService
  * .forzarFalloCreacion) mientras el pipeline corre como el usuario de integración. Después el
  * administrador reprocesa y lo publicado se entrega como el suscriptor de producción (reprocesarYEntregar).

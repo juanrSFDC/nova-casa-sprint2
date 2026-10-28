@@ -1,8 +1,8 @@
 /**
  * Lo que se pide clasificar: un valor de una medición de un tipo de activo.
  *
- * Responsable: Juan Rozo, que la llena desde ProcesamientoSenalService (US-202).
- * La consume: ClasificacionService, de Juan Flórez (US-204).
+ * La llena ProcesamientoSenalService (US-202).
+ * La consume: ClasificacionService (US-204).
  * Contrato: docs/entrega-discovery-sprint2.md §3.4, puerta 1.
  *
  * Llega solo lo que ya pasó la validación: el activo existe, la unidad es la esperada

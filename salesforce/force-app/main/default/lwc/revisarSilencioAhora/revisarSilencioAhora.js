@@ -3,7 +3,7 @@ import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import { notifyRecordUpdateAvailable } from "lightning/uiRecordApi";
 import revisarSilencio from "@salesforce/apex/AccionesAdministradorController.revisarSilencio";
 
-// Botón sin ventana «Revisar silencio ahora» (Juan Rozo, 25-oct). El permiso Revisar_Silencio y el
+// Botón sin ventana «Revisar silencio ahora». El permiso Revisar_Silencio y el
 // mensaje los decide el servidor; aquí solo se muestran y se refresca el registro (En silencio desde).
 const TITULO = "Revisar silencio ahora";
 const MSG_ERROR = "No se pudo revisar el silencio: inténtalo de nuevo en unos minutos.";

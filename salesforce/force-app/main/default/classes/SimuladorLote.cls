@@ -1,7 +1,6 @@
 /**
  * Un lote de señales devuelto por GET /telemetry, sin interpretar (US-201).
  *
- * Responsable: Juan Rozo · tarea 201.2.
  * La llena: SimuladorCliente.pedirLote a partir de la respuesta 200 de GET /telemetry.
  * La usa: el job de la 201.5 para paginar; la 201.3 traduce cada mensaje a Senal_Sensor__e.
  * Contrato: docs/entrega-discovery-sprint2.md §0.5 y Anexo §A.2.

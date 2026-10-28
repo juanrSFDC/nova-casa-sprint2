@@ -3,7 +3,7 @@ import { NavigationMixin } from "lightning/navigation";
 import TIME_ZONE from "@salesforce/i18n/timeZone";
 import obtenerMapa from "@salesforce/apex/MapaEdificiosController.obtenerMapa";
 
-// Mapa de edificios (extra E-24, Juan Rozo): un marcador por edificio visible, del color de su peor
+// Mapa de edificios (extra E-24): un marcador por edificio visible, del color de su peor
 // severidad. No filtra nada: el servidor devuelve lo que la compartición deja ver a quien abre la pestaña.
 
 export const INTERVALO_ACTUALIZACION_MS = 30000;

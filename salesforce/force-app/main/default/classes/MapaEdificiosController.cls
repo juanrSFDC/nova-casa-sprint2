@@ -1,7 +1,6 @@
 /**
  * Sirve el mapa de edificios (extra E-24): un marcador por edificio visible, del color de su peor severidad.
  *
- * Responsable: Juan Rozo.
  * Lo usa: el LWC mapaEdificios, en la página de app Mapa_de_edificios (pestaña «Mapa de edificios»).
  *
  * Contrato: cada edificio (Location) que el usuario ve, con su región, su ciudad, sus coordenadas si las

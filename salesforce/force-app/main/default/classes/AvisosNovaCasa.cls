@@ -1,7 +1,7 @@
 /**
  * Avisa a quien atiende el edificio (extras de US-205 y de la tendencia, 19-oct).
  *
- * Responsable: Juan Flórez. La llaman dos Flows por su ruta asíncrona, cuando la transacción
+ * La llaman dos Flows por su ruta asíncrona, cuando la transacción
  * que guardó el registro ya terminó: Nova_Casa_Aviso_Intervencion (caso de intervención nuevo)
  * y Nova_Casa_Aviso_Tendencia (un estado que, a su ritmo, cruzaría el crítico en 30 minutos o menos).
  * Así un aviso que falla nunca deshace la intervención ni suma consultas al procesamiento.

@@ -2,8 +2,7 @@
  * Crea o reutiliza la intervención (Case, record type Intervencion) de cada lectura
  * crítica vigente y enlaza la lectura con ella (US-205, US-206).
  *
- * Responsable: Juan Flórez · tareas 205.1 (crear), 205.2 (enlazar y reutilizar) y 206.1 (enrutar por severidad).
- * Lo llama: ProcesamientoSenalService, de Juan Rozo, después de guardar las lecturas.
+ * Lo llama: ProcesamientoSenalService, después de guardar las lecturas.
  * Contrato: docs/entrega-discovery-sprint2.md §3.4, puerta 2.
  *
  * Reglas acordadas:
@@ -13,7 +12,7 @@
  *     Normal y Advertencia no abren caso: se quedan en la lectura y el estado (206.1).
  *   - Reutiliza el Case que ya tenga esa Clave_Senal__c; crea el resto con inserción parcial y
  *     trata DUPLICATE_VALUE como «ya existía»: la garantía la da el índice único, no esta consulta.
- *   - Escribe Lectura_Sensor__c.Intervencion__c. No escribe trazas: las escribe Juan Rozo con el resultado.
+ *   - Escribe Lectura_Sensor__c.Intervencion__c. No escribe trazas: las escribe ProcesamientoSenalService con el resultado.
  *   - Una lectura que no necesita caso no aparece en el mapa.
  *   - Todo en modo usuario: solo escribe campos que Nova_Casa_Ingesta permite
  *     (RecordTypeId, AssetId, Clave_Senal__c, Edificio_Externo__c, Lectura_Origen__c,

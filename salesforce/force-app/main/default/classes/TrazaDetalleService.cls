@@ -3,8 +3,6 @@
  * reproceso y las demás trazas del mismo mensaje. No decide ni escribe nada: solo lee, en modo usuario, con
  * TrazaDetalleSelector, ControlIngestaSelector y EdificioSelector.
  *
- * Responsable: Juan Rozo · página de la traza (28-oct).
- *
  * Cómo se reconoce cada cosa en una traza (las escribe RegistroProcesamientoService):
  *   - la fuente: lo que va antes de «|» en Clave_Mensaje__c; en las trazas de una corrida de la ingesta o de
  *     la vigilancia del silencio, que no tienen clave, el segundo trozo de Referencia__c («INGESTA|fuente|…»);

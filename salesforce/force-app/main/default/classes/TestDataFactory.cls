@@ -1,7 +1,6 @@
 /**
  * Fábrica de datos de prueba del proyecto (US-201 y siguientes).
  *
- * Responsable: Juan Rozo · tarea 201.4 (primera del proyecto; crecerá con las demás US).
  * La usan: los @TestSetup y los métodos de prueba, que nunca arman registros a mano.
  *
  * Reglas (skill platform-apex-test-generate): todo método acepta doInsert, los single delegan en

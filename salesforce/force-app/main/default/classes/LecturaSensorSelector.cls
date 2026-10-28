@@ -1,7 +1,6 @@
 /**
  * Lee las lecturas ya guardadas por su Clave_Mensaje__c para deduplicar el lote (US-202, tarea 202.3).
  *
- * Responsable: Juan Rozo · tarea 202.3 (paso b del procesamiento); historialParaTendencia, tarea E-02.
  * Lo usa: ProcesamientoSenalService, que compara clave y huella del lote contra lo persistido para
  *   distinguir duplicados de conflictos, y reconsulta tras un DUPLICATE_VALUE de carrera; y
  *   TendenciaService, que trae el historial de las ganadoras para la recta de la tendencia (D-7).

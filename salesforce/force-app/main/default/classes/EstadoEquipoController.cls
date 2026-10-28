@@ -1,7 +1,7 @@
 /**
  * Sirve el bloque «Estado del equipo» de la ficha del activo (rediseño de UX, 26-oct).
  *
- * Responsable: Juan Flórez. Va en la página Activo_Nova_Casa de Juan Rozo, encima de su gráfica.
+ * Va en la página Activo_Nova_Casa, encima de la gráfica de tendencia.
  *
  * Responde a tres preguntas del operador sin que tenga que leer campos: cómo está cada medición,
  * dónde cae su valor dentro de los límites de hoy y qué intervención sigue abierta. No decide

@@ -1,8 +1,8 @@
 /**
  * La severidad de un valor y el umbral que la decidió.
  *
- * Responsable: Juan Flórez, que la llena desde ClasificacionService (US-204).
- * La consume: ProcesamientoSenalService, de Juan Rozo, para sellar la lectura (D-4)
+ * La llena ClasificacionService (US-204).
+ * La consume: ProcesamientoSenalService, para sellar la lectura (D-4)
  * y fijar el estado actual (US-203).
  * Contrato: docs/entrega-discovery-sprint2.md §3.4, puerta 1.
  *

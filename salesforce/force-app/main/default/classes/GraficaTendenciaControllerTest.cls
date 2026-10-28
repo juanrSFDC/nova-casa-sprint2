@@ -1,8 +1,6 @@
 /**
  * Pruebas de GraficaTendenciaController (gráfica de tendencia de la ficha del activo, extra E-23).
  *
- * Responsable: Juan Rozo.
- *
  * Cubren: la ventana de 3 h contada desde la lectura más reciente (cada medición la suya), el orden por
  * Ocurrido_En__c, las atrasadas marcadas, el tope de 50 puntos y su frontera, el tope de la consulta
  * (consultaParcial), las líneas de advertencia y crítico por dirección (nunca el inválido; tampoco las de

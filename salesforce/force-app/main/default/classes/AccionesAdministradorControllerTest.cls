@@ -1,7 +1,6 @@
 /**
  * Pruebas de AccionesAdministradorController (los tres botones sin ventana del administrador, 25-oct).
  *
- * Responsable: Juan Rozo.
  * El controlador es una capa fina sobre las acciones invocables; aquí se prueba que respeta los
  * permisos de quien pulsa (sin acceso o sin el Custom Permission no pasa nada), que devuelve el
  * éxito y el mensaje de la acción, y que «Ingerir ahora» encola la ingesta. Se mockea el simulador

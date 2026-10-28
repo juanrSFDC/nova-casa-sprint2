@@ -1,8 +1,7 @@
 /**
  * Sirve la pantalla «Mis activos» (US-207, tarea 207.1).
  *
- * Responsable: Juan Flórez. Lo endurece Juan Rozo en 208.4 y lo prueba con Laura y el
- * Operador Barranquilla en 208.5.
+ * Endurecido en 208.4 y probado con Laura y el Operador Barranquilla en 208.5.
  *
  * Una consulta de activos, en modo usuario y con la compartición de quien abre la pantalla:
  * cada operador solo recibe los activos de sus edificios. No decide severidad: devuelve
@@ -11,7 +10,7 @@
  * no dejan filas» (D-20).
  *
  * Extras de US-207 (19-oct): cada fila trae la tendencia más urgente del activo, la que
- * calcula el procesamiento (E-02 de Juan Rozo), y la respuesta trae un resumen de turno
+ * calcula el procesamiento (E-02), y la respuesta trae un resumen de turno
  * sobre todos los activos visibles, sin filtros. Los dos salen de la misma consulta.
  *
  * Extra E-18 (21-oct): narrarActivo redacta el diagnóstico de un activo con la plantilla de

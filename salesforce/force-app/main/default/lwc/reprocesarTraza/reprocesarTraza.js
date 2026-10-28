@@ -3,7 +3,7 @@ import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import { notifyRecordUpdateAvailable } from "lightning/uiRecordApi";
 import reprocesar from "@salesforce/apex/AccionesAdministradorController.reprocesar";
 
-// Botón sin ventana «Reprocesar» de la traza (Juan Rozo, 25-oct). El permiso Reprocesar_Trazas y las
+// Botón sin ventana «Reprocesar» de la traza. El permiso Reprocesar_Trazas y las
 // reglas los decide el servidor; aquí solo se muestra el mensaje y se refresca la traza (Reprocesado en).
 const TITULO = "Reprocesar";
 const MSG_ERROR = "No se pudo reprocesar: inténtalo de nuevo o revisa la traza.";

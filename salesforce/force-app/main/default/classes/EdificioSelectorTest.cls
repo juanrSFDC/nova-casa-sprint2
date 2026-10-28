@@ -1,7 +1,5 @@
 /**
  * Pruebas de EdificioSelector: el nombre de los edificios por su código, en modo usuario.
- *
- * Responsable: Juan Rozo · tour de US-207 (27-oct).
  */
 @isTest
 private class EdificioSelectorTest {

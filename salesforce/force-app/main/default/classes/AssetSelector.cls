@@ -1,7 +1,6 @@
 /**
  * Lee los activos (Asset) por su identificador externo para el suscriptor de señales (US-202).
  *
- * Responsable: Juan Rozo · tarea 202.2.
  * Lo usa: ProcesamientoSenalService, que resuelve el activo de cada señal del lote en bloque.
  * Contrato: docs/entrega-discovery-sprint2.md §3.1 (paso a) y §6 del modelo de datos.
  *

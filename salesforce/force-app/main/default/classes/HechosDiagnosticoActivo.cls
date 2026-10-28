@@ -1,7 +1,7 @@
 /**
  * Le da a la plantilla Narrar_Diagnostico_Activo los hechos del activo (extra E-18).
  *
- * Responsable: Juan Flórez. Prompt Builder la llama con una petición por generación; la variable
+ * Prompt Builder la llama con una petición por generación; la variable
  * de entrada se llama como la entrada de la plantilla (Activo) y la de salida, Prompt.
  */
 public with sharing class HechosDiagnosticoActivo {

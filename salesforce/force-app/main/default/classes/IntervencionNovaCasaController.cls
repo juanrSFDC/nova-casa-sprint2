@@ -2,7 +2,7 @@
  * Sirve la página de la intervención (rediseño de UX, 26-oct): qué la abrió, cuál fue la última
  * señal, cómo está ahora la medición, qué revisar primero y qué falló al cerrarla.
  *
- * Responsable: Juan Flórez. Va en la página Intervencion_Nova_Casa, asignada solo al record type
+ * Va en la página Intervencion_Nova_Casa, asignada solo al record type
  * Intervención dentro de la app Nova Casa.
  *
  * No decide nada: lee la intervención, sus señales enlazadas (Lectura_Sensor__c.Intervencion__c) y

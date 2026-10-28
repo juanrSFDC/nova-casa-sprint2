@@ -1,7 +1,6 @@
 /**
  * Traduce cada mensaje del lote a Senal_Sensor__e y lo publica al bus (US-201).
  *
- * Responsable: Juan Rozo · tarea 201.3.
  * La llama: el job de la 201.5, que pide el lote, traduce, publica y registra los rechazos.
  * Contrato: docs/entrega-discovery-sprint2.md §3.1 (filtro de identidad, publicar ≠ procesar) y §3.4.
  *

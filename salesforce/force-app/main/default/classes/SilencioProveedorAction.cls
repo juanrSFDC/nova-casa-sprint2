@@ -2,7 +2,6 @@
  * Acción invocable «Revisar silencio ahora»: revisa en el momento el silencio de la fuente del registro
  * y devuelve si se pudo revisar y un mensaje de cara al usuario (extra E-07, 25-oct).
  *
- * Responsable: Juan Rozo · E-07.
  * La llama: AccionesAdministradorController, desde el botón sin ventana «Revisar silencio ahora»
  * (acción LWC Control_Ingesta__c.Revisar_Silencio_Ahora, 25-oct). Sigue siendo invocable.
  *
