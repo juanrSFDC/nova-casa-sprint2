@@ -27,6 +27,11 @@
     <description>Gerente regional (E-19): solo lectura y sin Ver todo; ve los edificios y activos de su región por la jerarquía de roles, lee todos los umbrales y aprueba con el otro gerente, por unanimidad, los cambios de umbral. Abre «Mis activos» y el dashboard.</description>
     <fieldPermissions>
         <editable>false</editable>
+        <field>Asset.Edificio__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>Asset.Edificio_Externo__c</field>
         <readable>true</readable>
     </fieldPermissions>

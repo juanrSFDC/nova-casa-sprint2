@@ -11,23 +11,27 @@
             <sorted>false</sorted>
             <value>
                 <fullName>Normal</fullName>
+                <color>#2E844A</color>
                 <default>false</default>
                 <label>Normal</label>
             </value>
             <value>
                 <fullName>Advertencia</fullName>
+                <color>#DD7A01</color>
                 <default>false</default>
                 <label>Advertencia</label>
             </value>
             <value>
                 <fullName>Critico</fullName>
+                <color>#BA0517</color>
                 <default>false</default>
-                <label>Critico</label>
+                <label>Crítico</label>
             </value>
             <value>
                 <fullName>Sin_Configurar</fullName>
+                <color>#747474</color>
                 <default>false</default>
-                <label>Sin_Configurar</label>
+                <label>Sin umbral</label>
             </value>
         </valueSetDefinition>
     </valueSet>

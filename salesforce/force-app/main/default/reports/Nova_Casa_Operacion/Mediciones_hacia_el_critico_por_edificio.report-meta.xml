@@ -23,7 +23,7 @@
     <format>Summary</format>
     <groupingsDown>
         <dateGranularity>Day</dateGranularity>
-        <field>Asset$Location</field>
+        <field>Asset$Edificio__c</field>
         <sortOrder>Asc</sortOrder>
     </groupingsDown>
     <name>Mediciones hacia el crítico por edificio</name>

@@ -23,6 +23,11 @@
         </columns>
         <columns>
             <checkedByDefault>true</checkedByDefault>
+            <field>Edificio__c</field>
+            <table>Asset</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
             <field>Edificio_Externo__c</field>
             <table>Asset</table>
         </columns>

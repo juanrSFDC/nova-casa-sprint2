@@ -23,6 +23,11 @@
     <description>Operador de edificios (US-208). Lee edificios, activos, lecturas, estados, casos y umbrales de su edificio (acotado por comparticion de grupo). Sin traza ni config de ingesta. Abre la app Nova Casa y la pestana Mis activos (208.4).</description>
     <fieldPermissions>
         <editable>false</editable>
+        <field>Asset.Edificio__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>Asset.Edificio_Externo__c</field>
         <readable>true</readable>
     </fieldPermissions>

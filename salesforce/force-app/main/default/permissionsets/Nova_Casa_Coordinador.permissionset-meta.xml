@@ -27,6 +27,11 @@
     <description>Coordinador de mantenimiento (US-208). Lee edificios, activos, lecturas y estados; gestiona Case (R+E); en umbrales propone limites que aplica la aprobacion del gerente. Sin traza ni config de ingesta; solo el admin borra. Juanda lo asigna en 204.3.</description>
     <fieldPermissions>
         <editable>false</editable>
+        <field>Asset.Edificio__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>Asset.Edificio_Externo__c</field>
         <readable>true</readable>
     </fieldPermissions>

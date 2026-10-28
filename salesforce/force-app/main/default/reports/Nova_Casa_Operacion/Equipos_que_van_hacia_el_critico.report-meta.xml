@@ -4,7 +4,7 @@
         <field>Asset$Name</field>
     </columns>
     <columns>
-        <field>Asset$Location</field>
+        <field>Asset$Edificio__c</field>
     </columns>
     <columns>
         <field>Asset.Estados_Medicion__r$Tipo_Medicion__c</field>

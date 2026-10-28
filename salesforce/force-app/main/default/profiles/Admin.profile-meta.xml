@@ -15,6 +15,11 @@
         <name>Revisar_Silencio</name>
     </customPermissions>
     <fieldPermissions>
+        <editable>false</editable>
+        <field>Asset.Edificio__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
         <editable>true</editable>
         <field>Case.Causa_Raiz__c</field>
         <readable>true</readable>
