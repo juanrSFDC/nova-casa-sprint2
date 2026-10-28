@@ -1,6 +1,15 @@
 <template>
     <lightning-card title="Mapa de edificios" icon-name="standard:location">
         <div slot="actions">
+            <template lwc:if={acercado}>
+                <lightning-button
+                    class="slds-m-right_x-small"
+                    label="Ver todos los edificios"
+                    icon-name="utility:expand_alt"
+                    onclick={verTodos}
+                    data-id="ver-todos"
+                ></lightning-button>
+            </template>
             <lightning-button
                 label="Actualizar"
                 icon-name="utility:refresh"
@@ -57,6 +66,8 @@
                                 map-markers={marcadores}
                                 list-view="hidden"
                                 selected-marker-value={seleccionado}
+                                center={centro}
+                                zoom-level={zoom}
                                 onmarkerselect={alSeleccionarMarcador}
                                 data-id="mapa"
                             ></lightning-map>
@@ -77,7 +88,8 @@
                             </template>
                         </ul>
                         <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
-                            Cada marcador toma el color del peor activo del edificio. Al pulsarlo se ven sus conteos.
+                            Cada marcador toma el color del peor activo del edificio. Al pulsarlo se ven sus conteos;
+                            «Ver en el mapa» acerca el mapa a ese edificio.
                         </p>
                         <template lwc:if={textoSinCoordenadas}>
                             <p class="slds-text-body_small slds-m-top_xx-small" data-id="sin-coordenadas">

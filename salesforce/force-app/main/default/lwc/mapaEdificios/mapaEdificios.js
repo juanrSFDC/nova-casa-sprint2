@@ -32,6 +32,18 @@ export const LEYENDA = Object.keys(SEVERIDADES).map((clave) => ({
 // Chincheta de 24 × 34 en unidades del path; el ancla va en la punta para que no se desplace con el zoom.
 export const CHINCHETA = "M 12,0 C 5.4,0 0,5.4 0,12 C 0,21 12,34 12,34 C 12,34 24,21 24,12 C 24,5.4 18.6,0 12,0 z";
 
+// Nivel de zoom de Google Maps al que se acerca «Ver en el mapa»: se distinguen las calles del edificio.
+export const ZOOM_EDIFICIO = 16;
+
+/**
+ * Centro de lightning-map en las coordenadas de un edificio.
+ * @param {object} e Edificio del servidor, con coordenadas
+ * @returns {{location: {Latitude: number, Longitude: number}}}
+ */
+export function centroDe(e) {
+    return { location: { Latitude: e.latitud, Longitude: e.longitud } };
+}
+
 const TIPOS_ACTIVO = {
     ENERGY_METER: "Medidor de energía",
     WATER_PUMP: "Bomba de agua",
@@ -179,6 +191,8 @@ export default class MapaEdificios extends NavigationMixin(LightningElement) {
     marcadores = [];
     datos;
     seleccionado;
+    centro;
+    zoom;
     cargando = true;
     pidiendo = false;
     hayError = false;
@@ -204,6 +218,10 @@ export default class MapaEdificios extends NavigationMixin(LightningElement) {
 
     get hayMarcadores() {
         return this.marcadores.length > 0;
+    }
+
+    get acercado() {
+        return this.zoom !== undefined;
     }
 
     get textoActualizado() {
@@ -279,6 +297,8 @@ export default class MapaEdificios extends NavigationMixin(LightningElement) {
         const edificios = (this.datos && this.datos.edificios) || [];
         if (this.seleccionado && !edificios.some((e) => e.id === this.seleccionado)) {
             this.seleccionado = undefined;
+            this.centro = undefined;
+            this.zoom = undefined;
         }
         this.edificios = edificios.map((e) => vistaEdificio(e, this.seleccionado));
         // Se reemplazan los marcadores solo si cambiaron: así la vuelta de 30 s no recoloca el mapa.
@@ -306,8 +326,21 @@ export default class MapaEdificios extends NavigationMixin(LightningElement) {
     }
 
     verEnMapa(event) {
-        this.seleccionado = event.currentTarget.dataset.registro;
+        const id = event.currentTarget.dataset.registro;
+        const edificio = ((this.datos && this.datos.edificios) || []).find((e) => e.id === id);
+        this.seleccionado = id;
+        if (edificio && edificio.tieneCoordenadas) {
+            this.centro = centroDe(edificio);
+            this.zoom = ZOOM_EDIFICIO;
+        }
         this.pintar();
+    }
+
+    verTodos() {
+        this.centro = undefined;
+        this.zoom = undefined;
+        // Sin zoom, lightning-map vuelve a encuadrar todos los marcadores cuando los recibe de nuevo.
+        this.marcadores = [...this.marcadores];
     }
 
     abrirActivo(event) {
