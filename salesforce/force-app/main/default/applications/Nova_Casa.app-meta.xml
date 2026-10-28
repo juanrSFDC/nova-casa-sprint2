@@ -48,6 +48,14 @@
         <type>Flexipage</type>
         <profile>Minimum Access - Salesforce</profile>
     </profileActionOverrides>
+    <profileActionOverrides>
+        <actionName>View</actionName>
+        <content>Traza_Nova_Casa</content>
+        <formFactor>Large</formFactor>
+        <pageOrSobjectType>Registro_Procesamiento__c</pageOrSobjectType>
+        <type>Flexipage</type>
+        <profile>Admin</profile>
+    </profileActionOverrides>
     <tabs>Mis_activos</tabs>
     <tabs>Umbral_Medicion__c</tabs>
     <tabs>standard-Case</tabs>

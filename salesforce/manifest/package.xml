@@ -276,6 +276,7 @@
         <members>Activo_Nova_Casa</members>
         <members>Mapa_de_edificios</members>
         <members>Intervencion_Nova_Casa</members>
+        <members>Traza_Nova_Casa</members>
         <name>FlexiPage</name>
     </types>
     <types>
