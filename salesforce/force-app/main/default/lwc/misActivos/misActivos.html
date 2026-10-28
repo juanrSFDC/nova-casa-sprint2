@@ -158,6 +158,7 @@
                                                 <template lwc:if={tarjeta.lineaMedicion}>
                                                     <p class="linea" data-id="medicion">
                                                         <span class="valor">{tarjeta.lineaMedicion}</span>
+                                                        <span class="fecha" title="Fecha de la lectura de origen, hora de Colombia" data-id="fecha-lectura">· {tarjeta.fechaLectura}</span>
                                                         <span class="antiguedad">· {tarjeta.antiguedad}</span>
                                                         <template lwc:if={tarjeta.datoViejo}>
                                                             <span class="marca marca-vieja" title="La última lectura tiene más de 30 minutos" data-id="dato-viejo">Dato viejo</span>

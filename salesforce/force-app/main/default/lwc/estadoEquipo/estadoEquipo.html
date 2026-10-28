@@ -96,7 +96,7 @@
                                     <lightning-icon icon-name={medicion.icono} size="xx-small"></lightning-icon>
                                     <span>{medicion.etiqueta}</span>
                                 </span>
-                                <span class="antiguedad">{medicion.antiguedad}</span>
+                                <span class="antiguedad" title="Fecha de la lectura de origen, hora de Colombia" data-id="fecha-lectura">{medicion.fechaLectura} · {medicion.antiguedad}</span>
                                 <template lwc:if={medicion.datoViejo}>
                                     <span class="marca marca-vieja" title="La última lectura tiene más de 30 minutos" data-id="dato-viejo">Dato viejo</span>
                                 </template>

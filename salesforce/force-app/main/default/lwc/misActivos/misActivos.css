@@ -245,6 +245,10 @@
     font-weight: 600;
 }
 
+.fecha {
+    font-variant-numeric: tabular-nums;
+}
+
 .antiguedad {
     color: var(--nc-texto-debil);
 }

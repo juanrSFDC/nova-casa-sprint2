@@ -15,6 +15,7 @@ import {
     TENDENCIAS,
     antiguedadDe,
     esViejo,
+    horaColombia,
     medicionLegible,
     tendenciaLegible,
     tiempoHastaCritico
@@ -264,6 +265,7 @@ export default class MisActivos extends NavigationMixin(LightningElement) {
             claseEtiqueta: `etiqueta etiqueta-${presentacion.tono}`,
             edificio: fila.edificioNombre || fila.edificioExterno || "Sin edificio",
             lineaMedicion,
+            fechaLectura: horaColombia(fila.ocurridoEn),
             antiguedad: antiguedadDe(fila.ocurridoEn, ahora).toLowerCase(),
             datoViejo: esViejo(fila.ocurridoEn, ahora),
             lineas: queEstaPasando(fila, ahora),
