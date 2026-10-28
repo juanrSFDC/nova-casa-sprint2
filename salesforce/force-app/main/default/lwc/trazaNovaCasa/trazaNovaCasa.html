@@ -1,0 +1,256 @@
+<template>
+    <template lwc:if={cargando}>
+        <article class="panel">
+            <header class="cabecera">
+                <img class="logo" src={logo} alt="Nova Casa" />
+                <div class="titulos">
+                    <h2 class="titulo">Traza</h2>
+                    <p class="subtitulo">Cargando la traza…</p>
+                </div>
+            </header>
+            <div class="cuerpo" data-id="cargando" role="status">
+                <span class="slds-assistive-text">Cargando la traza</span>
+                <div class="momentos">
+                    <div class="esqueleto esqueleto-momento"></div>
+                    <div class="esqueleto esqueleto-momento"></div>
+                    <div class="esqueleto esqueleto-momento"></div>
+                </div>
+                <div class="esqueleto esqueleto-bloque"></div>
+            </div>
+        </article>
+    </template>
+
+    <template lwc:if={mostrarError}>
+        <article class="panel">
+            <div class="vacio" data-id="error" role="alert">
+                <p>{mensajeError}</p>
+                <lightning-button class="slds-m-top_small" variant="brand" label="Reintentar" onclick={reintentar}></lightning-button>
+            </div>
+        </article>
+    </template>
+
+    <template lwc:if={mostrar}>
+        <article class="panel">
+            <header class="cabecera">
+                <img class="logo" src={logo} alt="Nova Casa" />
+                <div class="titulos">
+                    <h2 class="titulo" data-id="titulo">{titulo}</h2>
+                    <p class="subtitulo" data-id="subtitulo">{subtitulo}</p>
+                </div>
+                <span class={claseEstado} data-id="estado">
+                    <lightning-icon icon-name={presentacion.icono} size="xx-small"></lightning-icon>
+                    <span>{presentacion.etiqueta}</span>
+                </span>
+            </header>
+
+            <div class="cuerpo">
+                <template lwc:if={aviso}>
+                    <p class="aviso" data-id="aviso">
+                        <lightning-icon icon-name="utility:info" size="xx-small"></lightning-icon>
+                        <span>{aviso}</span>
+                    </p>
+                </template>
+                <template lwc:if={hayMotivoODetalle}>
+                    <p class="detalle-tecnico" data-id="detalle">
+                        <template lwc:if={traza.motivo}>
+                            <span class="marca marca-abierta">{motivo}</span>
+                        </template>
+                        <span>{traza.detalle}</span>
+                    </p>
+                </template>
+
+                <ul class="momentos">
+                    <template for:each={momentos} for:item="m">
+                        <li key={m.clave} class={m.clase} data-id="momento" data-momento={m.clave}>
+                            <p class="titulo-momento">{m.titulo}</p>
+                            <template lwc:if={m.vacia}>
+                                <p class="sin-dato">Sin dato</p>
+                            </template>
+                            <template lwc:else>
+                                <p class="valor-momento">{m.valor}</p>
+                                <p class="cuando">{m.hace}</p>
+                                <template lwc:if={m.nota}>
+                                    <p class="nota-momento">{m.nota}</p>
+                                </template>
+                            </template>
+                        </li>
+                    </template>
+                </ul>
+
+                <div class="columnas">
+                    <section class="seccion" aria-labelledby="titulo-origen">
+                        <h3 class="titulo-seccion" id="titulo-origen">De dónde vino</h3>
+                        <dl class="datos" data-id="origen">
+                            <dt>Fuente</dt>
+                            <dd>
+                                <template lwc:if={fuenteEnlazable}>
+                                    <button class="enlace" data-registro={traza.fuente.controlId} data-objeto="Control_Ingesta__c" onclick={abrir}>{fuenteTexto}</button>
+                                </template>
+                                <template lwc:else>{fuenteTexto}</template>
+                            </dd>
+                            <template lwc:if={esSenal}>
+                                <dt>Mensaje</dt>
+                                <dd>
+                                    <template lwc:if={traza.mensaje}>{traza.mensaje}</template>
+                                    <template lwc:else>Sin identidad</template>
+                                </dd>
+                                <template lwc:if={traza.entrega}>
+                                    <dt>Entrega</dt>
+                                    <dd class="codigo">{traza.entrega}</dd>
+                                </template>
+                                <template lwc:if={tipoMensaje}>
+                                    <dt>Tipo</dt>
+                                    <dd>{tipoMensaje}</dd>
+                                </template>
+                                <template lwc:if={llegoTexto}>
+                                    <dt>Lo que llegó</dt>
+                                    <dd data-id="llego">{llegoTexto}</dd>
+                                </template>
+                            </template>
+                            <template lwc:if={escritoPor}>
+                                <dt>La registró</dt>
+                                <dd>{escritoPor}</dd>
+                            </template>
+                        </dl>
+                        <template lwc:if={esReenvio}>
+                            <div class="cierre" data-id="reenvio">
+                                <p class="titulo-cierre">Reenvío de «Reprocesar»</p>
+                                <p class="texto-cierre">Esta traza es la del reenvío de otra traza que se reprocesó.</p>
+                                <button class="enlace" data-registro={traza.reprocesoDe} data-objeto="Registro_Procesamiento__c" onclick={abrir}>Ver la traza reprocesada</button>
+                            </div>
+                        </template>
+                    </section>
+
+                    <div class="seccion">
+                        <template lwc:if={esSenal}>
+                            <section aria-labelledby="titulo-produjo">
+                            <h3 class="titulo-seccion" id="titulo-produjo">Qué produjo</h3>
+                            <dl class="datos" data-id="produjo">
+                                <dt>{tituloLectura}</dt>
+                                <dd>
+                                    <template lwc:if={lectura}>
+                                        <button class="enlace" data-registro={lectura.id} data-objeto="Lectura_Sensor__c" onclick={abrir}>{lectura.valorTexto}</button>
+                                        <span class={lectura.claseEtiqueta}>{lectura.etiqueta}</span>
+                                        <template lwc:if={lectura.atrasada}>
+                                            <span class="marca marca-vieja">atrasada</span>
+                                        </template>
+                                    </template>
+                                    <template lwc:else>
+                                        <span class="sin-dato-linea">{sinLecturaTexto}</span>
+                                    </template>
+                                </dd>
+                                <dt>Equipo</dt>
+                                <dd>
+                                    <template lwc:if={equipo}>
+                                        <template lwc:if={equipo.existe}>
+                                            <button class="enlace" data-registro={equipo.activoId} data-objeto="Asset" onclick={abrir}>{equipo.nombre}</button>
+                                            <template lwc:if={equipo.edificio}>
+                                                <span class="secundario">{equipo.edificio}</span>
+                                            </template>
+                                        </template>
+                                        <template lwc:else>
+                                            <span class="sin-dato-linea" data-id="equipo-inexistente">{equipoInexistenteTexto}</span>
+                                        </template>
+                                    </template>
+                                    <template lwc:else>
+                                        <span class="sin-dato-linea">Sin equipo identificado</span>
+                                    </template>
+                                </dd>
+                                <dt>Intervención</dt>
+                                <dd>
+                                    <template lwc:if={lectura}>
+                                        <template lwc:if={lectura.intervencionId}>
+                                            <button class="enlace" data-registro={lectura.intervencionId} data-objeto="Case" onclick={abrir}>{lectura.intervencionNumero}</button>
+                                        </template>
+                                        <template lwc:else>
+                                            <span class="sin-dato-linea">Ninguna</span>
+                                        </template>
+                                    </template>
+                                    <template lwc:else>
+                                        <span class="sin-dato-linea">Ninguna</span>
+                                    </template>
+                                </dd>
+                            </dl>
+                            </section>
+                        </template>
+                        <template lwc:else>
+                            <section aria-labelledby="titulo-que-hacer">
+                                <h3 class="titulo-seccion" id="titulo-que-hacer">Qué hacer</h3>
+                                <p class="texto-seccion">
+                                    Revisa el control de ingesta de la fuente: allí están su configuración, su último resultado y el
+                                    botón «Revisar silencio ahora».
+                                </p>
+                            </section>
+                        </template>
+
+                        <template lwc:if={reproceso}>
+                            <div class={reproceso.clase} data-id="reproceso">
+                                <p class="titulo-cierre">{reproceso.titulo}</p>
+                                <p class="texto-cierre">{reproceso.texto}</p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <template lwc:if={hayComparacion}>
+                    <section class="seccion seccion-ancha" aria-labelledby="titulo-comparacion">
+                        <h3 class="titulo-seccion" id="titulo-comparacion">Lo que llegó frente a lo que ya estaba guardado</h3>
+                        <table class="comparacion" data-id="comparacion">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Campo</th>
+                                    <th scope="col">Llegó</th>
+                                    <th scope="col">Ya estaba guardado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={comparacion} for:item="f">
+                                    <tr key={f.clave} class={f.clase}>
+                                        <th scope="row">{f.campo}</th>
+                                        <td>{f.llego}</td>
+                                        <td>{f.teniamos}</td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </section>
+                </template>
+
+                <template lwc:if={hayHistoria}>
+                    <section class="seccion seccion-ancha" aria-labelledby="titulo-historia">
+                        <h3 class="titulo-seccion" id="titulo-historia">{tituloHistoria}</h3>
+                        <ol class="senales" data-id="historia">
+                            <template for:each={historia} for:item="p">
+                                <li key={p.id} class="senal">
+                                    <span class={p.clasePunto} aria-hidden="true"></span>
+                                    <span class="hora-senal">{p.cuandoTexto}</span>
+                                    <span class={p.claseEtiqueta}>{p.etiqueta}</span>
+                                    <span class="entrega-senal">{p.entrega}</span>
+                                    <template lwc:if={p.esEsta}>
+                                        <span class="marca marca-abierta">esta traza</span>
+                                    </template>
+                                    <template lwc:if={p.esReproceso}>
+                                        <span class="marca marca-vieja">reenvío de «Reprocesar»</span>
+                                    </template>
+                                    <template lwc:if={p.abrible}>
+                                        <button class="enlace enlace-final" data-registro={p.id} data-objeto="Registro_Procesamiento__c" onclick={abrir}>{p.nombre}</button>
+                                    </template>
+                                </li>
+                            </template>
+                        </ol>
+                    </section>
+                </template>
+
+                <template lwc:if={hayCarga}>
+                    <details class="carga" data-id="carga">
+                        <summary>Carga recibida</summary>
+                        <pre>{traza.cargaFormateada}</pre>
+                    </details>
+                </template>
+                <template lwc:if={traza.cargaIlegible}>
+                    <p class="sin-dato" data-id="carga-ilegible">La carga guardada no se pudo leer.</p>
+                </template>
+            </div>
+        </article>
+    </template>
+</template>

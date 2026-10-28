@@ -92,6 +92,13 @@
         <members>TendenciaProcesamientoTest</members>
         <members>TendenciaService</members>
         <members>TestDataFactory</members>
+        <members>TrazaDetalle</members>
+        <members>TrazaDetalleSelector</members>
+        <members>TrazaDetalleSelectorTest</members>
+        <members>TrazaDetalleService</members>
+        <members>TrazaDetalleServiceTest</members>
+        <members>TrazaNovaCasaController</members>
+        <members>TrazaNovaCasaControllerTest</members>
         <members>UmbralAutorizacionUS204Test</members>
         <members>UmbralMedicionSelector</members>
         <members>UmbralMedicionSelectorTest</members>
@@ -270,6 +277,7 @@
         <members>intervencionNovaCasa</members>
         <members>novaCasaEstilos</members>
         <members>novaCasaFormato</members>
+        <members>trazaNovaCasa</members>
         <name>LightningComponentBundle</name>
     </types>
     <types>
