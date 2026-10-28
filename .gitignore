@@ -1,11 +1,13 @@
-.DS_Store
-
-# Cachés locales de la CLI de Salesforce: se regeneran solas
+# Cachés de la CLI de Salesforce: guardan la sesión con la org
 salesforce/.sf/
 salesforce/.sfdx/
 salesforce/.localdevserver/
 
+# Dependencias y resultados de las pruebas Jest
 node_modules/
+coverage/
 
 # Generado por la extensión de Salesforce para VS Code
 **/lwc/jsconfig.json
+
+.DS_Store
